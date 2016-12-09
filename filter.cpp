@@ -14,7 +14,7 @@ enum linear_solver {CG, BiCGSTAB, GMRES};
 
 template<typename Kernel,typename VectorType>
 void solve(Kernel &&kernel, VectorType &&result, VectorType &&source, size_t max_iter=10, size_t restart=10, linear_solver solver=CG) {
-    typedef typename VectorType::Scalar Scalar;
+    typedef typename std::remove_reference<Kernel>::type::Scalar Scalar;
     switch (solver) {
         case CG: {
             Eigen::ConjugateGradient<
@@ -270,14 +270,14 @@ int main(int argc, char **argv) {
     
     auto spring_force_kk = deep_copy(
         if_else(dot(dx,dx)==0
-            ,0
+            ,vector(0,0)
             ,(-k*(s-norm(dx))/norm(dx))*dx
             )
         );
 
     auto spring_force_kf = deep_copy(
         if_else(dot(dkf,dkf)==0
-            ,0
+            ,vector(0,0)
             ,(-10*k*(fibre_radius+boundary_layer-norm(dkf))/norm(dkf))*dkf
             )
         );
