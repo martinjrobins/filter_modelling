@@ -14,11 +14,12 @@ enum linear_solver {CG, BiCGSTAB, GMRES};
 
 template<typename Kernel,typename VectorType>
 void solve(Kernel &&kernel, VectorType &&result, VectorType &&source, size_t max_iter=10, size_t restart=10, linear_solver solver=CG) {
+    typedef typename VectorType::Scalar Scalar;
     switch (solver) {
         case CG: {
             Eigen::ConjugateGradient<
                 typename std::remove_reference<Kernel>::type, 
-                         Eigen::Lower|Eigen::Upper, Eigen::DiagonalPreconditioner<double>> cg;
+                         Eigen::Lower|Eigen::Upper, Eigen::DiagonalPreconditioner<Scalar>> cg;
             cg.setMaxIterations(max_iter);
             cg.compute(kernel);
             result = cg.solveWithGuess(source,result);
@@ -28,7 +29,7 @@ void solve(Kernel &&kernel, VectorType &&result, VectorType &&source, size_t max
         case BiCGSTAB: {
             Eigen::BiCGSTAB<
                 typename std::remove_reference<Kernel>::type, 
-                     Eigen::DiagonalPreconditioner<double>> bicg;
+                     Eigen::DiagonalPreconditioner<Scalar>> bicg;
             bicg.setMaxIterations(max_iter);
             bicg.compute(kernel);
             result = bicg.solveWithGuess(source,result);
@@ -39,7 +40,7 @@ void solve(Kernel &&kernel, VectorType &&result, VectorType &&source, size_t max
         case GMRES: {
             Eigen::GMRES<
                 typename std::remove_reference<Kernel>::type, 
-                    Eigen::DiagonalPreconditioner<double>> gmres;
+                    Eigen::DiagonalPreconditioner<Scalar>> gmres;
             gmres.set_restart(restart);
             gmres.setMaxIterations(max_iter);
             gmres.compute(kernel);
