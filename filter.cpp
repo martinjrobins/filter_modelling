@@ -301,6 +301,10 @@ int main(int argc, char **argv) {
         pow(h[i]+h[j]-norm(dx),4)*(16.0*(h[i]+h[j]) + 64.0*norm(dx))/pow(h[i]+h[j],5)
         );
 
+    auto kernel_mq = deep_copy(
+            sqrt(norm(dx)+c2)
+        );
+
     auto gradient = deep_copy(
         320.0*dx*pow(h[i]+h[j]-norm(dx),3)/pow(h[i]+h[j],5)
         );
@@ -369,12 +373,28 @@ int main(int argc, char **argv) {
 
 
 
+    // i = 1, l = 1
     auto psol_u1 = deep_copy(
             (1.0/mu)*(phi_sol_dash_div_r + phi_sol_dash_dash - phi_sol_dash_div_r*(1-dx[0]*dx[1]/dot(dx,dx)) - phi_sol_dash_dash*dx[0]*dx[1]/dot(dx,dx))
             );
 
+    // i = 1, l = 2
     auto psol_u2 = deep_copy(
             (1.0/mu)*(phi_sol_dash_div_r*(dx[0]*dx[1]/dot(dx,dx)) - phi_sol_dash_dash*dx[0]*dx[1]/dot(dx,dx))
+            );
+
+    // i = 2, l = 1
+    auto psol_v1 = deep_copy(
+            (1.0/mu)*(phi_sol_dash_div_r*(dx[0]*dx[1]/dot(dx,dx)) - phi_sol_dash_dash*dx[0]*dx[1]/dot(dx,dx))
+            );
+
+    // i = 2, l = 2
+    auto psol_v2 = deep_copy(
+            (1.0/mu)*(phi_sol_dash_div_r + phi_sol_dash_dash - phi_sol_dash_div_r*(1-dx[0]*dx[1]/dot(dx,dx)) - phi_sol_dash_dash*dx[0]*dx[1]/dot(dx,dx))
+            );
+
+    auto psol_p = deep_copy(
+            mu*phi_sol_dash_dash_dash
             );
 
     
@@ -501,7 +521,91 @@ int main(int argc, char **argv) {
     w[i] = 0.0;
     vu[i] = 0.0;
     vv[i] = 0.0;
+
+    //B1: u = 0 at inlet and b, p = 0 at outlet
+    auto A11 = create_eigen_operator(i,j,
+            if_else(is_i[i]
+               ,kernel_mq
+               ,if_else(is_out[i]
+                   ,psol_p
+                   ,psol_u1
+                   )
+               )
+            );
+    auto A12 = create_eigen_operator(i,j,
+            if_else(is_i[i]
+               ,0.0
+               ,if_else(is_out[i]
+                   ,psol_p
+                   ,psol_u2
+                   )
+               )
+            );
+
+    //B1: v = -flow_rate at inlet and v=0 at b, u = 0 at outlet
+    auto A21 = create_eigen_operator(i,j,
+            if_else(is_i[i]
+               ,0.0
+               ,if_else(is_out[i]
+                   ,psol_u1
+                   ,psol_v1
+                   )
+               )
+            );
+
+    auto A22 = create_eigen_operator(i,j,
+            if_else(is_i[i]
+               ,kernel_mq
+               ,if_else(is_out[i]
+                   ,psol_u2
+                   ,psol_v2
+                   )
+               )
+            );
     
+
+
+    auto A = create_block_eigen_operator<2,2>(
+            A11,A12,
+            A21,A22
+            );
+
+
+    typedef Eigen::Matrix<double,Eigen::Dynamic,1> vector_type; 
+    vector_type source(2*knots.size());
+    vector_type alphas(2*knots.size());
+
+
+    for (int ii=0; ii<knots.size(); ++ii) {
+        source(ii) = 0.0;
+        if (get<inlet>(knots)[ii]) {
+            source(knots.size()+ii) = -flow_rate;
+        } else {
+            source(knots.size()+ii) = 0.0;
+        }
+        
+        alphas[ii] = 0.0;
+        alphas[knots.size()+ii] = 0.0;
+    }
+
+    solve(A,alphas,source,
+                max_iter_linear,restart_linear,(linear_solver)solver_in);
+
+    for (int ii=0; ii<knots.size(); ++ii) {
+        source(ii) = 0.0;
+        if (get<inlet>(knots)[ii]) {
+            source(knots.size()+ii) = -flow_rate;
+        } else {
+            source(knots.size()+ii) = 0.0;
+        }
+        
+        alphas[ii] = 0.0;
+        alphas[knots.size()+ii] = 0.0;
+    }
+
+
+    
+    /*
     double tol = 1;
     int ii = -1;
     while (tol > 1e-4) {
@@ -610,23 +714,7 @@ int main(int argc, char **argv) {
     }
 
 
-    /*
-    for (int ii=0; ii<knots.size(); ++ii) {
-        get<solution_weights>(knots)[ii][0] = w_eigen[ii];
-        get<solution_weights>(knots)[ii][1] = w_eigen[knots.size()+ii];
-        get<solution_weights>(knots)[ii][2] = w_eigen[2*knots.size()+ii];
-
-        //get<solution>(knots)[ii][0] = u_eigen[ii];
-        //get<solution>(knots)[ii][1] = u_eigen[knots.size()+ii];
-        //get<solution>(knots)[ii][2] = u_eigen[2*knots.size()+ii];
-    }
-    
-    // calculate solution
-    u[i] = sumv3(j,norm(dx)<h[i]+h[j],kernel*w[j]);
-
-    // write knots to file
-    vtkWriteGrid("flow",0,knots.get_grid(true));
-    */
+*/
     
 }
 
