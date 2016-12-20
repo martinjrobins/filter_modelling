@@ -71,7 +71,7 @@ int main(int argc, char **argv) {
     unsigned int nout,max_iter_linear,restart_linear,nx;
     int fibre_resolution,fibre_number;
     double fibre_radius;
-    double dt_aim,c0,h0_factor,k,gamma,rf;
+    double dt_aim,c0,h0_factor,k,gamma,rf,c;
     unsigned int solver_in;
 
     po::options_description desc("Allowed options");
@@ -82,6 +82,7 @@ int main(int argc, char **argv) {
         ("linear_solver", po::value<unsigned int>(&solver_in)->default_value(2), "linear solver")
         ("nout", po::value<unsigned int>(&nout)->default_value(10), "number of output points")
         ("k", po::value<double>(&k)->default_value(0.1), "spring constant")
+        ("c", po::value<double>(&c)->default_value(0.1), "spring constant")
         ("nx", po::value<unsigned int>(&nx)->default_value(19), "nx")
         ("fibre_resolution", po::value<int>(&fibre_resolution)->default_value(10), "number of knots around each fibre")
         ("fibre_number", po::value<int>(&fibre_number)->default_value(3), "number of fibres")
@@ -133,6 +134,9 @@ int main(int argc, char **argv) {
     ParticlesType particles;
     ParticlesType fibres;
 
+    const double c2 = std::pow(c,2);
+    const double c3 = std::pow(c,3);
+    const double c4 = std::pow(c,4);
     const double mu = 1.0;
     const double flow_rate = 1.0; 
     const double Tf = 2.0;
@@ -302,7 +306,7 @@ int main(int argc, char **argv) {
         );
 
     auto kernel_mq = deep_copy(
-            sqrt(norm(dx)+c2)
+            sqrt(dot(dx,dx)+c2)
         );
 
     auto gradient = deep_copy(
@@ -350,122 +354,166 @@ int main(int argc, char **argv) {
             );
 
     auto phi_sol_dash_div_r = deep_copy(
-            (4.0*pow(dot(dx,dx),3) + 36.0*pow(dot(dx,dx),2)*c2 + 39.0*dot(dx,dx)*c2*c2 + 7*c3*c2)/(180.0*pow(dot(dx,dx)+c2,1.5))
+            (4.0*pow(dot(dx,dx),3) + 36.0*pow(dot(dx,dx),2)*c2 + 39.0*dot(dx,dx)*c2*c2 + 7*c3*c3)/(180.0*pow(dot(dx,dx)+c2,1.5))
             - (5.0*pow(dot(dx,dx),2) + 3*dot(dx,dx)*c2 - 2*c2*c2)*c3/(60.0*pow(dot(dx,dx)+c2,1.5)*(c+sqrt(dot(dx,dx)+c2)))
-            - (1.0/6.0)*c2*log(c+sqrt(dot(dx,dx)+c2)) - (1.0/6.0)*c3*log(c)
+            - (1.0/6.0)*c3*log(c+sqrt(dot(dx,dx)+c2)) - (1.0/6.0)*c3*log(c)
             );
 
     auto phi_sol_dash_dash = deep_copy(
-            (16.0*pow(dot(dx,dx),3)+84*pow(dot(dx,dx),2)*c2+96*dot(dx,dx)*c2*c2+7*c2*c3)/(180.0*pow(dot(dx,dx)+c2,1.5))
+            (16.0*pow(dot(dx,dx),3)+84*pow(dot(dx,dx),2)*c2+96*dot(dx,dx)*c2*c2+7*c3*c3)/(180.0*pow(dot(dx,dx)+c2,1.5))
             - (20*pow(dot(dx,dx),2)+25*dot(dx,dx)*c2-2*c2*c2)*c3/(60.0*pow(dot(dx,dx)+c2,1.5)*(c+sqrt(dot(dx,dx)+c2)))
             + (5*dot(dx,dx)-2*c2)*c3*dot(dx,dx)/(60*(dot(dx,dx)+c2)*(c+sqrt(dot(dx,dx)+c2)))
-            - (1.0/6.0)*c2*log(c+sqrt(dot(dx,dx)+c2)) - (1.0/6.0)*c3*log(c)
+            - (1.0/6.0)*c3*log(c+sqrt(dot(dx,dx)+c2)) - (1.0/6.0)*c3*log(c)
             );
  
     auto phi_sol_dash_dash_dash = deep_copy(
             (76.0*pow(dot(dx,dx),2)+176*dot(dx,dx)*c2+285*c2*c2)*norm(dx)/(300*pow(dot(dx,dx)+c2,1.5))
-            + (4*pow(dot(dx,dx),2)+48*dot(dx,dx)*c2-61*c2*c2)*pow(norm(dx),3)/(300*pow(dot(dx,dx),5.0/2.0))
-            + (10*pow(dot(dx,dx),2)+15*dot(dx,dx)*c2-2*c2*c2)*c3*norm(dx)/(20*pow(dot(dx,dx)+c2,2)*(c+sqrt(dot(dx,dx),c2)))
+            + (4*pow(dot(dx,dx),2)+48*dot(dx,dx)*c2-61*c2*c2)*pow(norm(dx),3)/(300*pow(dot(dx,dx)+c2,5.0/2.0))
+            + (10*pow(dot(dx,dx),2)+15*dot(dx,dx)*c2-2*c2*c2)*c3*norm(dx)/(20*pow(dot(dx,dx)+c2,2)*(c+sqrt(dot(dx,dx)+c2)))
             - (5*dot(dx,dx)+22*c2)*c3*norm(dx)/(20*pow(dot(dx,dx)+c2,1.5)*(c+sqrt(dot(dx,dx)+c2)))
-            + (-5*dot(dx,dx)+2*c2)*c3*pow(norm(dx),3)/(20*pow(dot(dx,dx+c2),5.0/2.0)*(c+sqrt(dot(dx,dx)+c2)))
-            + (-5*dot(dx,dx)+2*c2)*c3*pow(norm(dx),3)/(30*pow(dot(dx,dx+c2),1.5)*pow(c+sqrt(dot(dx,dx)+c2),3))
+            + (-5*dot(dx,dx)+2*c2)*c3*pow(norm(dx),3)/(20*pow(dot(dx,dx)+c2,5.0/2.0)*(c+sqrt(dot(dx,dx)+c2)))
+            + (-5*dot(dx,dx)+2*c2)*c3*pow(norm(dx),3)/(30*pow(dot(dx,dx)+c2,1.5)*pow(c+sqrt(dot(dx,dx)+c2),3))
             );
-
 
 
     // i = 1, l = 1
     auto psol_u1 = deep_copy(
-            (1.0/mu)*(phi_sol_dash_div_r + phi_sol_dash_dash - phi_sol_dash_div_r*(1-dx[0]*dx[1]/dot(dx,dx)) - phi_sol_dash_dash*dx[0]*dx[1]/dot(dx,dx))
+            if_else(norm(dx)==0
+            ,(1.0/mu)*(phi_sol_dash_div_r + phi_sol_dash_dash)
+            ,(1.0/mu)*(phi_sol_dash_div_r*dx[0]*dx[0] + phi_sol_dash_dash*dx[1]*dx[1])/dot(dx,dx)
+            )
             );
 
     // i = 1, l = 2
     auto psol_u2 = deep_copy(
-            (1.0/mu)*(phi_sol_dash_div_r*(dx[0]*dx[1]/dot(dx,dx)) - phi_sol_dash_dash*dx[0]*dx[1]/dot(dx,dx))
+            if_else(norm(dx)==0
+            ,(1.0/mu)*(phi_sol_dash_div_r - phi_sol_dash_dash)
+            ,(1.0/mu)*(phi_sol_dash_div_r - phi_sol_dash_dash)*(dx[0]*dx[1])/dot(dx,dx)
+            )
             );
 
     // i = 2, l = 1
     auto psol_v1 = deep_copy(
-            (1.0/mu)*(phi_sol_dash_div_r*(dx[0]*dx[1]/dot(dx,dx)) - phi_sol_dash_dash*dx[0]*dx[1]/dot(dx,dx))
+            if_else(norm(dx)==0
+            ,(1.0/mu)*(phi_sol_dash_div_r - phi_sol_dash_dash)
+            ,(1.0/mu)*(phi_sol_dash_div_r - phi_sol_dash_dash)*(dx[0]*dx[1])/dot(dx,dx)
+            )
             );
 
     // i = 2, l = 2
     auto psol_v2 = deep_copy(
-            (1.0/mu)*(phi_sol_dash_div_r + phi_sol_dash_dash - phi_sol_dash_div_r*(1-dx[0]*dx[1]/dot(dx,dx)) - phi_sol_dash_dash*dx[0]*dx[1]/dot(dx,dx))
+            if_else(norm(dx)==0
+            ,(1.0/mu)*(phi_sol_dash_div_r+phi_sol_dash_dash)
+            ,(1.0/mu)*(phi_sol_dash_div_r*dx[1]*dx[1] + phi_sol_dash_dash*dx[0]*dx[0])/dot(dx,dx)
+            )
             );
 
-    auto psol_p = deep_copy(
-            mu*phi_sol_dash_dash_dash
+    auto psol_p1 = deep_copy(
+            if_else(norm(dx)==0
+            ,-(phi_sol_dash_dash_dash)
+            ,(phi_sol_dash_dash_dash + (phi_sol_dash_dash - phi_sol_dash_div_r)/norm(dx))*dx[0]/norm(dx)
+            )
+            );
+    auto psol_p2 = deep_copy(
+            if_else(norm(dx)==0
+            ,-(phi_sol_dash_dash_dash)
+            ,(phi_sol_dash_dash_dash + (phi_sol_dash_dash - phi_sol_dash_div_r)/norm(dx))*dx[1]/norm(dx)
+            )
             );
 
     
     //i = 1, j = 1, l = 1
     auto psol_gradientx_u1 = deep_copy(
-            -(1.0/mu)*(
+            if_else(norm(dx)==0
+            ,0.0
+            ,-(1.0/mu)*(
                 ((phi_sol_dash_div_r-phi_sol_dash_dash)/norm(dx) + phi_sol_dash_dash_dash)*dx[0]/norm(dx)
                  + (phi_sol_dash_div_r-phi_sol_dash_dash)*(dx[0]+dx[0])/norm(dx)
                  - (3*(phi_sol_dash_div_r-phi_sol_dash_dash)/norm(dx)+phi_sol_dash_dash_dash)*dx[0]*dx[0]*dx[1]/pow(norm(dx),3)
                 )
+            )
             );
 
     //i = 1, j = 1, l = 2
     auto psol_gradientx_u2 = deep_copy(
-            -(1.0/mu)*(
+            if_else(norm(dx)==0
+            ,(1.0/mu)*phi_sol_dash_dash_dash
+            ,-(1.0/mu)*(
                 ((phi_sol_dash_div_r-phi_sol_dash_dash)/norm(dx) + phi_sol_dash_dash_dash)*dx[0]/norm(dx)
                  + (phi_sol_dash_div_r-phi_sol_dash_dash)*(dx[1])/norm(dx)
                  - (3*(phi_sol_dash_div_r-phi_sol_dash_dash)/norm(dx)+phi_sol_dash_dash_dash)*dx[0]*dx[0]*dx[1]/pow(norm(dx),3)
                 )
+            )
             );
 
     //i = 1, j = 2, l = 1
     auto psol_gradienty_u1 = deep_copy(
-            -(1.0/mu)*(
+            if_else(norm(dx)==0
+            ,0.0
+            ,-(1.0/mu)*(
                 ((phi_sol_dash_div_r-phi_sol_dash_dash)/norm(dx) + phi_sol_dash_dash_dash)*dx[1]/norm(dx)
                  - (3*(phi_sol_dash_div_r-phi_sol_dash_dash)/norm(dx)+phi_sol_dash_dash_dash)*dx[0]*dx[1]*dx[1]/pow(norm(dx),3)
                 )
+            )
             );
 
     //i = 1, j = 2, l = 2
     auto psol_gradienty_u2 = deep_copy(
-            -(1.0/mu)*(
+            if_else(norm(dx)==0
+            ,(1.0/mu)*phi_sol_dash_dash_dash
+            ,-(1.0/mu)*(
                 ((phi_sol_dash_div_r-phi_sol_dash_dash)/norm(dx) + phi_sol_dash_dash_dash)*dx[1]/norm(dx)
                  + (phi_sol_dash_div_r-phi_sol_dash_dash)*(dx[0])/norm(dx)
                  - (3*(phi_sol_dash_div_r-phi_sol_dash_dash)/norm(dx)+phi_sol_dash_dash_dash)*dx[0]*dx[1]*dx[1]/pow(norm(dx),3)
                 )
+            )
             );
 
     //i = 2, j = 1, l = 1
     auto psol_gradientx_v1 = deep_copy(
-            -(1.0/mu)*(
+            if_else(norm(dx)==0
+            ,(1.0/mu)*phi_sol_dash_dash_dash
+            ,-(1.0/mu)*(
                 ((phi_sol_dash_div_r-phi_sol_dash_dash)/norm(dx) + phi_sol_dash_dash_dash)*dx[0]/norm(dx)
                  + (phi_sol_dash_div_r-phi_sol_dash_dash)*(dx[1])/norm(dx)
                  - (3*(phi_sol_dash_div_r-phi_sol_dash_dash)/norm(dx)+phi_sol_dash_dash_dash)*dx[1]*dx[0]*dx[0]/pow(norm(dx),3)
                 )
+            )
             );
 
     //i = 2, j = 1, l = 2
     auto psol_gradientx_v2 = deep_copy(
-            -(1.0/mu)*(
+            if_else(norm(dx)==0
+            ,0.0
+            ,-(1.0/mu)*(
                 ((phi_sol_dash_div_r-phi_sol_dash_dash)/norm(dx) + phi_sol_dash_dash_dash)*dx[0]/norm(dx)
                  - (3*(phi_sol_dash_div_r-phi_sol_dash_dash)/norm(dx)+phi_sol_dash_dash_dash)*dx[1]*dx[0]*dx[0]/pow(norm(dx),3)
                 )
+            )
             );
 
     //i = 2, j = 2, l = 1
     auto psol_gradienty_v1 = deep_copy(
-            -(1.0/mu)*(
+            if_else(norm(dx)==0
+            ,(1.0/mu)*phi_sol_dash_dash_dash
+            ,-(1.0/mu)*(
                 ((phi_sol_dash_div_r-phi_sol_dash_dash)/norm(dx) + phi_sol_dash_dash_dash)*dx[1]/norm(dx)
                  + (phi_sol_dash_div_r-phi_sol_dash_dash)*(dx[0])/norm(dx)
                  - (3*(phi_sol_dash_div_r-phi_sol_dash_dash)/norm(dx)+phi_sol_dash_dash_dash)*dx[1]*dx[1]*dx[0]/pow(norm(dx),3)
                 )
+            )
             );
 
     //i = 2, j = 2, l = 2
     auto psol_gradienty_v2 = deep_copy(
-            -(1.0/mu)*(
+            if_else(norm(dx)==0
+            ,0.0
+            ,-(1.0/mu)*(
                 ((phi_sol_dash_div_r-phi_sol_dash_dash)/norm(dx) + phi_sol_dash_dash_dash)*dx[1]/norm(dx)
                  + (phi_sol_dash_div_r-phi_sol_dash_dash)*(dx[1]+dx[1])/norm(dx)
                  - (3*(phi_sol_dash_div_r-phi_sol_dash_dash)/norm(dx)+phi_sol_dash_dash_dash)*dx[1]*dx[1]*dx[0]/pow(norm(dx),3)
                 )
+            )
             );
 
     
@@ -527,7 +575,7 @@ int main(int argc, char **argv) {
             if_else(is_i[i]
                ,kernel_mq
                ,if_else(is_out[i]
-                   ,psol_p
+                   ,psol_p1
                    ,psol_u1
                    )
                )
@@ -536,13 +584,13 @@ int main(int argc, char **argv) {
             if_else(is_i[i]
                ,0.0
                ,if_else(is_out[i]
-                   ,psol_p
+                   ,psol_p2
                    ,psol_u2
                    )
                )
             );
 
-    //B1: v = -flow_rate at inlet and v=0 at b, u = 0 at outlet
+    //B2: v = -flow_rate at inlet and v=0 at b, u = 0 at outlet
     auto A21 = create_eigen_operator(i,j,
             if_else(is_i[i]
                ,0.0
@@ -570,6 +618,34 @@ int main(int argc, char **argv) {
             A21,A22
             );
 
+    auto SOL_U11 = create_eigen_operator(i,j,
+            psol_u1
+            );
+    auto SOL_U12 = create_eigen_operator(i,j,
+            psol_u2
+            );
+    auto SOL_V11 = create_eigen_operator(i,j,
+            psol_v1
+            );
+    auto SOL_V12 = create_eigen_operator(i,j,
+            psol_v2
+            );
+    auto SOL_P11 = create_eigen_operator(i,j,
+            psol_p1
+            );
+    auto SOL_P12 = create_eigen_operator(i,j,
+            psol_p2
+            );
+     auto SOL_U = create_block_eigen_operator<1,2>(
+            SOL_U11,SOL_U12
+            );
+     auto SOL_V = create_block_eigen_operator<1,2>(
+            SOL_V11,SOL_V12
+            );
+     auto SOL_P = create_block_eigen_operator<1,2>(
+            SOL_P11,SOL_P12
+            );
+    
 
     typedef Eigen::Matrix<double,Eigen::Dynamic,1> vector_type; 
     vector_type source(2*knots.size());
@@ -591,19 +667,17 @@ int main(int argc, char **argv) {
     solve(A,alphas,source,
                 max_iter_linear,restart_linear,(linear_solver)solver_in);
 
+    vector_type solution_u = SOL_U*alphas;
+    vector_type solution_v = SOL_V*alphas;
+    vector_type solution_p = SOL_P*alphas;
+
     for (int ii=0; ii<knots.size(); ++ii) {
-        source(ii) = 0.0;
-        if (get<inlet>(knots)[ii]) {
-            source(knots.size()+ii) = -flow_rate;
-        } else {
-            source(knots.size()+ii) = 0.0;
-        }
-        
-        alphas[ii] = 0.0;
-        alphas[knots.size()+ii] = 0.0;
+        get<velocity_u>(knots)[ii] = solution_u[ii];
+        get<velocity_v>(knots)[ii] = solution_v[ii];
+        get<vorticity>(knots)[ii] = solution_p[ii];
     }
 
-
+    vtkWriteGrid("MAPS",0,knots.get_grid(true));
     
     /*
     double tol = 1;
