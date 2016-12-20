@@ -71,7 +71,7 @@ int main(int argc, char **argv) {
     unsigned int nout,max_iter_linear,restart_linear,nx;
     int fibre_resolution,fibre_number;
     double fibre_radius;
-    double dt_aim,c0,h0_factor,k,gamma,rf,c;
+    double dt_aim,c0,h0_factor,k,gamma,rf,c,epsilon;
     unsigned int solver_in;
 
     po::options_description desc("Allowed options");
@@ -82,7 +82,8 @@ int main(int argc, char **argv) {
         ("linear_solver", po::value<unsigned int>(&solver_in)->default_value(2), "linear solver")
         ("nout", po::value<unsigned int>(&nout)->default_value(10), "number of output points")
         ("k", po::value<double>(&k)->default_value(0.1), "spring constant")
-        ("c", po::value<double>(&c)->default_value(0.1), "spring constant")
+        ("epsilon", po::value<double>(&epsilon)->default_value(10.0), "boundary clustering fall-off")
+        ("c", po::value<double>(&c)->default_value(0.01), "kernel constant")
         ("nx", po::value<unsigned int>(&nx)->default_value(19), "nx")
         ("fibre_resolution", po::value<int>(&fibre_resolution)->default_value(10), "number of knots around each fibre")
         ("fibre_number", po::value<int>(&fibre_number)->default_value(3), "number of fibres")
@@ -422,101 +423,6 @@ int main(int argc, char **argv) {
             );
 
     
-    //i = 1, j = 1, l = 1
-    auto psol_gradientx_u1 = deep_copy(
-            if_else(norm(dx)==0
-            ,0.0
-            ,-(1.0/mu)*(
-                ((phi_sol_dash_div_r-phi_sol_dash_dash)/norm(dx) + phi_sol_dash_dash_dash)*dx[0]/norm(dx)
-                 + (phi_sol_dash_div_r-phi_sol_dash_dash)*(dx[0]+dx[0])/norm(dx)
-                 - (3*(phi_sol_dash_div_r-phi_sol_dash_dash)/norm(dx)+phi_sol_dash_dash_dash)*dx[0]*dx[0]*dx[1]/pow(norm(dx),3)
-                )
-            )
-            );
-
-    //i = 1, j = 1, l = 2
-    auto psol_gradientx_u2 = deep_copy(
-            if_else(norm(dx)==0
-            ,(1.0/mu)*phi_sol_dash_dash_dash
-            ,-(1.0/mu)*(
-                ((phi_sol_dash_div_r-phi_sol_dash_dash)/norm(dx) + phi_sol_dash_dash_dash)*dx[0]/norm(dx)
-                 + (phi_sol_dash_div_r-phi_sol_dash_dash)*(dx[1])/norm(dx)
-                 - (3*(phi_sol_dash_div_r-phi_sol_dash_dash)/norm(dx)+phi_sol_dash_dash_dash)*dx[0]*dx[0]*dx[1]/pow(norm(dx),3)
-                )
-            )
-            );
-
-    //i = 1, j = 2, l = 1
-    auto psol_gradienty_u1 = deep_copy(
-            if_else(norm(dx)==0
-            ,0.0
-            ,-(1.0/mu)*(
-                ((phi_sol_dash_div_r-phi_sol_dash_dash)/norm(dx) + phi_sol_dash_dash_dash)*dx[1]/norm(dx)
-                 - (3*(phi_sol_dash_div_r-phi_sol_dash_dash)/norm(dx)+phi_sol_dash_dash_dash)*dx[0]*dx[1]*dx[1]/pow(norm(dx),3)
-                )
-            )
-            );
-
-    //i = 1, j = 2, l = 2
-    auto psol_gradienty_u2 = deep_copy(
-            if_else(norm(dx)==0
-            ,(1.0/mu)*phi_sol_dash_dash_dash
-            ,-(1.0/mu)*(
-                ((phi_sol_dash_div_r-phi_sol_dash_dash)/norm(dx) + phi_sol_dash_dash_dash)*dx[1]/norm(dx)
-                 + (phi_sol_dash_div_r-phi_sol_dash_dash)*(dx[0])/norm(dx)
-                 - (3*(phi_sol_dash_div_r-phi_sol_dash_dash)/norm(dx)+phi_sol_dash_dash_dash)*dx[0]*dx[1]*dx[1]/pow(norm(dx),3)
-                )
-            )
-            );
-
-    //i = 2, j = 1, l = 1
-    auto psol_gradientx_v1 = deep_copy(
-            if_else(norm(dx)==0
-            ,(1.0/mu)*phi_sol_dash_dash_dash
-            ,-(1.0/mu)*(
-                ((phi_sol_dash_div_r-phi_sol_dash_dash)/norm(dx) + phi_sol_dash_dash_dash)*dx[0]/norm(dx)
-                 + (phi_sol_dash_div_r-phi_sol_dash_dash)*(dx[1])/norm(dx)
-                 - (3*(phi_sol_dash_div_r-phi_sol_dash_dash)/norm(dx)+phi_sol_dash_dash_dash)*dx[1]*dx[0]*dx[0]/pow(norm(dx),3)
-                )
-            )
-            );
-
-    //i = 2, j = 1, l = 2
-    auto psol_gradientx_v2 = deep_copy(
-            if_else(norm(dx)==0
-            ,0.0
-            ,-(1.0/mu)*(
-                ((phi_sol_dash_div_r-phi_sol_dash_dash)/norm(dx) + phi_sol_dash_dash_dash)*dx[0]/norm(dx)
-                 - (3*(phi_sol_dash_div_r-phi_sol_dash_dash)/norm(dx)+phi_sol_dash_dash_dash)*dx[1]*dx[0]*dx[0]/pow(norm(dx),3)
-                )
-            )
-            );
-
-    //i = 2, j = 2, l = 1
-    auto psol_gradienty_v1 = deep_copy(
-            if_else(norm(dx)==0
-            ,(1.0/mu)*phi_sol_dash_dash_dash
-            ,-(1.0/mu)*(
-                ((phi_sol_dash_div_r-phi_sol_dash_dash)/norm(dx) + phi_sol_dash_dash_dash)*dx[1]/norm(dx)
-                 + (phi_sol_dash_div_r-phi_sol_dash_dash)*(dx[0])/norm(dx)
-                 - (3*(phi_sol_dash_div_r-phi_sol_dash_dash)/norm(dx)+phi_sol_dash_dash_dash)*dx[1]*dx[1]*dx[0]/pow(norm(dx),3)
-                )
-            )
-            );
-
-    //i = 2, j = 2, l = 2
-    auto psol_gradienty_v2 = deep_copy(
-            if_else(norm(dx)==0
-            ,0.0
-            ,-(1.0/mu)*(
-                ((phi_sol_dash_div_r-phi_sol_dash_dash)/norm(dx) + phi_sol_dash_dash_dash)*dx[1]/norm(dx)
-                 + (phi_sol_dash_div_r-phi_sol_dash_dash)*(dx[1]+dx[1])/norm(dx)
-                 - (3*(phi_sol_dash_div_r-phi_sol_dash_dash)/norm(dx)+phi_sol_dash_dash_dash)*dx[1]*dx[1]*dx[0]/pow(norm(dx),3)
-                )
-            )
-            );
-
-    
     auto spring_force_kk = deep_copy(
         if_else(dot(dx,dx)==0
             ,vector(0,0)
@@ -524,14 +430,26 @@ int main(int argc, char **argv) {
             )
         );
 
-    auto spring_force_kf = deep_copy(
+    auto spring_force_kf_old = deep_copy(
         if_else(dot(dkf,dkf)==0
             ,vector(0,0)
             ,(-10*k*(fibre_radius+boundary_layer-norm(dkf))/norm(dkf))*dkf
             )
         );
 
-    auto spring_force_kb = deep_copy(
+
+    auto spring_force_kf = deep_copy(
+        if_else(dot(dkf,dkf)==0
+            ,vector(0,0)
+            ,if_else(norm(dkf)>fibre_radius+boundary_layer
+                ,delta*k*exp(epsilon*(fibre_radius+boundary_layer-norm(dkf)))
+                ,-10*k*(fibre_radius+boundary_layer-norm(dkf))
+                )*dkf/norm(dkf)
+            )
+        );
+
+
+    auto spring_force_kb_old = deep_copy(
         10*k*(vector(
                 if_else(r[i][0] < boundary_layer
                 ,boundary_layer-r[i][0]
@@ -549,13 +467,33 @@ int main(int argc, char **argv) {
                 ))
             )
         );
+
+    auto spring_force_kb = deep_copy(
+        vector(
+                if_else(r[i][0] < boundary_layer
+                ,10*k*(boundary_layer-r[i][0])
+                ,if_else(r[i][0] > L-boundary_layer
+                    ,10*k*(L-boundary_layer-r[i][0])
+                    ,-delta*k*(exp(epsilon*(boundary_layer-r[i][0]))
+                                          - exp(epsilon*(r[i][0]-L+boundary_layer)))
+                    )
+                )
+                ,if_else(r[i][1] < boundary_layer 
+                ,10*k*(boundary_layer-r[i][1])
+                ,if_else(r[i][1] > L-boundary_layer
+                    ,10*k*(L-boundary_layer-r[i][1])
+                    ,0.0
+                    )
+                )
+            )
+        );
             
 
     // adapt knot locations
     for (int ii=0; ii<1000; ii++) {
         r[i] += dt_adapt*if_else(is_i[i]
                     ,sumv(j,norm(dx)<s,spring_force_kk)
-                        + sumv(bf,norm(dkf)<fibre_radius+boundary_layer,spring_force_kf)
+                        + sumv(bf,true,spring_force_kf)
                         + spring_force_kb
                     ,vector(0,0)
                 );
