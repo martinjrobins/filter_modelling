@@ -69,9 +69,9 @@ void solve(Kernel &&kernel, VectorType &&result, VectorType &&source, size_t max
 int main(int argc, char **argv) {
 
     unsigned int nout,max_iter_linear,restart_linear,nx;
-    int fibre_resolution,fibre_number;
-    double fibre_radius;
-    double dt_aim,c0,h0_factor,k,gamma,rf,c,epsilon;
+    int fibre_resolution,fibre_number,seed;
+    double fibre_radius,particle_rate,react_rate,D;
+    double dt_aim,h0_factor,k,gamma,rf,c0,epsilon;
     unsigned int solver_in;
 
     po::options_description desc("Allowed options");
@@ -82,10 +82,14 @@ int main(int argc, char **argv) {
         ("linear_solver", po::value<unsigned int>(&solver_in)->default_value(2), "linear solver")
         ("nout", po::value<unsigned int>(&nout)->default_value(10), "number of output points")
         ("k", po::value<double>(&k)->default_value(0.1), "spring constant")
+        ("D", po::value<double>(&D)->default_value(1.0), "diffusion constant")
+        ("particle_rate", po::value<double>(&particle_rate)->default_value(1000.0), "particle rate")
+        ("react_rate", po::value<double>(&react_rate)->default_value(0.5), "particle reaction rate")
         ("epsilon", po::value<double>(&epsilon)->default_value(10.0), "boundary clustering fall-off")
-        ("c", po::value<double>(&c)->default_value(0.01), "kernel constant")
+        ("c0", po::value<double>(&c0)->default_value(0.01), "kernel constant")
         ("nx", po::value<unsigned int>(&nx)->default_value(19), "nx")
         ("fibre_resolution", po::value<int>(&fibre_resolution)->default_value(10), "number of knots around each fibre")
+        ("seed", po::value<int>(&seed)->default_value(10), "seed")
         ("fibre_number", po::value<int>(&fibre_number)->default_value(3), "number of fibres")
         ("fibre_radius", po::value<double>(&fibre_radius)->default_value(0.1), "radius of fibres")
         ("h0_factor", po::value<double>(&h0_factor)->default_value(4.0), "h0 factor")
@@ -107,37 +111,21 @@ int main(int argc, char **argv) {
     ABORIA_VARIABLE(boundary,uint8_t,"is boundary knot")
     ABORIA_VARIABLE(interior,uint8_t,"is interior knot")
 
-    ABORIA_VARIABLE(solution,double3,"solution")
-    ABORIA_VARIABLE(solution_weights,double3,"solution weights")
-
     ABORIA_VARIABLE(velocity_u,double,"velocity u");
-    ABORIA_VARIABLE(velocity_u_dx,double,"velocity u dx");
-    ABORIA_VARIABLE(divergence,double,"divergenceu dx");
     ABORIA_VARIABLE(velocity_v,double,"velocity v");
-    ABORIA_VARIABLE(vorticity,double,"vorticity");
+    ABORIA_VARIABLE(pressure,double,"pressure");
+    ABORIA_VARIABLE(alpha,double2,"alpha");
     
-    ABORIA_VARIABLE(velocity_u_old,double,"old velocity u");
-    ABORIA_VARIABLE(velocity_v_old,double,"old velocity v");
-    ABORIA_VARIABLE(vorticity_old,double,"old vorticity");
-    
-    ABORIA_VARIABLE(velocity_u_weights,double,"velocity u weights");
-    ABORIA_VARIABLE(velocity_v_weights,double,"velocity v weights");
-    ABORIA_VARIABLE(vorticity_weights,double,"vorticity weights");
-
     ABORIA_VARIABLE(boundary_normal,double2,"unit normal vector to boundary")
     ABORIA_VARIABLE(kernel_constant,double,"kernel constant")
 
-    //typedef Particles<std::tuple<boundary,inlet,outlet,interior,solution,solution_weights,kernel_constant,boundary_normal>,2> KnotsType;
-    typedef Particles<std::tuple<boundary,inlet,outlet,interior,velocity_u,velocity_v,vorticity,velocity_u_old,velocity_v_old,vorticity_old,velocity_u_weights,velocity_v_weights,vorticity_weights,kernel_constant,boundary_normal,velocity_u_dx,divergence>,2> KnotsType;
-    typedef Particles<std::tuple<>,2> ParticlesType;
+    typedef Particles<std::tuple<alpha,boundary,inlet,outlet,interior,velocity_u,velocity_v,pressure,kernel_constant,boundary_normal>,2> KnotsType;
+    typedef Particles<std::tuple<kernel_constant>,2> ParticlesType;
     typedef position_d<2> position;
     KnotsType knots;
     ParticlesType particles;
     ParticlesType fibres;
 
-    const double c2 = std::pow(c,2);
-    const double c3 = std::pow(c,3);
-    const double c4 = std::pow(c,4);
     const double mu = 1.0;
     const double flow_rate = 1.0; 
     const double Tf = 2.0;
@@ -150,6 +138,16 @@ int main(int argc, char **argv) {
     const double dt = Tf/timesteps;
     const double dt_adapt = (1.0/100.0)*PI/sqrt(2*k);
 
+    std::poisson_distribution<int> poisson(particle_rate*dt);
+    std::uniform_real_distribution<double> uniform(L/10.0,L-L/10.0);
+    std::default_random_engine generator(seed);
+
+    // particles 
+    {
+        particles.init_neighbour_search(double2(-L,0),double2(2.0*L,L),fibre_radius+boundary_layer,bool2(false));
+
+        std::cout << "added "<<particles.size()<<" particles"<<std::endl;
+    }
 
     // fibres
     {
@@ -220,7 +218,6 @@ int main(int argc, char **argv) {
                 get<inlet>(p) = true;
                 get<outlet>(p) = false;
                 get<interior>(p) = false;
-                //get<boundary_tangent>(p) = double2(1,0);
                 get<boundary_normal>(p) = double2(0,-1);
                 knots.push_back(p);
 
@@ -230,7 +227,6 @@ int main(int argc, char **argv) {
                 get<inlet>(p) = false;
                 get<outlet>(p) = true;
                 get<interior>(p) = false;
-                //get<boundary_tangent>(p) = double2(1,0);
                 get<boundary_normal>(p) = double2(0,1);
                 knots.push_back(p);
             }
@@ -241,7 +237,6 @@ int main(int argc, char **argv) {
             get<inlet>(p) = false;
             get<interior>(p) = false;
             get<outlet>(p) = false;
-            //get<boundary_tangent>(p) = double2(0,1);
             get<boundary_normal>(p) = double2(1,0);
             knots.push_back(p);
 
@@ -251,13 +246,12 @@ int main(int argc, char **argv) {
             get<inlet>(p) = false;
             get<interior>(p) = false;
             get<outlet>(p) = false;
-            //get<boundary_tangent>(p) = double2(0,1);
             get<boundary_normal>(p) = double2(-1,0);
             knots.push_back(p);
         }
 
         knots.init_neighbour_search(double2(-0.1*L),double2(1.1*L),2*h0,bool2(false));
-        std::cout << "added "<<knots.size()<<" knots with h0 = " <<h0<< std::endl;
+        std::cout << "added "<<knots.size()<<" knots with c0 = " <<c0<< std::endl;
     }
     
     vtkWriteGrid("init_knots",0,knots.get_grid(true));
@@ -267,23 +261,16 @@ int main(int argc, char **argv) {
     Symbol<outlet> is_out;
     Symbol<interior> is_i;
     Symbol<position> r;
-    Symbol<kernel_constant> h;
-    Symbol<solution> u;
-    //Symbol<solution_weights> w;
+    Symbol<alive> alive_;
+    Symbol<kernel_constant> c;
 
     Symbol<velocity_u> vu;
-    Symbol<velocity_u_dx> vudx;
-    Symbol<divergence> div;
     Symbol<velocity_v> vv;
-    Symbol<vorticity> w;
-    Symbol<velocity_u_old> vu_old;
-    Symbol<velocity_v_old> vv_old;
-    Symbol<vorticity_old> w_old;
-    Symbol<velocity_u_weights> vuw;
-    Symbol<velocity_v_weights> vvw;
-    Symbol<vorticity_weights> ww;
+    Symbol<pressure> pr;
+    Symbol<alpha> al;
 
     Symbol<boundary_normal> normal;
+
     Label<0,KnotsType> i(knots);
     Label<1,KnotsType> j(knots);
     Label<0,ParticlesType> a(particles);
@@ -293,87 +280,47 @@ int main(int argc, char **argv) {
     auto dx = create_dx(i,j);
     auto dkf = create_dx(i,bf);
     auto dpf = create_dx(a,bf);
+    auto dpk = create_dx(a,j);
     Accumulate<std::plus<double> > sum;
     Accumulate<std::plus<double2> > sumv;
     Accumulate<std::plus<double3> > sumv3;
     Accumulate<Aboria::max<double> > max;
+    Accumulate<std::bit_or<bool> > any;
     max.set_init(0);
     VectorSymbolic<double,2> vector;      
     VectorSymbolic<double,3> vector3;      
     VectorSymbolic<double,9> matrix;      
-
-    auto kernel = deep_copy(
-        pow(h[i]+h[j]-norm(dx),4)*(16.0*(h[i]+h[j]) + 64.0*norm(dx))/pow(h[i]+h[j],5)
-        );
+    Normal N;
+    Uniform U;
 
     auto kernel_mq = deep_copy(
-            sqrt(dot(dx,dx)+c2)
+            sqrt(dot(dx,dx)+pow(c[i],2))
         );
-
-    auto gradient = deep_copy(
-        320.0*dx*pow(h[i]+h[j]-norm(dx),3)/pow(h[i]+h[j],5)
-        );
-
-    auto gradientx = deep_copy(
-        320.0*dx[0]*pow(h[i]+h[j]-norm(dx),3)/pow(h[i]+h[j],5)
-        );
-    auto gradienty = deep_copy(
-        320.0*dx[1]*pow(h[i]+h[j]-norm(dx),3)/pow(h[i]+h[j],5)
-        );
-
-    auto gradientx2 = deep_copy(
-            if_else(norm(dx)==0
-                ,320.0/pow(h[i]+h[j],2)
-                ,65536.0*pow(h[i]+h[j]-norm(dx),2)*(0.0009765625*pow(dx[0],2)*(-5.0*(h[i]+h[j]) + 20.0*norm(dx))-0.0048828125*pow(dx[1],2)*(h[i]+h[j]-norm(dx)))/(pow(h[i]+h[j],5)*dot(dx,dx))
-                )
-            );
-
-    auto gradienty2 = deep_copy(
-            if_else(norm(dx)==0
-                ,320.0/pow(h[i]+h[j],2)
-                ,65536.0*pow(h[i]+h[j]-norm(dx),2)*(0.0009765625*pow(dx[1],2)*(-5.0*(h[i]+h[j]) + 20.0*norm(dx))-0.0048828125*pow(dx[0],2)*(h[i]+h[j]-norm(dx)))/(pow(h[i]+h[j],5)*dot(dx,dx))
-                )
-
-            );
-
-    auto gradientxy = deep_copy(
-            if_else(norm(dx)==0
-                ,0.0
-                ,960.0*dx[0]*dx[1]*pow(h[i]+h[j]-norm(dx),2)/(pow(h[i]+h[j],5)*norm(dx))
-                )
-
-            );
-
-
-    auto laplace = deep_copy(
-            pow(h[i]+h[j]-norm(dx),2)/pow(h[i]+h[j],5)*(128.0*(-2.5*(h[i]+h[j]) + 10.0*norm(dx)) - 320.0*(h[i]+h[j]-norm(dx)))
-        );
-
 
     auto phi_sol = deep_copy(
-            ((1.0/75.0)*sqrt(dot(dx,dx)+c2)*(4.0*pow(dot(dx,dx),2)+48.0*dot(dx,dx)*c2-61.0*c2*c2) - c3*log(c)*dot(dx,dx) - (1.0/5.0)*(5.0*dot(dx,dx)-2*c2)*c3*log(c+sqrt(dot(dx,dx)+c2)))/(12.0*mu)
+            ((1.0/75.0)*sqrt(dot(dx,dx)+pow(c[i],2))*(4.0*pow(dot(dx,dx),2)+48.0*dot(dx,dx)*pow(c[i],2)-61.0*pow(c[i],4)) - pow(c[i],3)*log(c[i])*dot(dx,dx) - (1.0/5.0)*(5.0*dot(dx,dx)-2*pow(c[i],2))*pow(c[i],3)*log(c[i]+sqrt(dot(dx,dx)+pow(c[i],2))))/(12.0*mu)
             );
 
     auto phi_sol_dash_div_r = deep_copy(
-            (4.0*pow(dot(dx,dx),3) + 36.0*pow(dot(dx,dx),2)*c2 + 39.0*dot(dx,dx)*c2*c2 + 7*c3*c3)/(180.0*pow(dot(dx,dx)+c2,1.5))
-            - (5.0*pow(dot(dx,dx),2) + 3*dot(dx,dx)*c2 - 2*c2*c2)*c3/(60.0*pow(dot(dx,dx)+c2,1.5)*(c+sqrt(dot(dx,dx)+c2)))
-            - (1.0/6.0)*c3*log(c+sqrt(dot(dx,dx)+c2)) - (1.0/6.0)*c3*log(c)
+            (4.0*pow(dot(dx,dx),3) + 36.0*pow(dot(dx,dx),2)*pow(c[i],2) + 39.0*dot(dx,dx)*pow(c[i],4) + 7*pow(c[i],6))/(180.0*pow(dot(dx,dx)+pow(c[i],2),1.5))
+            - (5.0*pow(dot(dx,dx),2) + 3*dot(dx,dx)*pow(c[i],2) - 2*pow(c[i],4))*pow(c[i],3)/(60.0*pow(dot(dx,dx)+pow(c[i],2),1.5)*(c[i]+sqrt(dot(dx,dx)+pow(c[i],2))))
+            - (1.0/6.0)*pow(c[i],3)*log(c[i]+sqrt(dot(dx,dx)+pow(c[i],2))) - (1.0/6.0)*pow(c[i],3)*log(c[i])
             );
 
     auto phi_sol_dash_dash = deep_copy(
-            (16.0*pow(dot(dx,dx),3)+84*pow(dot(dx,dx),2)*c2+96*dot(dx,dx)*c2*c2+7*c3*c3)/(180.0*pow(dot(dx,dx)+c2,1.5))
-            - (20*pow(dot(dx,dx),2)+25*dot(dx,dx)*c2-2*c2*c2)*c3/(60.0*pow(dot(dx,dx)+c2,1.5)*(c+sqrt(dot(dx,dx)+c2)))
-            + (5*dot(dx,dx)-2*c2)*c3*dot(dx,dx)/(60*(dot(dx,dx)+c2)*(c+sqrt(dot(dx,dx)+c2)))
-            - (1.0/6.0)*c3*log(c+sqrt(dot(dx,dx)+c2)) - (1.0/6.0)*c3*log(c)
+            (16.0*pow(dot(dx,dx),3)+84*pow(dot(dx,dx),2)*pow(c[i],2)+96*dot(dx,dx)*pow(c[i],4)+7*pow(c[i],6))/(180.0*pow(dot(dx,dx)+pow(c[i],2),1.5))
+            - (20*pow(dot(dx,dx),2)+25*dot(dx,dx)*pow(c[i],2)-2*pow(c[i],4))*pow(c[i],3)/(60.0*pow(dot(dx,dx)+pow(c[i],2),1.5)*(c[i]+sqrt(dot(dx,dx)+pow(c[i],2))))
+            + (5*dot(dx,dx)-2*pow(c[i],2))*pow(c[i],3)*dot(dx,dx)/(60*(dot(dx,dx)+pow(c[i],2))*(c[i]+sqrt(dot(dx,dx)+pow(c[i],2))))
+            - (1.0/6.0)*pow(c[i],3)*log(c[i]+sqrt(dot(dx,dx)+pow(c[i],2))) - (1.0/6.0)*pow(c[i],3)*log(c[i])
             );
  
     auto phi_sol_dash_dash_dash = deep_copy(
-            (76.0*pow(dot(dx,dx),2)+176*dot(dx,dx)*c2+285*c2*c2)*norm(dx)/(300*pow(dot(dx,dx)+c2,1.5))
-            + (4*pow(dot(dx,dx),2)+48*dot(dx,dx)*c2-61*c2*c2)*pow(norm(dx),3)/(300*pow(dot(dx,dx)+c2,5.0/2.0))
-            + (10*pow(dot(dx,dx),2)+15*dot(dx,dx)*c2-2*c2*c2)*c3*norm(dx)/(20*pow(dot(dx,dx)+c2,2)*(c+sqrt(dot(dx,dx)+c2)))
-            - (5*dot(dx,dx)+22*c2)*c3*norm(dx)/(20*pow(dot(dx,dx)+c2,1.5)*(c+sqrt(dot(dx,dx)+c2)))
-            + (-5*dot(dx,dx)+2*c2)*c3*pow(norm(dx),3)/(20*pow(dot(dx,dx)+c2,5.0/2.0)*(c+sqrt(dot(dx,dx)+c2)))
-            + (-5*dot(dx,dx)+2*c2)*c3*pow(norm(dx),3)/(30*pow(dot(dx,dx)+c2,1.5)*pow(c+sqrt(dot(dx,dx)+c2),3))
+            (76.0*pow(dot(dx,dx),2)+176*dot(dx,dx)*pow(c[i],2)+285*pow(c[i],4))*norm(dx)/(300*pow(dot(dx,dx)+pow(c[i],2),1.5))
+            + (4*pow(dot(dx,dx),2)+48*dot(dx,dx)*pow(c[i],2)-61*pow(c[i],4))*pow(norm(dx),3)/(300*pow(dot(dx,dx)+pow(c[i],2),5.0/2.0))
+            + (10*pow(dot(dx,dx),2)+15*dot(dx,dx)*pow(c[i],2)-2*pow(c[i],4))*pow(c[i],3)*norm(dx)/(20*pow(dot(dx,dx)+pow(c[i],2),2)*(c[i]+sqrt(dot(dx,dx)+pow(c[i],2))))
+            - (5*dot(dx,dx)+22*pow(c[i],2))*pow(c[i],3)*norm(dx)/(20*pow(dot(dx,dx)+pow(c[i],2),1.5)*(c[i]+sqrt(dot(dx,dx)+pow(c[i],2))))
+            + (-5*dot(dx,dx)+2*pow(c[i],2))*pow(c[i],3)*pow(norm(dx),3)/(20*pow(dot(dx,dx)+pow(c[i],2),5.0/2.0)*(c[i]+sqrt(dot(dx,dx)+pow(c[i],2))))
+            + (-5*dot(dx,dx)+2*pow(c[i],2))*pow(c[i],3)*pow(norm(dx),3)/(30*pow(dot(dx,dx)+pow(c[i],2),1.5)*pow(c[i]+sqrt(dot(dx,dx)+pow(c[i],2)),3))
             );
 
 
@@ -422,6 +369,85 @@ int main(int argc, char **argv) {
             )
             );
 
+
+    auto kernel_mq_pk = deep_copy(
+            sqrt(dot(dpk,dpk)+pow(c[a],2))
+        );
+
+    auto phi_sol_pk = deep_copy(
+            ((1.0/75.0)*sqrt(dot(dpk,dpk)+pow(c[a],2))*(4.0*pow(dot(dpk,dpk),2)+48.0*dot(dpk,dpk)*pow(c[a],2)-61.0*pow(c[a],4)) - pow(c[a],3)*log(c[a])*dot(dpk,dpk) - (1.0/5.0)*(5.0*dot(dpk,dpk)-2*pow(c[a],2))*pow(c[a],3)*log(c[a]+sqrt(dot(dpk,dpk)+pow(c[a],2))))/(12.0*mu)
+            );
+
+    auto phi_sol_dash_div_r_pk = deep_copy(
+            (4.0*pow(dot(dpk,dpk),3) + 36.0*pow(dot(dpk,dpk),2)*pow(c[a],2) + 39.0*dot(dpk,dpk)*pow(c[a],4) + 7*pow(c[a],6))/(180.0*pow(dot(dpk,dpk)+pow(c[a],2),1.5))
+            - (5.0*pow(dot(dpk,dpk),2) + 3*dot(dpk,dpk)*pow(c[a],2) - 2*pow(c[a],4))*pow(c[a],3)/(60.0*pow(dot(dpk,dpk)+pow(c[a],2),1.5)*(c[a]+sqrt(dot(dpk,dpk)+pow(c[a],2))))
+            - (1.0/6.0)*pow(c[a],3)*log(c[a]+sqrt(dot(dpk,dpk)+pow(c[a],2))) - (1.0/6.0)*pow(c[a],3)*log(c[a])
+            );
+
+    auto phi_sol_dash_dash_pk = deep_copy(
+            (16.0*pow(dot(dpk,dpk),3)+84*pow(dot(dpk,dpk),2)*pow(c[a],2)+96*dot(dpk,dpk)*pow(c[a],4)+7*pow(c[a],6))/(180.0*pow(dot(dpk,dpk)+pow(c[a],2),1.5))
+            - (20*pow(dot(dpk,dpk),2)+25*dot(dpk,dpk)*pow(c[a],2)-2*pow(c[a],4))*pow(c[a],3)/(60.0*pow(dot(dpk,dpk)+pow(c[a],2),1.5)*(c[a]+sqrt(dot(dpk,dpk)+pow(c[a],2))))
+            + (5*dot(dpk,dpk)-2*pow(c[a],2))*pow(c[a],3)*dot(dpk,dpk)/(60*(dot(dpk,dpk)+pow(c[a],2))*(c[a]+sqrt(dot(dpk,dpk)+pow(c[a],2))))
+            - (1.0/6.0)*pow(c[a],3)*log(c[a]+sqrt(dot(dpk,dpk)+pow(c[a],2))) - (1.0/6.0)*pow(c[a],3)*log(c[a])
+            );
+ 
+    auto phi_sol_dash_dash_dash_pk = deep_copy(
+            (76.0*pow(dot(dpk,dpk),2)+176*dot(dpk,dpk)*pow(c[a],2)+285*pow(c[a],4))*norm(dpk)/(300*pow(dot(dpk,dpk)+pow(c[a],2),1.5))
+            + (4*pow(dot(dpk,dpk),2)+48*dot(dpk,dpk)*pow(c[a],2)-61*pow(c[a],4))*pow(norm(dpk),3)/(300*pow(dot(dpk,dpk)+pow(c[a],2),5.0/2.0))
+            + (10*pow(dot(dpk,dpk),2)+15*dot(dpk,dpk)*pow(c[a],2)-2*pow(c[a],4))*pow(c[a],3)*norm(dpk)/(20*pow(dot(dpk,dpk)+pow(c[a],2),2)*(c[a]+sqrt(dot(dpk,dpk)+pow(c[a],2))))
+            - (5*dot(dpk,dpk)+22*pow(c[a],2))*pow(c[a],3)*norm(dpk)/(20*pow(dot(dpk,dpk)+pow(c[a],2),1.5)*(c[a]+sqrt(dot(dpk,dpk)+pow(c[a],2))))
+            + (-5*dot(dpk,dpk)+2*pow(c[a],2))*pow(c[a],3)*pow(norm(dpk),3)/(20*pow(dot(dpk,dpk)+pow(c[a],2),5.0/2.0)*(c[a]+sqrt(dot(dpk,dpk)+pow(c[a],2))))
+            + (-5*dot(dpk,dpk)+2*pow(c[a],2))*pow(c[a],3)*pow(norm(dpk),3)/(30*pow(dot(dpk,dpk)+pow(c[a],2),1.5)*pow(c[a]+sqrt(dot(dpk,dpk)+pow(c[a],2)),3))
+            );
+
+
+    // i = 1, l = 1
+    auto psol_u1_pk = deep_copy(
+            if_else(norm(dpk)==0
+            ,(1.0/mu)*(phi_sol_dash_div_r_pk + phi_sol_dash_dash_pk)
+            ,(1.0/mu)*(phi_sol_dash_div_r_pk*dpk[0]*dpk[0] + phi_sol_dash_dash_pk*dpk[1]*dpk[1])/dot(dpk,dpk)
+            )
+            );
+
+    // i = 1, l = 2
+    auto psol_u2_pk = deep_copy(
+            if_else(norm(dpk)==0
+            ,(1.0/mu)*(phi_sol_dash_div_r_pk - phi_sol_dash_dash_pk)
+            ,(1.0/mu)*(phi_sol_dash_div_r_pk - phi_sol_dash_dash_pk)*(dpk[0]*dpk[1])/dot(dpk,dpk)
+            )
+            );
+
+    // i = 2, l = 1
+    auto psol_v1_pk = deep_copy(
+            if_else(norm(dpk)==0
+            ,(1.0/mu)*(phi_sol_dash_div_r_pk - phi_sol_dash_dash_pk)
+            ,(1.0/mu)*(phi_sol_dash_div_r_pk - phi_sol_dash_dash_pk)*(dpk[0]*dpk[1])/dot(dpk,dpk)
+            )
+            );
+
+    // i = 2, l = 2
+    auto psol_v2_pk = deep_copy(
+            if_else(norm(dpk)==0
+            ,(1.0/mu)*(phi_sol_dash_div_r_pk+phi_sol_dash_dash_pk)
+            ,(1.0/mu)*(phi_sol_dash_div_r_pk*dpk[1]*dpk[1] + phi_sol_dash_dash_pk*dpk[0]*dpk[0])/dot(dpk,dpk)
+            )
+            );
+
+    auto psol_p1_pk = deep_copy(
+            if_else(norm(dpk)==0
+            ,-(phi_sol_dash_dash_dash_pk)
+            ,(phi_sol_dash_dash_dash_pk + (phi_sol_dash_dash_pk - phi_sol_dash_div_r_pk)/norm(dpk))*dpk[0]/norm(dpk)
+            )
+            );
+    auto psol_p2_pk = deep_copy(
+            if_else(norm(dpk)==0
+            ,-(phi_sol_dash_dash_dash_pk)
+            ,(phi_sol_dash_dash_dash_pk + (phi_sol_dash_dash_pk - phi_sol_dash_div_r_pk)/norm(dpk))*dpk[1]/norm(dpk)
+            )
+            );
+
+
+
     
     auto spring_force_kk = deep_copy(
         if_else(dot(dx,dx)==0
@@ -429,14 +455,6 @@ int main(int argc, char **argv) {
             ,(-k*(s-norm(dx))/norm(dx))*dx
             )
         );
-
-    auto spring_force_kf_old = deep_copy(
-        if_else(dot(dkf,dkf)==0
-            ,vector(0,0)
-            ,(-10*k*(fibre_radius+boundary_layer-norm(dkf))/norm(dkf))*dkf
-            )
-        );
-
 
     auto spring_force_kf = deep_copy(
         if_else(dot(dkf,dkf)==0
@@ -448,25 +466,6 @@ int main(int argc, char **argv) {
             )
         );
 
-
-    auto spring_force_kb_old = deep_copy(
-        10*k*(vector(
-                if_else(r[i][0] < boundary_layer
-                ,boundary_layer-r[i][0]
-                ,if_else(r[i][0] > L-boundary_layer
-                    ,L-boundary_layer-r[i][0]
-                    ,0
-                    )
-                )
-                ,if_else(r[i][1] < boundary_layer 
-                ,boundary_layer-r[i][1]
-                ,if_else(r[i][1] > L-boundary_layer
-                    ,L-boundary_layer-r[i][1]
-                    ,0
-                    )
-                ))
-            )
-        );
 
     auto spring_force_kb = deep_copy(
         vector(
@@ -501,12 +500,8 @@ int main(int argc, char **argv) {
 
     vtkWriteGrid("init_knots",1,knots.get_grid(true));
 
-    h[i] = h0;
-
-    ww[i] = 0.0;
-    w[i] = 0.0;
-    vu[i] = 0.0;
-    vv[i] = 0.0;
+    c[i] = c0;
+    c[a] = c0;
 
     //B1: u = 0 at inlet and b, p = 0 at outlet
     auto A11 = create_eigen_operator(i,j,
@@ -549,41 +544,10 @@ int main(int argc, char **argv) {
                )
             );
     
-
-
     auto A = create_block_eigen_operator<2,2>(
             A11,A12,
             A21,A22
             );
-
-    auto SOL_U11 = create_eigen_operator(i,j,
-            psol_u1
-            );
-    auto SOL_U12 = create_eigen_operator(i,j,
-            psol_u2
-            );
-    auto SOL_V11 = create_eigen_operator(i,j,
-            psol_v1
-            );
-    auto SOL_V12 = create_eigen_operator(i,j,
-            psol_v2
-            );
-    auto SOL_P11 = create_eigen_operator(i,j,
-            psol_p1
-            );
-    auto SOL_P12 = create_eigen_operator(i,j,
-            psol_p2
-            );
-     auto SOL_U = create_block_eigen_operator<1,2>(
-            SOL_U11,SOL_U12
-            );
-     auto SOL_V = create_block_eigen_operator<1,2>(
-            SOL_V11,SOL_V12
-            );
-     auto SOL_P = create_block_eigen_operator<1,2>(
-            SOL_P11,SOL_P12
-            );
-    
 
     typedef Eigen::Matrix<double,Eigen::Dynamic,1> vector_type; 
     vector_type source(2*knots.size());
@@ -605,128 +569,62 @@ int main(int argc, char **argv) {
     solve(A,alphas,source,
                 max_iter_linear,restart_linear,(linear_solver)solver_in);
 
-    vector_type solution_u = SOL_U*alphas;
-    vector_type solution_v = SOL_V*alphas;
-    vector_type solution_p = SOL_P*alphas;
-
     for (int ii=0; ii<knots.size(); ++ii) {
-        get<velocity_u>(knots)[ii] = solution_u[ii];
-        get<velocity_v>(knots)[ii] = solution_v[ii];
-        get<vorticity>(knots)[ii] = solution_p[ii];
+        get<alpha>(knots)[ii][0] = alphas[ii];
+        get<alpha>(knots)[ii][1] = alphas[ii+knots.size()];
     }
+
+    vu[i] = sum(j,true,psol_u1*al[j][0] + psol_u2*al[j][1]);
+    vv[i] = sum(j,true,psol_v1*al[j][0] + psol_v2*al[j][1]);
+    pr[i] = sum(j,true,psol_p1*al[j][0] + psol_p2*al[j][1]);
 
     vtkWriteGrid("MAPS",0,knots.get_grid(true));
-    
-    /*
-    double tol = 1;
-    int ii = -1;
-    while (tol > 1e-4) {
-        ii++;
-        typedef Eigen::Matrix<double,Eigen::Dynamic,1> vector_type; 
-        typedef Eigen::Map<vector_type> map_type;
 
-        //save old values
-        vu_old[i] = vu[i];
-        vv_old[i] = vv[i];
-        w_old[i] = w[i];
-
-        // adapt knot locations
-        //  potential = gradientx u * gradienty v - gradienty u*gradientx v
-        //  potential = sqrt(gradientx u ^2  +  gradient y u ^2) + 
-        //              sqrt(gradientx v ^2  +  gradient y v ^2)
-        //  f = gradient potential
-        //    = (gx2 u * gy v + gx u * gxy v - gxy u * gx v + gy u*gx2 v,
-        //       gxy u * gy v + gx y * gy2 v - gy2 u * gx v + gy u*gxy v)
-        for (int ii=0; ii<100; ii++) {
-            r[i] += dt_adapt*if_else(is_i[i]
-                        ,sumv(j,norm(dx)<s,spring_force_kk)
-                            + sumv(bf,norm(dkf)<fibre_radius+boundary_layer,spring_force_kf)
-                            + spring_force_kb
-                            + 
-                        ,vector(0,0)
-                    );
+    for (int ii=0; ii<timesteps; ++ii) {
+        // add new particles
+        const int new_n = poisson(generator);
+        for (int jj=0; jj<new_n; ++jj) {
+            particles.push_back(double2(uniform(generator),L));
         }
 
-        //vorticity formulation
-        //   du2/dx2 + du2/dy2 = -dwdy
-        //   dv2/dx2 + dv2/dy2 = dwdx
-        //   dw2/dx2 + dw2/dy2 = 0
+        vtkWriteGrid("particles",ii,particles.get_grid(true));
 
-        //solve for u and v
-        auto A = create_eigen_operator(i,j,
-                if_else(is_i[i]
-                   ,laplace
-                   //,if_else(is_out[i]
-                   //    ,gradienty
-                       ,kernel
-                   //)
-                )
-                ,norm(dx) < h[i]+h[j] 
-            );
+        // diffusion with drift
+        r[a] += std::sqrt(2*D*dt)*vector(N,N) + dt*vector(
+                    sum(j,true,psol_u1_pk*al[j][0] + psol_u2_pk*al[j][1]),
+                    sum(j,true,psol_v1_pk*al[j][0] + psol_v2_pk*al[j][1])
+                    );
 
+        // react with fibres
+        alive_[a] = !any(bf,norm(dpf) < fibre_radius,U<react_rate); 
 
-        vu[i] = if_else(is_i[i]
-                    ,-sum(j,norm(dx)<h[i]+h[j],gradienty*ww[j])
-                    ,0.0
-                );
-        vv[i] = if_else(is_i[i]
-                    ,sum(j,norm(dx)<h[i]+h[j],gradientx*ww[j])
-                    ,if_else(is_in[i] || is_out[i]
-                        //,-flow_rate*(1-pow(r[i][0]-0.5*L,2)/std::pow(0.5*L,2))
-                        ,-flow_rate
-                        ,0.0
-                     )
-                );
-
+        // react with side walls
+        alive_[a] = !if_else(r[a][0] > L
+                           ,U<react_rate
+                           ,if_else(r[a][0] < 0
+                               ,U<react_rate
+                               ,false
+                               )
+                           );
         
+        // reflect off fibres (if still alive) 
+        r[a] += sumv(bf, norm(dpf)<fibre_radius
+                        ,(fibre_radius/norm(dpf)-1)*dpf);
+            
+        // reflect off side walls (if still alive)
+        r[a] = vector(
+                      if_else(r[a][0] > L
+                          ,2*L-r[a][0]
+                          ,if_else(r[a][0] < 0
+                              ,-r[a][0]
+                              ,r[a][0]
+                              )
+                          )
+                     ,r[a][1]
+                     );
 
-        solve(A,map_type(get<velocity_u_weights>(knots).data(),knots.size()),
-                map_type(get<velocity_u>(knots).data(),knots.size()),
-                max_iter_linear,restart_linear,(linear_solver)solver_in);
 
-        solve(A,map_type(get<velocity_v_weights>(knots).data(),knots.size()),
-                map_type(get<velocity_v>(knots).data(),knots.size()),
-                max_iter_linear,restart_linear,(linear_solver)solver_in);
-
-        vu[i] = sum(j,norm(dx)<h[i]+h[j],kernel*vuw[j]);
-        vv[i] = sum(j,norm(dx)<h[i]+h[j],kernel*vvw[j]);
-        vudx[i] = sum(j,norm(dx)<h[i]+h[j],gradientx*vuw[j]);
-        div[i] = sum(j,norm(dx)<h[i]+h[j],gradientx*vuw[j] + gradienty*vvw[j]);
-
-
-        //solve for w
-        auto B = create_eigen_operator(i,j,
-                if_else(is_i[i]
-                   ,laplace
-                   ,kernel
-                )
-                ,norm(dx) < h[i]+h[j] 
-            );
-
-        //calculate vorticity boundary conditions
-        w[i] = if_else(is_i[i]
-                    ,0.0 
-                    ,sum(j,norm(dx)<h[i]+h[j],gradientx*vvw[j]) 
-                        - sum(j,norm(dx)<h[i]+h[j],gradienty*vuw[j]) 
-                );
-
-        //solve for w
-        solve(B,map_type(get<vorticity_weights>(knots).data(),knots.size()),
-                map_type(get<vorticity>(knots).data(),knots.size()),
-                max_iter_linear,restart_linear,(linear_solver)solver_in);
-
-        //calculate solution
-        w[i] = sum(j,norm(dx)<h[i]+h[j],kernel*ww[j]);
-        
-        //calculate tol
-        tol = eval(sum(i,true,pow(vu[i]-vu_old[i],2)+pow(vv[i]-vv_old[i],2)+pow(w[i]-w_old[i],2)));
-
-        vtkWriteGrid("iteration",ii,knots.get_grid(true));
-        std::cout << "finished iteration "<<ii<<", tol = "<<tol<<std::endl;
     }
-
-
-*/
     
 }
 
