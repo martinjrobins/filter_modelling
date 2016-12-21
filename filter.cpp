@@ -126,6 +126,9 @@ int main(int argc, char **argv) {
     ParticlesType particles;
     ParticlesType fibres;
 
+    const double c2 = std::pow(c0,2);
+    const double c3 = std::pow(c0,3);
+    const double c4 = std::pow(c0,4);
     const double mu = 1.0;
     const double flow_rate = 1.0; 
     const double Tf = 2.0;
@@ -285,42 +288,78 @@ int main(int argc, char **argv) {
     Accumulate<std::plus<double2> > sumv;
     Accumulate<std::plus<double3> > sumv3;
     Accumulate<Aboria::max<double> > max;
-    Accumulate<std::bit_or<bool> > any;
     max.set_init(0);
+    Accumulate<std::bit_or<bool> > any;
+    any.set_init(false);
     VectorSymbolic<double,2> vector;      
     VectorSymbolic<double,3> vector3;      
     VectorSymbolic<double,9> matrix;      
     Normal N;
-    Uniform U;
+    //Uniform U;
 
-    auto kernel_mq = deep_copy(
+    c[i] = c0;
+    c[a] = c0;
+
+    auto kernel_mq_test = deep_copy(
             sqrt(dot(dx,dx)+pow(c[i],2))
         );
 
-    auto phi_sol = deep_copy(
+    auto phi_sol_test = deep_copy(
             ((1.0/75.0)*sqrt(dot(dx,dx)+pow(c[i],2))*(4.0*pow(dot(dx,dx),2)+48.0*dot(dx,dx)*pow(c[i],2)-61.0*pow(c[i],4)) - pow(c[i],3)*log(c[i])*dot(dx,dx) - (1.0/5.0)*(5.0*dot(dx,dx)-2*pow(c[i],2))*pow(c[i],3)*log(c[i]+sqrt(dot(dx,dx)+pow(c[i],2))))/(12.0*mu)
             );
 
-    auto phi_sol_dash_div_r = deep_copy(
-            (4.0*pow(dot(dx,dx),3) + 36.0*pow(dot(dx,dx),2)*pow(c[i],2) + 39.0*dot(dx,dx)*pow(c[i],4) + 7*pow(c[i],6))/(180.0*pow(dot(dx,dx)+pow(c[i],2),1.5))
-            - (5.0*pow(dot(dx,dx),2) + 3*dot(dx,dx)*pow(c[i],2) - 2*pow(c[i],4))*pow(c[i],3)/(60.0*pow(dot(dx,dx)+pow(c[i],2),1.5)*(c[i]+sqrt(dot(dx,dx)+pow(c[i],2))))
+    auto phi_sol_dash_div_r_test = deep_copy(
+            (4.0*pow(dot(dx,dx),3) + 36.0*pow(dot(dx,dx),2)*pow(c[i],2) + 39.0*dot(dx,dx)*pow(c[i],4) + 7.0*pow(c[i],6))/(180.0*pow(dot(dx,dx)+pow(c[i],2),1.5))
+            - (5.0*pow(dot(dx,dx),2) + 3.0*dot(dx,dx)*pow(c[i],2) - 2.0*pow(c[i],4))*pow(c[i],3)/(60.0*pow(dot(dx,dx)+pow(c[i],2),1.5)*(c[i]+sqrt(dot(dx,dx)+pow(c[i],2))))
             - (1.0/6.0)*pow(c[i],3)*log(c[i]+sqrt(dot(dx,dx)+pow(c[i],2))) - (1.0/6.0)*pow(c[i],3)*log(c[i])
             );
 
-    auto phi_sol_dash_dash = deep_copy(
-            (16.0*pow(dot(dx,dx),3)+84*pow(dot(dx,dx),2)*pow(c[i],2)+96*dot(dx,dx)*pow(c[i],4)+7*pow(c[i],6))/(180.0*pow(dot(dx,dx)+pow(c[i],2),1.5))
-            - (20*pow(dot(dx,dx),2)+25*dot(dx,dx)*pow(c[i],2)-2*pow(c[i],4))*pow(c[i],3)/(60.0*pow(dot(dx,dx)+pow(c[i],2),1.5)*(c[i]+sqrt(dot(dx,dx)+pow(c[i],2))))
-            + (5*dot(dx,dx)-2*pow(c[i],2))*pow(c[i],3)*dot(dx,dx)/(60*(dot(dx,dx)+pow(c[i],2))*(c[i]+sqrt(dot(dx,dx)+pow(c[i],2))))
+    
+
+    auto phi_sol_dash_dash_test = deep_copy(
+            (16.0*pow(dot(dx,dx),3)+84.0*pow(dot(dx,dx),2)*pow(c[i],2)+96.0*dot(dx,dx)*pow(c[i],4)+7*pow(c[i],6))/(180.0*pow(dot(dx,dx)+pow(c[i],2),1.5))
+            - (20.0*pow(dot(dx,dx),2)+25*dot(dx,dx)*pow(c[i],2)-2*pow(c[i],4))*pow(c[i],3)/(60.0*pow(dot(dx,dx)+pow(c[i],2),1.5)*(c[i]+sqrt(dot(dx,dx)+pow(c[i],2))))
+            + (5.0*dot(dx,dx)-2*pow(c[i],2))*pow(c[i],3)*dot(dx,dx)/(60.0*(dot(dx,dx)+pow(c[i],2))*(c[i]+sqrt(dot(dx,dx)+pow(c[i],2))))
             - (1.0/6.0)*pow(c[i],3)*log(c[i]+sqrt(dot(dx,dx)+pow(c[i],2))) - (1.0/6.0)*pow(c[i],3)*log(c[i])
             );
  
+    auto phi_sol_dash_dash_dash_test = deep_copy(
+            (76.0*pow(dot(dx,dx),2)+176.0*dot(dx,dx)*pow(c[i],2)+285.0*pow(c[i],4))*norm(dx)/(300.0*pow(dot(dx,dx)+pow(c[i],2),1.5))
+            + (4.0*pow(dot(dx,dx),2)+48.0*dot(dx,dx)*pow(c[i],2)-61.0*pow(c[i],4))*pow(norm(dx),3)/(300.0*pow(dot(dx,dx)+pow(c[i],2),5.0/2.0))
+            + (10.0*pow(dot(dx,dx),2)+15.0*dot(dx,dx)*pow(c[i],2)-2.0*pow(c[i],4))*pow(c[i],3)*norm(dx)/(20.0*pow(dot(dx,dx)+pow(c[i],2),2)*(c[i]+sqrt(dot(dx,dx)+pow(c[i],2))))
+            - (5.0*dot(dx,dx)+22.0*pow(c[i],2))*pow(c[i],3)*norm(dx)/(20.0*pow(dot(dx,dx)+pow(c[i],2),1.5)*(c[i]+sqrt(dot(dx,dx)+pow(c[i],2))))
+            + (-5.0*dot(dx,dx)+2*pow(c[i],2))*pow(c[i],3)*pow(norm(dx),3)/(20.0*pow(dot(dx,dx)+pow(c[i],2),5.0/2.0)*(c[i]+sqrt(dot(dx,dx)+pow(c[i],2))))
+            + (-5.0*dot(dx,dx)+2*pow(c[i],2))*pow(c[i],3)*pow(norm(dx),3)/(30.0*pow(dot(dx,dx)+pow(c[i],2),1.5)*pow(c[i]+sqrt(dot(dx,dx)+pow(c[i],2)),3))
+            );
+
+    auto kernel_mq = deep_copy(
+            sqrt(dot(dx,dx)+c2)
+        );
+
+    auto phi_sol = deep_copy(
+            ((1.0/75.0)*sqrt(dot(dx,dx)+c2)*(4.0*pow(dot(dx,dx),2)+48.0*dot(dx,dx)*c2-61.0*c2*c2) - c3*log(c0)*dot(dx,dx) - (1.0/5.0)*(5.0*dot(dx,dx)-2*c2)*c3*log(c0+sqrt(dot(dx,dx)+c2)))/(12.0*mu)
+            );
+
+    auto phi_sol_dash_div_r = deep_copy(
+            (4.0*pow(dot(dx,dx),3) + 36.0*pow(dot(dx,dx),2)*c2 + 39.0*dot(dx,dx)*c2*c2 + 7.0*c3*c3)/(180.0*pow(dot(dx,dx)+c2,1.5))
+            - (5.0*pow(dot(dx,dx),2) + 3.0*dot(dx,dx)*c2 - 2*c2*c2)*c3/(60.0*pow(dot(dx,dx)+c2,1.5)*(c0+sqrt(dot(dx,dx)+c2)))
+            - (1.0/6.0)*c3*log(c0+sqrt(dot(dx,dx)+c2)) - (1.0/6.0)*c3*log(c0)
+            );
+
+    auto phi_sol_dash_dash = deep_copy(
+            (16.0*pow(dot(dx,dx),3)+84.0*pow(dot(dx,dx),2)*c2+96.0*dot(dx,dx)*c2*c2+7*c3*c3)/(180.0*pow(dot(dx,dx)+c2,1.5))
+            - (20.0*pow(dot(dx,dx),2)+25.0*dot(dx,dx)*c2-2.0*c2*c2)*c3/(60.0*pow(dot(dx,dx)+c2,1.5)*(c0+sqrt(dot(dx,dx)+c2)))
+            + (5.0*dot(dx,dx)-2.0*c2)*c3*dot(dx,dx)/(60.0*(dot(dx,dx)+c2)*(c0+sqrt(dot(dx,dx)+c2)))
+            - (1.0/6.0)*c3*log(c0+sqrt(dot(dx,dx)+c2)) - (1.0/6.0)*c3*log(c0)
+            );
+ 
     auto phi_sol_dash_dash_dash = deep_copy(
-            (76.0*pow(dot(dx,dx),2)+176*dot(dx,dx)*pow(c[i],2)+285*pow(c[i],4))*norm(dx)/(300*pow(dot(dx,dx)+pow(c[i],2),1.5))
-            + (4*pow(dot(dx,dx),2)+48*dot(dx,dx)*pow(c[i],2)-61*pow(c[i],4))*pow(norm(dx),3)/(300*pow(dot(dx,dx)+pow(c[i],2),5.0/2.0))
-            + (10*pow(dot(dx,dx),2)+15*dot(dx,dx)*pow(c[i],2)-2*pow(c[i],4))*pow(c[i],3)*norm(dx)/(20*pow(dot(dx,dx)+pow(c[i],2),2)*(c[i]+sqrt(dot(dx,dx)+pow(c[i],2))))
-            - (5*dot(dx,dx)+22*pow(c[i],2))*pow(c[i],3)*norm(dx)/(20*pow(dot(dx,dx)+pow(c[i],2),1.5)*(c[i]+sqrt(dot(dx,dx)+pow(c[i],2))))
-            + (-5*dot(dx,dx)+2*pow(c[i],2))*pow(c[i],3)*pow(norm(dx),3)/(20*pow(dot(dx,dx)+pow(c[i],2),5.0/2.0)*(c[i]+sqrt(dot(dx,dx)+pow(c[i],2))))
-            + (-5*dot(dx,dx)+2*pow(c[i],2))*pow(c[i],3)*pow(norm(dx),3)/(30*pow(dot(dx,dx)+pow(c[i],2),1.5)*pow(c[i]+sqrt(dot(dx,dx)+pow(c[i],2)),3))
+            (76.0*pow(dot(dx,dx),2)+176.0*dot(dx,dx)*c2+285.0*c2*c2)*norm(dx)/(300.0*pow(dot(dx,dx)+c2,1.5))
+            + (4.0*pow(dot(dx,dx),2)+48.0*dot(dx,dx)*c2-61.0*c2*c2)*pow(norm(dx),3)/(300.0*pow(dot(dx,dx)+c2,5.0/2.0))
+            + (10.0*pow(dot(dx,dx),2)+15.0*dot(dx,dx)*c2-2*c2*c2)*c3*norm(dx)/(20.0*pow(dot(dx,dx)+c2,2)*(c0+sqrt(dot(dx,dx)+c2)))
+            - (5.0*dot(dx,dx)+22.0*c2)*c3*norm(dx)/(20.0*pow(dot(dx,dx)+c2,1.5)*(c0+sqrt(dot(dx,dx)+c2)))
+            + (-5.0*dot(dx,dx)+2*c2)*c3*pow(norm(dx),3)/(20.0*pow(dot(dx,dx)+c2,5.0/2.0)*(c0+sqrt(dot(dx,dx)+c2)))
+            + (-5.0*dot(dx,dx)+2.0*c2)*c3*pow(norm(dx),3)/(30.0*pow(dot(dx,dx)+c2,1.5)*pow(c0+sqrt(dot(dx,dx)+c2),3))
             );
 
 
@@ -355,6 +394,7 @@ int main(int argc, char **argv) {
             ,(1.0/mu)*(phi_sol_dash_div_r*dx[1]*dx[1] + phi_sol_dash_dash*dx[0]*dx[0])/dot(dx,dx)
             )
             );
+
 
     auto psol_p1 = deep_copy(
             if_else(norm(dx)==0
@@ -460,7 +500,8 @@ int main(int argc, char **argv) {
         if_else(dot(dkf,dkf)==0
             ,vector(0,0)
             ,if_else(norm(dkf)>fibre_radius+boundary_layer
-                ,delta*k*exp(epsilon*(fibre_radius+boundary_layer-norm(dkf)))
+                ,0.0
+                //,delta*k*exp(epsilon*(fibre_radius+boundary_layer-norm(dkf)))
                 ,-10*k*(fibre_radius+boundary_layer-norm(dkf))
                 )*dkf/norm(dkf)
             )
@@ -473,8 +514,9 @@ int main(int argc, char **argv) {
                 ,10*k*(boundary_layer-r[i][0])
                 ,if_else(r[i][0] > L-boundary_layer
                     ,10*k*(L-boundary_layer-r[i][0])
-                    ,-delta*k*(exp(epsilon*(boundary_layer-r[i][0]))
-                                          - exp(epsilon*(r[i][0]-L+boundary_layer)))
+                    ,0.0
+                    //,-delta*k*(exp(epsilon*(boundary_layer-r[i][0]))
+                    //                      - exp(epsilon*(r[i][0]-L+boundary_layer)))
                     )
                 )
                 ,if_else(r[i][1] < boundary_layer 
@@ -500,8 +542,6 @@ int main(int argc, char **argv) {
 
     vtkWriteGrid("init_knots",1,knots.get_grid(true));
 
-    c[i] = c0;
-    c[a] = c0;
 
     //B1: u = 0 at inlet and b, p = 0 at outlet
     auto A11 = create_eigen_operator(i,j,
@@ -565,6 +605,55 @@ int main(int argc, char **argv) {
         alphas[ii] = 0.0;
         alphas[knots.size()+ii] = 0.0;
     }
+    for (int ii=0; ii<knots.size(); ++ii) {
+        for (int jj=0; jj<knots.size(); ++jj) {
+            const double2 dx = get<position>(knots)[ii]-get<position>(knots)[jj];
+            if (
+                   eval(phi_sol_dash_dash_dash,dx,knots[ii],knots[jj])
+                    != 
+                   eval(phi_sol_dash_dash_dash_test,dx,knots[ii],knots[jj])
+               ) {
+                std::cout << "r[ii] = "<<get<position>(knots)[ii]<<std::endl;
+                std::cout << "r[jj] = "<<get<position>(knots)[jj]<<std::endl;
+            std::cout << "phisol_dash_dash_dash = "<<eval(phi_sol_dash_dash_dash,dx,knots[ii],knots[jj])<<std::endl;
+            std::cout << "phisol_dash_dash_dash_test = "<<eval(phi_sol_dash_dash_dash_test,dx,knots[ii],knots[jj])<<std::endl;
+            std::cout << "difference = "<<eval(phi_sol_dash_dash_dash,dx,knots[ii],knots[jj]) - eval(phi_sol_dash_dash_dash_test,dx,knots[ii],knots[jj])<<std::endl;
+            }
+
+            if (
+                   eval(phi_sol_dash_dash,dx,knots[ii],knots[jj])
+                    != 
+                   eval(phi_sol_dash_dash_test,dx,knots[ii],knots[jj])
+               ) {
+                std::cout << "r[ii] = "<<get<position>(knots)[ii]<<std::endl;
+                std::cout << "r[jj] = "<<get<position>(knots)[jj]<<std::endl;
+            std::cout << "phisol_dash_dash = "<<eval(phi_sol_dash_dash,dx,knots[ii],knots[jj])<<std::endl;
+            std::cout << "phisol_dash_dash_test = "<<eval(phi_sol_dash_dash_test,dx,knots[ii],knots[jj])<<std::endl;
+            std::cout << "difference = "<<eval(phi_sol_dash_dash,dx,knots[ii],knots[jj]) - eval(phi_sol_dash_dash_test,dx,knots[ii],knots[jj])<<std::endl;
+            }
+             
+            if (
+                   eval(phi_sol_dash_div_r,dx,knots[ii],knots[jj])
+                    != 
+                   eval(phi_sol_dash_div_r_test,dx,knots[ii],knots[jj])
+               ) {
+                std::cout << "r[ii] = "<<get<position>(knots)[ii]<<std::endl;
+                std::cout << "r[jj] = "<<get<position>(knots)[jj]<<std::endl;
+            std::cout << "phisol_dash_div_r = "<<eval(phi_sol_dash_div_r,dx,knots[ii],knots[jj])<<std::endl;
+            std::cout << "phisol_dash_div_r_test = "<<eval(phi_sol_dash_div_r_test,dx,knots[ii],knots[jj])<<std::endl;
+            std::cout << "difference = "<<eval(phi_sol_dash_div_r,dx,knots[ii],knots[jj]) - eval(phi_sol_dash_div_r_test,dx,knots[ii],knots[jj])<<std::endl;
+            }
+
+        }
+    }
+    std::cout << "good!"<<std::endl;
+    /*
+    std::cout << "ii jj eval for psol_u1 = "<<std::endl;
+    const int ii = 100;
+    const int ij = 101;
+    const double2 dx = get<position>(knots)[100]-get<position>(knots)[jj];
+    */
+
 
     solve(A,alphas,source,
                 max_iter_linear,restart_linear,(linear_solver)solver_in);
@@ -584,17 +673,26 @@ int main(int argc, char **argv) {
         // add new particles
         const int new_n = poisson(generator);
         for (int jj=0; jj<new_n; ++jj) {
-            particles.push_back(double2(uniform(generator),L));
+            ParticlesType::value_type p;
+            get<position>(p) = double2(uniform(generator),L);
+            get<kernel_constant>(p) = c0;
+            particles.push_back(p);
         }
 
-        vtkWriteGrid("particles",ii,particles.get_grid(true));
 
         // diffusion with drift
-        r[a] += std::sqrt(2*D*dt)*vector(N,N) + dt*vector(
+        r[a] += std::sqrt(2.0*D*dt)*vector(N,N);
+
+        vtkWriteGrid("particles",ii,particles.get_grid(true));
+            
+            /*
+            + dt*vector(
                     sum(j,true,psol_u1_pk*al[j][0] + psol_u2_pk*al[j][1]),
                     sum(j,true,psol_v1_pk*al[j][0] + psol_v2_pk*al[j][1])
                     );
+                    */
 
+        /*
         // react with fibres
         alive_[a] = !any(bf,norm(dpf) < fibre_radius,U<react_rate); 
 
@@ -623,6 +721,7 @@ int main(int argc, char **argv) {
                      ,r[a][1]
                      );
 
+                     */
 
     }
     
