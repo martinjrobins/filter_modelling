@@ -1,6 +1,5 @@
-#define BOOST_MPL_CFG_NO_PREPROCESSED_HEADERS
-#define BOOST_MPL_LIMIT_VECTOR_SIZE 40
-#undef NDEBUG
+//#define BOOST_MPL_CFG_NO_PREPROCESSED_HEADERS
+//#define BOOST_MPL_LIMIT_VECTOR_SIZE 40
 #include "Aboria.h"
 using namespace Aboria;
 
@@ -20,7 +19,7 @@ void solve(Kernel &&kernel, VectorType &&result, VectorType &&source, size_t max
         case CG: {
             Eigen::ConjugateGradient<
                 typename std::remove_reference<Kernel>::type, 
-                         Eigen::Lower|Eigen::Upper, Eigen::DiagonalPreconditioner<Scalar>> cg;
+                         Eigen::Lower|Eigen::Upper, Eigen::IdentityPreconditioner> cg;
             cg.setMaxIterations(max_iter);
             cg.compute(kernel);
             result = cg.solveWithGuess(source,result);
@@ -30,7 +29,7 @@ void solve(Kernel &&kernel, VectorType &&result, VectorType &&source, size_t max
         case BiCGSTAB: {
             Eigen::BiCGSTAB<
                 typename std::remove_reference<Kernel>::type, 
-                     Eigen::DiagonalPreconditioner<Scalar>> bicg;
+                     Eigen::IdentityPreconditioner> bicg;
             bicg.setMaxIterations(max_iter);
             bicg.compute(kernel);
             result = bicg.solveWithGuess(source,result);
@@ -39,9 +38,15 @@ void solve(Kernel &&kernel, VectorType &&result, VectorType &&source, size_t max
             break;
                }
         case GMRES: {
+                        /*
             Eigen::GMRES<
                 typename std::remove_reference<Kernel>::type, 
                     Eigen::DiagonalPreconditioner<Scalar>> gmres;
+                    */
+            Eigen::GMRES<
+                typename std::remove_reference<Kernel>::type, 
+                    Eigen::IdentityPreconditioner> gmres;
+
             gmres.set_restart(restart);
             gmres.setMaxIterations(max_iter);
             gmres.compute(kernel);
@@ -52,7 +57,7 @@ void solve(Kernel &&kernel, VectorType &&result, VectorType &&source, size_t max
         case DGMRES: {
             Eigen::DGMRES<
                 typename std::remove_reference<Kernel>::type, 
-                    Eigen::DiagonalPreconditioner<Scalar>> dgmres;
+                    Eigen::IdentityPreconditioner> dgmres;
             dgmres.set_restart(restart);
             dgmres.setMaxIterations(max_iter);
             dgmres.compute(kernel);
@@ -81,7 +86,7 @@ int main(int argc, char **argv) {
         ("max_iter_linear", po::value<unsigned int>(&max_iter_linear)->default_value(100), "maximum iterations for linear solve")
         ("restart_linear", po::value<unsigned int>(&restart_linear)->default_value(101), "iterations until restart for linear solve")
         ("linear_solver", po::value<unsigned int>(&solver_in)->default_value(2), "linear solver")
-        ("nout", po::value<unsigned int>(&nout)->default_value(10), "number of output points")
+        ("nout", po::value<unsigned int>(&nout)->default_value(100), "number of output points")
         ("k", po::value<double>(&k)->default_value(0.1), "spring constant")
         ("D", po::value<double>(&D)->default_value(1.0), "diffusion constant")
         ("particle_rate", po::value<double>(&particle_rate)->default_value(1000.0), "particle rate")
@@ -94,7 +99,7 @@ int main(int argc, char **argv) {
         ("fibre_number", po::value<int>(&fibre_number)->default_value(3), "number of fibres")
         ("fibre_radius", po::value<double>(&fibre_radius)->default_value(0.1), "radius of fibres")
         ("h0_factor", po::value<double>(&h0_factor)->default_value(4.0), "h0 factor")
-        ("dt", po::value<double>(&dt_aim)->default_value(0.1), "timestep")
+        ("dt", po::value<double>(&dt_aim)->default_value(0.001), "timestep")
     ;
     
     po::variables_map vm;
@@ -520,8 +525,8 @@ int main(int argc, char **argv) {
         if_else(dot(dkf,dkf)==0
             ,vector(0,0)
             ,if_else(norm(dkf)>fibre_radius+boundary_layer
-                ,0.0
-                //,delta*k*exp(epsilon*(fibre_radius+boundary_layer-norm(dkf)))
+                //,0.0
+                ,delta*k*exp(epsilon*(fibre_radius+boundary_layer-norm(dkf)))
                 ,-10*k*(fibre_radius+boundary_layer-norm(dkf))
                 )*dkf/norm(dkf)
             )
@@ -534,9 +539,9 @@ int main(int argc, char **argv) {
                 ,10*k*(boundary_layer-r[i][0])
                 ,if_else(r[i][0] > L-boundary_layer
                     ,10*k*(L-boundary_layer-r[i][0])
-                    ,0.0
-                    //,-delta*k*(exp(epsilon*(boundary_layer-r[i][0]))
-                    //                      - exp(epsilon*(r[i][0]-L+boundary_layer)))
+                    //,0.0
+                    ,-delta*k*(exp(epsilon*(boundary_layer-r[i][0]))
+                                          - exp(epsilon*(r[i][0]-L+boundary_layer)))
                     )
                 )
                 ,if_else(r[i][1] < boundary_layer 
@@ -646,6 +651,7 @@ int main(int argc, char **argv) {
     map_type eigen_pressure(get<pressure>(knots).data(),knots.size());
     map_type eigen_velocity_u(get<velocity_u>(knots).data(),knots.size());
     map_type eigen_velocity_v(get<velocity_u>(knots).data(),knots.size());
+    /*
     pr[i] = 1.0;
     eigen_velocity_u = A11*eigen_pressure;
     eigen_velocity_v = A11_test*eigen_pressure;
@@ -660,6 +666,7 @@ int main(int argc, char **argv) {
                          "difference= "<<difference<<std::endl;
         }
     }
+    */
 
     vector_type source(2*knots.size());
     vector_type alphas(2*knots.size());
@@ -678,10 +685,8 @@ int main(int argc, char **argv) {
     }
     std::cout << "good!"<<std::endl;
 
-    /*
     solve(A,alphas,source,
                 max_iter_linear,restart_linear,(linear_solver)solver_in);
-                */
 
     for (int ii=0; ii<knots.size(); ++ii) {
         get<alpha>(knots)[ii][0] = alphas[ii];
@@ -693,7 +698,7 @@ int main(int argc, char **argv) {
     pr[i] = sum(j,true,psol_p1*al[j][0] + psol_p2*al[j][1]);
 
     vtkWriteGrid("MAPS",0,knots.get_grid(true));
-
+    const int timesteps_per_out = timesteps/nout;
     for (int ii=0; ii<timesteps; ++ii) {
         // add new particles
         const int new_n = poisson(generator);
@@ -703,21 +708,22 @@ int main(int argc, char **argv) {
             get<kernel_constant>(p) = c0;
             particles.push_back(p);
         }
-        std::cout << "finished adding particles"<<std::endl;
 
 
         // diffusion with drift
-        r[a] += std::sqrt(2.0*D*dt)*vector(N,N);
-
-        vtkWriteGrid("particles",ii,particles.get_grid(true));
-            
-        /*
+        r[a] += std::sqrt(2.0*D*dt)*vector(N,N)
             + dt*vector(
                     sum(j,true,psol_u1_pk*al[j][0] + psol_u2_pk*al[j][1]),
                     sum(j,true,psol_v1_pk*al[j][0] + psol_v2_pk*al[j][1])
                     );
-                    */
 
+
+
+        if (ii % timesteps_per_out == 0) {
+            std::cout << "timestep "<<ii<<" of "<<timesteps<<std::endl;
+            vtkWriteGrid("particles",ii,particles.get_grid(true));
+        }
+            
         // react with fibres
         alive_[a] = !any(bf,norm(dpf) < fibre_radius,U<react_rate); 
 
@@ -745,7 +751,6 @@ int main(int argc, char **argv) {
                           )
                      ,r[a][1]
                      );
-
 
     }
     
