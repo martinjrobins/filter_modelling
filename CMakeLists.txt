@@ -7,7 +7,7 @@ add_definitions(-DABORIA_LOG_LEVEL=${Aboria_LOG_LEVEL})
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/Aboria/cmake"
                         ${CMAKE_MODULE_PATH})
 
-list(APPEND CMAKE_CXX_FLAGS "-Wno-deprecated -std=c++11")
+list(APPEND CMAKE_CXX_FLAGS "-Wno-deprecated -std=c++14")
 list(APPEND CMAKE_SHARED_LINKER_FLAGS "-Wl,--no-undefined")
 
 find_package(Boost 1.50.0 COMPONENTS program_options REQUIRED)
@@ -57,4 +57,8 @@ include_directories(SYSTEM ${CXXTEST_INCLUDES} ${EIGEN3_INCLUDE_DIR} ${VTK_INCLU
 
 add_executable(filter filter.cpp)
 target_link_libraries(filter ${VTK_LIBRARIES} ${Boost_LIBRARIES} ${CUDA_LIBRARIES} ${GPERFTOOLS_LIBRARIES})
+
+add_executable(validate validate.cpp)
+target_link_libraries(validate ${VTK_LIBRARIES} ${Boost_LIBRARIES} ${CUDA_LIBRARIES} ${GPERFTOOLS_LIBRARIES})
+
 
