@@ -14,15 +14,15 @@ int main(int argc, char **argv) {
         ("restart_linear", po::value<unsigned int>(&restart_linear)->default_value(2001), "iterations until restart for linear solve")
         ("linear_solver", po::value<unsigned int>(&solver_in)->default_value(2), "linear solver")
         ("nout", po::value<unsigned int>(&nout)->default_value(100), "number of output points")
-        ("k", po::value<double>(&k)->default_value(0.75), "spring constant")
+        ("k", po::value<double>(&k)->default_value(1.00), "spring constant")
         ("D", po::value<double>(&D)->default_value(0.01), "diffusion constant")
         ("particle_rate", po::value<double>(&particle_rate)->default_value(1000.0), "particle rate")
         ("react_rate", po::value<double>(&react_rate)->default_value(0.5), "particle reaction rate")
-        ("epsilon_strength", po::value<double>(&epsilon_strength)->default_value(0.5), "boundary clustering fall-off")
-        ("epsilon_falloff", po::value<double>(&epsilon_falloff)->default_value(0.4), "boundary clustering fall-off")
-        ("c0", po::value<double>(&c0)->default_value(0.01), "kernel constant")
+        ("epsilon_strength", po::value<double>(&epsilon_strength)->default_value(2.0), "boundary clustering strength")
+        ("epsilon_falloff", po::value<double>(&epsilon_falloff)->default_value(0.3), "boundary clustering fall-off")
+        ("c0", po::value<double>(&c0)->default_value(0.1), "kernel constant")
         ("nx", po::value<unsigned int>(&nx)->default_value(20), "nx")
-        ("fibre_resolution", po::value<double>(&fibre_resolution)->default_value(0.5), "knot resolution around fibre")
+        ("fibre_resolution", po::value<double>(&fibre_resolution)->default_value(0.75), "knot resolution around fibre")
         ("seed", po::value<int>(&seed)->default_value(10), "seed")
         ("fibre_number", po::value<int>(&fibre_number)->default_value(5), "number of fibres")
         ("fibre_radius", po::value<double>(&fibre_radius)->default_value(0.3), "radius of fibres")
@@ -87,12 +87,20 @@ int main(int argc, char **argv) {
         std::cout << "added "<<fibres.size()<<" fibres"<<std::endl;
     }
  
+    //
+    // SETUP KNOTS
+    //
     setup_knots(knots, fibres, fibre_radius, fibre_resolution, nx, domain_min, domain_max, c0, k,epsilon_strength,epsilon_falloff);
+
+    //
+    // CALCULATE C
+    //
+    calculate_c(knots,c0,nx,domain_min,domain_max);
 
     max_iter_linear = knots.size()*4;
     restart_linear = max_iter_linear+1;
-    solve_stokes(knots,max_iter_linear,restart_linear,solver_in);
 
+    
     ComsolType comsol;
 
     read_data_files(comsol);
@@ -131,8 +139,18 @@ int main(int argc, char **argv) {
     auto psol_v2 = gen_psol_v2(i,j,c);
     auto psol_p2 = gen_psol_p2(i,j,c);
 
-    // calculate solution at comsol pts
     c[i] = c0;
+
+    for (double c0 = 0.01; c0 < 0.5; c0 += 0.01) {
+        c
+
+    //
+    // SOLVE STOKES
+    //
+    solve_stokes_MAPS(knots,max_iter_linear,restart_linear,solver_in);
+
+
+    // calculate solution at comsol pts
     /*
     vu[i] = sum(j,true,gen_psol_u1(i,j,c)*al[j][0] + gen_psol_u2(i,j,c)*al[j][1]);
     vv[i] = sum(j,true,gen_psol_v1(i,j,c)*al[j][0] + gen_psol_v2(i,j,c)*al[j][1]);
@@ -143,15 +161,24 @@ int main(int argc, char **argv) {
     pr[i] = sum(j,true,psol_p1*al[j][0] + psol_p2*al[j][1]);
     
     //compare 
-    const double rms_error_u = eval(sum(i,true,abs(vu[i]-dvu[i])/dvu[i]));
-    const double rms_error_v = eval(sum(i,true,abs(vv[i]-dvv[i])/dvv[i]));
-    const double rms_error_p = eval(sum(i,true,abs(pr[i]-dpr[i])/dpr[i]));
-    const double max_error_u = eval(max(i,true,abs(vu[i]-dvu[i])/dvu[i]));
-    const double max_error_v = eval(max(i,true,abs(vv[i]-dvv[i])/dvv[i]));
-    const double max_error_p = eval(max(i,true,abs(pr[i]-dpr[i])/dpr[i]));
-    dvu[i] = dvu[i]-vu[i];
-    dvv[i] = dvv[i]-vv[i];
-    dpr[i] = dpr[i]-pr[i];
+    const double rms_error_u = std::sqrt(eval(sum(i,true,pow(vu[i]-dvu[i],2)))/comsol.size());
+    const double rms_error_v = std::sqrt(eval(sum(i,true,pow(vv[i]-dvv[i],2)))/comsol.size());
+    const double rms_error_p = std::sqrt(eval(sum(i,true,pow(pr[i]-dpr[i],2)))/comsol.size());
+    const double max_error_u = eval(max(i,true,abs(vu[i]-dvu[i])));
+    const double max_error_v = eval(max(i,true,abs(vv[i]-dvv[i])));
+    const double max_error_p = eval(max(i,true,abs(pr[i]-dpr[i])));
+
+    /*
+    const double rms_error_u = eval(sum(i,true,if_else(dvu[i]==0,0,abs(vu[i]-dvu[i])/dvu[i])));
+    const double rms_error_v = eval(sum(i,true,if_else(dvv[i]==0,0,abs(vv[i]-dvv[i])/dvv[i])));
+    const double rms_error_p = eval(sum(i,true,if_else(dpr[i]==0,0,abs(pr[i]-dpr[i])/dpr[i])));
+    const double max_error_u = eval(max(i,true,if_else(dvu[i]==0,0,abs(vu[i]-dvu[i])/dvu[i])));
+    const double max_error_v = eval(max(i,true,if_else(dvv[i]==0,0,abs(vv[i]-dvv[i])/dvv[i])));
+    const double max_error_p = eval(max(i,true,if_else(dpr[i]==0,0,abs(pr[i]-dpr[i])/dpr[i])));
+    */
+    //dvu[i] = dvu[i]-vu[i];
+    //dvv[i] = dvv[i]-vv[i];
+    //dpr[i] = dpr[i]-pr[i];
 
     std::cout << "rms errors = "  
         << rms_error_u << ' '
@@ -160,9 +187,9 @@ int main(int argc, char **argv) {
         << std::endl;
 
     std::cout << "max errors = "  
-        << rms_error_u << ' '
-        << rms_error_v << ' '
-        << rms_error_p << ' '
+        << max_error_u << ' '
+        << max_error_v << ' '
+        << max_error_p << ' '
         << std::endl;
 
     vtkWriteGrid("error",0,comsol.get_grid(true));

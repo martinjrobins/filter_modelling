@@ -5,7 +5,7 @@ int main(int argc, char **argv) {
     unsigned int nout,max_iter_linear,restart_linear,nx;
     int fibre_resolution,fibre_number,seed;
     double fibre_radius,particle_rate,react_rate,D;
-    double dt_aim,k,gamma,rf,c0,epsilon;
+    double dt_aim,k,gamma,rf,c0,epsilon_strength,epsilon_falloff;
     unsigned int solver_in;
 
     po::options_description desc("Allowed options");
@@ -15,14 +15,16 @@ int main(int argc, char **argv) {
         ("restart_linear", po::value<unsigned int>(&restart_linear)->default_value(2001), "iterations until restart for linear solve")
         ("linear_solver", po::value<unsigned int>(&solver_in)->default_value(2), "linear solver")
         ("nout", po::value<unsigned int>(&nout)->default_value(100), "number of output points")
-        ("k", po::value<double>(&k)->default_value(0.75), "spring constant")
+        ("k", po::value<double>(&k)->default_value(1.00), "spring constant")
         ("D", po::value<double>(&D)->default_value(0.01), "diffusion constant")
         ("particle_rate", po::value<double>(&particle_rate)->default_value(1000.0), "particle rate")
         ("react_rate", po::value<double>(&react_rate)->default_value(0.5), "particle reaction rate")
-        ("epsilon", po::value<double>(&epsilon)->default_value(10.0), "boundary clustering fall-off")
-        ("c0", po::value<double>(&c0)->default_value(0.01), "kernel constant")
+        ("epsilon_strength", po::value<double>(&epsilon_strength)->default_value(2.0), "boundary clustering fall-off")
+        ("epsilon_falloff", po::value<double>(&epsilon_falloff)->default_value(0.3), "boundary clustering fall-off")
+
+        ("c0", po::value<double>(&c0)->default_value(0.1), "kernel constant")
         ("nx", po::value<unsigned int>(&nx)->default_value(20), "nx")
-        ("fibre_resolution", po::value<int>(&fibre_resolution)->default_value(20), "number of knots around each fibre")
+        ("fibre_resolution", po::value<int>(&fibre_resolution)->default_value(0.75), "number of knots around each fibre")
         ("seed", po::value<int>(&seed)->default_value(10), "seed")
         ("fibre_number", po::value<int>(&fibre_number)->default_value(3), "number of fibres")
         ("fibre_radius", po::value<double>(&fibre_radius)->default_value(0.05), "radius of fibres")
@@ -95,9 +97,9 @@ int main(int argc, char **argv) {
         std::cout << "added "<<fibres.size()<<" fibres"<<std::endl;
     }
  
-    setup_knots(knots, fibres, fibre_radius, fibre_resolution, nx, domain_min, domain_max, c0, k,epsilon);
+    setup_knots(knots, fibres, fibre_radius, fibre_resolution, nx, domain_min, domain_max, c0, k,epsilon_strength,epsilon_falloff);
 
-    solve_stokes(knots,max_iter_linear,restart_linear,solver_in);
+    solve_stokes_MAPS(knots,max_iter_linear,restart_linear,solver_in);
 
     Symbol<boundary> is_b;
     Symbol<inlet> is_in;
@@ -194,4 +196,6 @@ int main(int argc, char **argv) {
     }
     
 }
+
+
 

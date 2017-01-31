@@ -5,9 +5,10 @@ from sympy.plotting import plot
 from sympy.functions import exp
 from sympy.core.containers import Tuple
 
-x,y,rs = symbols('x y r',real=True)
+x,y,rs,theta = symbols('x y r \theta',real=True)
 c = symbols('c')
 r = sqrt(x**2+y**2)
+rp = sqrt(cos(theta)**2+y**2)
 phi = symbols(r'\phi',cls=Function)
 
 print '---------------------------------------'
