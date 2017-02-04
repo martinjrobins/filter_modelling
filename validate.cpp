@@ -18,7 +18,7 @@ int main(int argc, char **argv) {
         ("D", po::value<double>(&D)->default_value(0.01), "diffusion constant")
         ("particle_rate", po::value<double>(&particle_rate)->default_value(1000.0), "particle rate")
         ("react_rate", po::value<double>(&react_rate)->default_value(0.5), "particle reaction rate")
-        ("epsilon_strength", po::value<double>(&epsilon_strength)->default_value(2.0), "boundary clustering strength")
+        ("epsilon_strength", po::value<double>(&epsilon_strength)->default_value(1), "boundary clustering strength")
         ("epsilon_falloff", po::value<double>(&epsilon_falloff)->default_value(0.3), "boundary clustering fall-off")
         ("c0", po::value<double>(&c0)->default_value(0.1), "kernel constant")
         ("nx", po::value<unsigned int>(&nx)->default_value(20), "nx")
@@ -39,10 +39,6 @@ int main(int argc, char **argv) {
     }
     
 
-    typedef Particles<std::tuple<alpha,boundary,inlet,outlet,interior,velocity_u,velocity_v,pressure,kernel_constant>,2> KnotsType;
-    typedef Particles<std::tuple<dvelocity_u,dvelocity_v,dpressure,velocity_u,velocity_v,pressure,kernel_constant>,2> ComsolType;
-    typedef Particles<std::tuple<kernel_constant>,2> ParticlesType;
-    typedef position_d<2> position;
     KnotsType knots;
     ParticlesType particles;
     ParticlesType fibres;
@@ -63,7 +59,7 @@ int main(int argc, char **argv) {
     const double dt_adapt = (1.0/100.0)*PI/sqrt(2*k);
     const double2 domain_min(0,-1);
     const double2 domain_max(L,L+1);
-    const double2 ns_buffer(L/2,1e-10);
+    const double2 ns_buffer(L/3,L/3);
 
     std::default_random_engine generator(seed);
 
@@ -139,15 +135,13 @@ int main(int argc, char **argv) {
     auto psol_v2 = gen_psol_v2(i,j,c);
     auto psol_p2 = gen_psol_p2(i,j,c);
 
-    c[i] = c0;
-
-    for (double c0 = 0.01; c0 < 0.5; c0 += 0.01) {
-        c
+    //c[i] = c0;
 
     //
     // SOLVE STOKES
     //
-    solve_stokes_MAPS(knots,max_iter_linear,restart_linear,solver_in);
+    solve_stokes_MAPS(knots,max_iter_linear,restart_linear,solver_in,c0);
+    //solve_stokes_LMAPS(knots,max_iter_linear,restart_linear,solver_in,c0);
 
 
     // calculate solution at comsol pts

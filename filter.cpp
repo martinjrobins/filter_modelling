@@ -41,9 +41,6 @@ int main(int argc, char **argv) {
     }
     
 
-    typedef Particles<std::tuple<alpha,boundary,inlet,outlet,interior,velocity_u,velocity_v,pressure,kernel_constant>,2> KnotsType;
-    typedef Particles<std::tuple<kernel_constant>,2> ParticlesType;
-    typedef position_d<2> position;
     KnotsType knots;
     ParticlesType particles;
     ParticlesType fibres;

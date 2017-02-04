@@ -51,14 +51,20 @@ add_definitions(-DHAVE_EIGEN)
 #export compiler flags for code completion engines
 set( CMAKE_EXPORT_COMPILE_COMMANDS 1 )
 
+set(source_files 
+    common.cpp
+    setup_knots.cpp
+    solve_stokes_LMAPS.cpp
+    solve_stokes_MAPS.cpp
+    )
 
 include_directories(Aboria/src)
 include_directories(SYSTEM ${CXXTEST_INCLUDES} ${EIGEN3_INCLUDE_DIR} ${VTK_INCLUDE_DIRS} ${Boost_INCLUDE_DIR}  ${PYTHON_INCLUDE_DIRS})
 
-add_executable(filter filter.cpp common.cpp)
+add_executable(filter filter.cpp ${source_files})
 target_link_libraries(filter ${VTK_LIBRARIES} ${Boost_LIBRARIES} ${CUDA_LIBRARIES} ${GPERFTOOLS_LIBRARIES})
 
-add_executable(validate validate.cpp common.cpp)
+add_executable(validate validate.cpp ${source_files})
 target_link_libraries(validate ${VTK_LIBRARIES} ${Boost_LIBRARIES} ${CUDA_LIBRARIES} ${GPERFTOOLS_LIBRARIES})
 
 
