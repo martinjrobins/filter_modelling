@@ -1,198 +1,53 @@
 #include "filter.h"
+void read_data_files(ComsolType &particles) {
 
-int main(int argc, char **argv) {
+    typedef typename ComsolType::position position;
 
-    unsigned int nout,max_iter_linear,restart_linear,nx;
-    int fibre_resolution,fibre_number,seed;
-    double fibre_radius,particle_rate,react_rate,D;
-    double dt_aim,k,gamma,rf,c0,epsilon_strength,epsilon_falloff;
-    unsigned int solver_in;
-
-    po::options_description desc("Allowed options");
-    desc.add_options()
-        ("help", "produce help message")
-        ("max_iter_linear", po::value<unsigned int>(&max_iter_linear)->default_value(2000), "maximum iterations for linear solve")
-        ("restart_linear", po::value<unsigned int>(&restart_linear)->default_value(2001), "iterations until restart for linear solve")
-        ("linear_solver", po::value<unsigned int>(&solver_in)->default_value(2), "linear solver")
-        ("nout", po::value<unsigned int>(&nout)->default_value(100), "number of output points")
-        ("k", po::value<double>(&k)->default_value(1.00), "spring constant")
-        ("D", po::value<double>(&D)->default_value(0.01), "diffusion constant")
-        ("particle_rate", po::value<double>(&particle_rate)->default_value(1000.0), "particle rate")
-        ("react_rate", po::value<double>(&react_rate)->default_value(0.5), "particle reaction rate")
-        ("epsilon_strength", po::value<double>(&epsilon_strength)->default_value(2.0), "boundary clustering fall-off")
-        ("epsilon_falloff", po::value<double>(&epsilon_falloff)->default_value(0.3), "boundary clustering fall-off")
-
-        ("c0", po::value<double>(&c0)->default_value(0.1), "kernel constant")
-        ("nx", po::value<unsigned int>(&nx)->default_value(20), "nx")
-        ("fibre_resolution", po::value<int>(&fibre_resolution)->default_value(0.75), "number of knots around each fibre")
-        ("seed", po::value<int>(&seed)->default_value(10), "seed")
-        ("fibre_number", po::value<int>(&fibre_number)->default_value(3), "number of fibres")
-        ("fibre_radius", po::value<double>(&fibre_radius)->default_value(0.05), "radius of fibres")
-        ("dt", po::value<double>(&dt_aim)->default_value(0.001), "timestep")
-    ;
-    
-    po::variables_map vm;
-    po::store(po::parse_command_line(argc, argv, desc), vm);
-    po::notify(vm);  
-
-    if (vm.count("help")) {
-        cout << desc << "\n";
-        return 1;
-    }
-    
-
-    KnotsType knots;
-    ParticlesType particles;
-    ParticlesType fibres;
-
-    const double up_mult = 1.5;
-    const double c2 = std::pow(c0,2);
-    const double c3 = std::pow(c0,3);
-    const double c4 = std::pow(c0,4);
-    const double mu = 1.0;
-    const double Tf = 2.0;
-    const double L = 1.0;
-    const double delta = L/nx;
-    const int ny = up_mult*L/delta;
-    const double deltay = up_mult*L/ny;
-    const double boundary_layer = delta/5;
-    const double s = 1.1*delta;
-    const int timesteps = Tf/dt_aim;
-    const double dt = Tf/timesteps;
-    const double2 domain_min(0,0);
-    const double2 domain_max(L,up_mult*L+1e-10);
-    const double2 ns_buffer(L/2,1e-10);
-
-    std::poisson_distribution<int> poisson(particle_rate*dt);
-    std::uniform_real_distribution<double> uniform(L/10.0,L-L/10.0);
-    std::default_random_engine generator(seed);
-
-    // particles 
-    {
-        particles.init_neighbour_search(domain_min-ns_buffer,domain_max+ns_buffer,
-                fibre_radius+boundary_layer,bool2(false));
-
-        std::cout << "added "<<particles.size()<<" particles"<<std::endl;
+    std::cout << "reading files..." << std::endl;
+    std::ifstream pressure_file("../five layer_square/[p]_five_layer_square.txt" );
+    std::ifstream vel_horz_file("../five layer_square/[vel_horz]_five_layer_square.txt" );
+    std::ifstream vel_vert_file("../five layer_square/[vel_vert]_five_layer_square.txt" );
+    std::string line;
+    for (int i=0; i<8; ++i) {
+        std::getline(pressure_file, line);
+        std::getline(vel_horz_file, line);
+        std::getline(vel_vert_file, line);
     }
 
-    // fibres
-    {
-        typename ParticlesType::value_type p;
-        for (int ii=0; ii<fibre_number; ++ii) {
-            for (int jj=0; jj<fibre_number; ++jj) {
-                const double dx = L/fibre_number;
-                const double2 origin = double2(
-                                            (ii+0.5)*dx,
-                                            (jj+0.5)*dx+0.5*(up_mult-1)*L
-                                            );
-                get<position>(p) = origin;
-                fibres.push_back(p);
-            }
-        }
-        fibres.init_neighbour_search(domain_min-ns_buffer,domain_max+ns_buffer,fibre_radius+boundary_layer,bool2(false));
+    int i=0;
+    while ( pressure_file.good() ) {
+        double2 pos,velocity;
+        double pressure,dummy;
+        std::getline(pressure_file, line);
+        std::istringstream buffer(line);
+        buffer >> pos[0];
+        buffer >> pos[1];
+        buffer >> pressure;
+        buffer.clear();
 
-        std::cout << "added "<<fibres.size()<<" fibres"<<std::endl;
-    }
- 
-    setup_knots(knots, fibres, fibre_radius, fibre_resolution, nx, domain_min, domain_max, c0, k,epsilon_strength,epsilon_falloff);
+        std::getline(vel_horz_file, line);
+        buffer.str(line);
+        buffer >> dummy;
+        buffer >> dummy;
+        buffer >> velocity[0];
+        buffer.clear();
 
-    solve_stokes_MAPS(knots,max_iter_linear,restart_linear,solver_in);
+        std::getline(vel_vert_file, line);
+        buffer.str(line);
+        buffer >> dummy;
+        buffer >> dummy;
+        buffer >> velocity[1];
+        buffer.clear();
 
-    Symbol<boundary> is_b;
-    Symbol<inlet> is_in;
-    Symbol<outlet> is_out;
-    Symbol<interior> is_i;
-    Symbol<position> r;
-    Symbol<alive> alive_;
-    Symbol<kernel_constant> c;
-
-    Symbol<velocity_u> vu;
-    Symbol<velocity_v> vv;
-    Symbol<pressure> pr;
-    Symbol<alpha> al;
-
-    Label<0,KnotsType> i(knots);
-    Label<1,KnotsType> j(knots);
-    Label<0,ParticlesType> a(particles);
-    Label<1,ParticlesType> b(particles);
-    Label<0,ParticlesType> af(fibres);
-    Label<1,ParticlesType> bf(fibres);
-    auto dx = create_dx(i,j);
-    auto dkf = create_dx(i,bf);
-    auto dpf = create_dx(a,bf);
-    auto dpk = create_dx(a,j);
-    Accumulate<std::plus<double> > sum;
-    Accumulate<std::plus<double2> > sumv;
-    Accumulate<std::plus<double3> > sumv3;
-    Accumulate<Aboria::max<double> > max;
-    max.set_init(0);
-    Accumulate<std::bit_or<bool> > any;
-    any.set_init(false);
-    VectorSymbolic<double,2> vector;      
-    VectorSymbolic<double,3> vector3;      
-    VectorSymbolic<double,9> matrix;      
-    Normal N;
-    Uniform U;
-
-
-    std::cout << "starting timesteps!"<<std::endl;
-    const int timesteps_per_out = timesteps/nout;
-    for (int ii=0; ii<timesteps; ++ii) {
-        // add new particles
-        const int new_n = poisson(generator);
-        for (int jj=0; jj<new_n; ++jj) {
-            ParticlesType::value_type p;
-            get<position>(p) = double2(uniform(generator),up_mult*L);
-            get<kernel_constant>(p) = c0;
+        typename ComsolType::value_type p;
+        get<position>(p) = pos;
+        get<dvelocity_u>(p) = velocity[0];
+        get<dvelocity_v>(p) = velocity[1];
+        get<dpressure>(p) = pressure;
+        if (i++ % 10 == 0) {
             particles.push_back(p);
+            //std::cout << "position = "<<pos<<std::endl;
         }
-
-
-        // diffusion with drift
-        r[a] += std::sqrt(2.0*D*dt)*vector(N,N)
-            + dt*vector(
-                    sum(j,true,gen_psol_u1(a,j,c)*al[j][0] + gen_psol_u2(a,j,c)*al[j][1]),
-                    sum(j,true,gen_psol_v1(a,j,c)*al[j][0] + gen_psol_v2(a,j,c)*al[j][1])
-                    );
-
-
-
-        if (ii % timesteps_per_out == 0) {
-            std::cout << "timestep "<<ii<<" of "<<timesteps<<std::endl;
-            vtkWriteGrid("particles",ii,particles.get_grid(true));
-        }
-            
-        // react with fibres
-        alive_[a] = !any(bf,norm(dpf) < fibre_radius,U<react_rate); 
-
-        // react with side walls
-        alive_[a] = !if_else(r[a][0] > L
-                           ,U<react_rate
-                           ,if_else(r[a][0] < 0
-                               ,U<react_rate
-                               ,false
-                               )
-                           );
-        
-        // reflect off fibres (if still alive) 
-        r[a] += sumv(bf, norm(dpf)<fibre_radius
-                        ,(fibre_radius/norm(dpf)-1)*dpf);
-            
-        // reflect off side walls (if still alive)
-        r[a] = vector(
-                      if_else(r[a][0] > L
-                          ,2*L-r[a][0]
-                          ,if_else(r[a][0] < 0
-                              ,-r[a][0]
-                              ,r[a][0]
-                              )
-                          )
-                     ,r[a][1]
-                     );
-
     }
-    
+    std::cout << "done reading files. have "<<particles.size()<<" data points"<< std::endl;
 }
-
-
-

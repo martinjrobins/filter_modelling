@@ -1,12 +1,13 @@
 #include "filter.h"
-#include "solve_stokes_MAPS.h"
 #include "setup_knots.h"
+#include "solve_stokes_MAPS.h"
+
 
 int main(int argc, char **argv) {
-    unsigned int nout,max_iter_linear,restart_linear,nx_min,nx_max,nnx;
+    unsigned int nout,max_iter_linear,restart_linear,nx,nc0;
     int fibre_number,seed;
     double fibre_radius,particle_rate,react_rate,D,fibre_resolution;
-    double dt_aim,h0_factor,k,gamma,rf,c0,epsilon_strength,epsilon_falloff;
+    double dt_aim,h0_factor,k,gamma,rf,c0_min,c0_max,epsilon_strength,epsilon_falloff;
     unsigned int solver_in;
 
     po::options_description desc("Allowed options");
@@ -22,16 +23,17 @@ int main(int argc, char **argv) {
         ("react_rate", po::value<double>(&react_rate)->default_value(0.5), "particle reaction rate")
         ("epsilon_strength", po::value<double>(&epsilon_strength)->default_value(1), "boundary clustering strength")
         ("epsilon_falloff", po::value<double>(&epsilon_falloff)->default_value(0.3), "boundary clustering fall-off")
-        ("c0", po::value<double>(&c0)->default_value(0.1), "kernel constant")
-        ("nx_min", po::value<unsigned int>(&nx_min)->default_value(20), "nx min")
-        ("nx_max", po::value<unsigned int>(&nx_max)->default_value(20), "nx max")
-        ("nnx", po::value<unsigned int>(&nnx)->default_value(20), "number of nx samples")
+        ("c0_min", po::value<double>(&c0_min)->default_value(0.1), "kernel constant")
+        ("c0_max", po::value<double>(&c0_max)->default_value(0.1), "kernel constant")
+        ("nx", po::value<unsigned int>(&nx)->default_value(20), "nx")
+        ("nc0", po::value<unsigned int>(&nc0)->default_value(20), "number of c0 samples")
         ("fibre_resolution", po::value<double>(&fibre_resolution)->default_value(0.75), "knot resolution around fibre")
         ("seed", po::value<int>(&seed)->default_value(10), "seed")
         ("fibre_number", po::value<int>(&fibre_number)->default_value(5), "number of fibres")
         ("fibre_radius", po::value<double>(&fibre_radius)->default_value(0.3), "radius of fibres")
         ("dt", po::value<double>(&dt_aim)->default_value(0.001), "timestep")
     ;
+    
 
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -45,9 +47,11 @@ int main(int argc, char **argv) {
     ComsolType comsol;
     read_data_files(comsol);
 
+    const double c0_increment = (c0_max-c0_min)/nc0;
+
     std::ofstream file;
-    file.open("validate.out");
-    file   << std::setw(15) << "nx"
+    file.open("optimc.out");
+    file   << std::setw(15) << "c0"
            << std::setw(15) << "rms_error_u"
            << std::setw(15) << "rms_error_v"
            << std::setw(15) << "rms_error_p"
@@ -56,8 +60,7 @@ int main(int argc, char **argv) {
            << std::setw(15) << "max_error_p"
            << std::endl;
 
-    const size_t nx_increment = (nx_max-nx_min)/nnx;
-    for (size_t nx = nx_min; nx < nx_max; nx+=nx_increment) {
+    for (double c0 = c0_min; c0 < c0_max; c0+=c0_increment) {
 
       KnotsType knots;
       ParticlesType particles;
@@ -177,6 +180,15 @@ int main(int argc, char **argv) {
       const double max_error_v = eval(max(i,true,abs(vv[i]-dvv[i])));
       const double max_error_p = eval(max(i,true,abs(pr[i]-dpr[i])));
 
+      file << std::setw(15) << c0
+           << std::setw(15) << rms_error_u
+           << std::setw(15) << rms_error_v
+           << std::setw(15) << rms_error_p
+           << std::setw(15) << max_error_u
+           << std::setw(15) << max_error_v
+           << std::setw(15) << max_error_p
+           << std::endl;
+
       std::cout << "rms errors = "
       << rms_error_u << ' '
       << rms_error_v << ' '
@@ -188,18 +200,6 @@ int main(int argc, char **argv) {
       << max_error_v << ' '
       << max_error_p << ' '
       << std::endl;
-
-      file << std::setw(15) << c0
-           << std::setw(15) << rms_error_u
-           << std::setw(15) << rms_error_v
-           << std::setw(15) << rms_error_p
-           << std::setw(15) << max_error_u
-           << std::setw(15) << max_error_v
-           << std::setw(15) << max_error_p
-           << std::endl;
-
-
-      vtkWriteGrid("error",nx,comsol.get_grid(true));
     }
     file.close();
 }

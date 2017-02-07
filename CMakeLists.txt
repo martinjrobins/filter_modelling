@@ -19,7 +19,7 @@ option(Aboria_USE_GPERFTOOLS "Use Google Profiling tools" OFF)
 if (Aboria_USE_GPERFTOOLS)
     find_package(Gperftools REQUIRED)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
-    set(GPERFTOOLS_LIBRARIES "-Wl,--no-as-needed ${GPERFTOOLS_LIBRARIES} -Wl,--as-needed") 
+    set(GPERFTOOLS_LIBRARIES "-Wl,--no-as-needed ${GPERFTOOLS_LIBRARIES} -Wl,--as-needed")
 endif()
 
 
@@ -51,8 +51,8 @@ add_definitions(-DHAVE_EIGEN)
 #export compiler flags for code completion engines
 set( CMAKE_EXPORT_COMPILE_COMMANDS 1 )
 
-set(source_files 
-    common.cpp
+set(source_files
+    filter.cpp
     setup_knots.cpp
     solve_stokes_LMAPS.cpp
     solve_stokes_MAPS.cpp
@@ -61,10 +61,13 @@ set(source_files
 include_directories(Aboria/src)
 include_directories(SYSTEM ${CXXTEST_INCLUDES} ${EIGEN3_INCLUDE_DIR} ${VTK_INCLUDE_DIRS} ${Boost_INCLUDE_DIR}  ${PYTHON_INCLUDE_DIRS})
 
-add_executable(filter filter.cpp ${source_files})
-target_link_libraries(filter ${VTK_LIBRARIES} ${Boost_LIBRARIES} ${CUDA_LIBRARIES} ${GPERFTOOLS_LIBRARIES})
+add_library(filter_modelling ${source_files})
 
-add_executable(validate validate.cpp ${source_files})
-target_link_libraries(validate ${VTK_LIBRARIES} ${Boost_LIBRARIES} ${CUDA_LIBRARIES} ${GPERFTOOLS_LIBRARIES})
+add_executable(simulation simulation.cpp )
+target_link_libraries(simulation filter_modelling ${VTK_LIBRARIES} ${Boost_LIBRARIES} ${CUDA_LIBRARIES} ${GPERFTOOLS_LIBRARIES})
 
+add_executable(validate validate.cpp )
+target_link_libraries(validate filter_modelling ${VTK_LIBRARIES} ${Boost_LIBRARIES} ${CUDA_LIBRARIES} ${GPERFTOOLS_LIBRARIES})
 
+add_executable(optimc optimc.cpp )
+target_link_libraries(optimc filter_modelling ${VTK_LIBRARIES} ${Boost_LIBRARIES} ${CUDA_LIBRARIES} ${GPERFTOOLS_LIBRARIES})

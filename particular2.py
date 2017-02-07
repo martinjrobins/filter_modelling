@@ -53,3 +53,13 @@ print '---------------------------------------'
 p = diff(diff(diff(phi(r),x),x),y)+diff(diff(diff(phi(r),y),y),y)
 p = simplify(p)
 pprint(simplify(expand(p)))
+
+
+print '---------------------------------------'
+phii = (sqrt((r**2+c**2))*(4*r**2+48*r**2*c**2-61*c**4)/75 - c**3*log(c)*r**2 - (5*r**2-2*c**2)*c**3*log(c+sqrt(r**2+c**2))/5)/12
+u = simplify(diff(diff(phii,x),y))
+pprint(u)
+print '---------------------------------------'
+v = simplify(diff(diff(phii,x),y))
+pprint(v)
+p = (diff(diff(diff(phii,x),x),x)+diff(diff(diff(phii,y),y),x)).subs(x,1).subs(y,1).subs(c,3).evalf()
