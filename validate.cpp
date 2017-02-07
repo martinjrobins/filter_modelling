@@ -8,6 +8,7 @@ int main(int argc, char **argv) {
     double fibre_radius,particle_rate,react_rate,D,fibre_resolution;
     double dt_aim,h0_factor,k,gamma,rf,c0,epsilon_strength,epsilon_falloff;
     unsigned int solver_in;
+    std::string filename;
 
     po::options_description desc("Allowed options");
     desc.add_options()
@@ -31,6 +32,7 @@ int main(int argc, char **argv) {
         ("fibre_number", po::value<int>(&fibre_number)->default_value(5), "number of fibres")
         ("fibre_radius", po::value<double>(&fibre_radius)->default_value(0.3), "radius of fibres")
         ("dt", po::value<double>(&dt_aim)->default_value(0.001), "timestep")
+        ("filename", po::value<std::string>(&filename)->default_value("validate.out"), "filename")
     ;
 
     po::variables_map vm;
@@ -46,7 +48,7 @@ int main(int argc, char **argv) {
     read_data_files(comsol);
 
     std::ofstream file;
-    file.open("validate.out");
+    file.open(filename.c_str());
     file   << std::setw(15) << "nx"
            << std::setw(15) << "rms_error_u"
            << std::setw(15) << "rms_error_v"
@@ -189,7 +191,7 @@ int main(int argc, char **argv) {
       << max_error_p << ' '
       << std::endl;
 
-      file << std::setw(15) << c0
+      file << std::setw(15) << nx
            << std::setw(15) << rms_error_u
            << std::setw(15) << rms_error_v
            << std::setw(15) << rms_error_p

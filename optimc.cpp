@@ -9,6 +9,7 @@ int main(int argc, char **argv) {
     double fibre_radius,particle_rate,react_rate,D,fibre_resolution;
     double dt_aim,h0_factor,k,gamma,rf,c0_min,c0_max,epsilon_strength,epsilon_falloff;
     unsigned int solver_in;
+    std::string filename;
 
     po::options_description desc("Allowed options");
     desc.add_options()
@@ -32,8 +33,9 @@ int main(int argc, char **argv) {
         ("fibre_number", po::value<int>(&fibre_number)->default_value(5), "number of fibres")
         ("fibre_radius", po::value<double>(&fibre_radius)->default_value(0.3), "radius of fibres")
         ("dt", po::value<double>(&dt_aim)->default_value(0.001), "timestep")
+        ("filename", po::value<std::string>(&filename)->default_value("optim.out"), "filename")
     ;
-    
+
 
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -50,7 +52,7 @@ int main(int argc, char **argv) {
     const double c0_increment = (c0_max-c0_min)/nc0;
 
     std::ofstream file;
-    file.open("optimc.out");
+    file.open(filename.c_str());
     file   << std::setw(15) << "c0"
            << std::setw(15) << "rms_error_u"
            << std::setw(15) << "rms_error_v"
