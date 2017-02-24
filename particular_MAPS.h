@@ -6,6 +6,23 @@ auto gen_kernel_mq(I &i, J &j, C &c) {
         );
 }
 
+template <typename RowParticles, typename ColParticles,
+         typename const_position_reference=
+            typename RowParticles::position::value_type const &,
+         typename const_row_particle_reference=
+            typename RowParticles::const_reference,
+         typename const_col_particle_reference=
+            typename ColParticles::const_reference>
+struct kernel_mq {
+    double operator()(const_position_reference dx,
+                      const_row_particle_reference a,
+                      const_col_particle_reference b) {
+                            return std::sqrt(dx.squaredNorm() + get<constant>(b));
+                        }
+};
+
+
+
 template <typename I, typename J, typename C>
 auto gen_phi_sol(I &i, J &j, C &c) {
     auto dx = create_dx(i,j);
