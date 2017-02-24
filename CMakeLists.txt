@@ -54,7 +54,7 @@ set( CMAKE_EXPORT_COMPILE_COMMANDS 1 )
 set(source_files
     filter.cpp
     setup_knots.cpp
-    solve_stokes_LMAPS.cpp
+    #solve_stokes_LMAPS.cpp
     solve_stokes_MAPS.cpp
     )
 

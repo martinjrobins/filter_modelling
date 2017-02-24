@@ -124,41 +124,77 @@ int main(int argc, char **argv) {
       solve_stokes_MAPS(knots,max_iter_linear,restart_linear,solver_in,c0);
       //solve_stokes_LMAPS(knots,max_iter_linear,restart_linear,solver_in,c0);
 
-      Symbol<boundary> is_b;
-      Symbol<inlet> is_in;
-      Symbol<outlet> is_out;
-      Symbol<interior> is_i;
-      Symbol<position> r;
-      Symbol<alive> alive_;
-      Symbol<kernel_constant> c;
+      
+      const size_t Nk = knots.size();
+      const size_t Nc = comsol.size();
 
-      Symbol<velocity_u> vu;
-      Symbol<velocity_v> vv;
-      Symbol<pressure> pr;
 
-      Symbol<dvelocity_u> dvu;
-      Symbol<dvelocity_v> dvv;
-      Symbol<dpressure> dpr;
-      Symbol<alpha> al;
+      typedef typename position::value_type const & const_position_reference;
+      typedef typename KnotsType::const_reference const_knot_reference;
+      typedef typename ComsolType::const_reference const_comsol_reference;
 
-      Label<0,ComsolType> i(comsol);
-      Label<1,KnotsType> j(knots);
-      auto dx = create_dx(i,j);
-      Accumulate<std::plus<double> > sum;
-      Accumulate<std::plus<double2> > sumv;
-      VectorSymbolic<double,2> vector;
+      auto psol_u1_op = create_dense_operator(comsol,knots,
+            [](const_position_reference dx,
+               const_comsol_reference a,
+               const_knot_reference b) {
+            return psol_u1(dx,a,b);
+            });
 
-      Accumulate<Aboria::max<double> > max;
-      max.set_init(0);
+      auto psol_v1_op = create_dense_operator(comsol,knots,
+            [](const_position_reference dx,
+               const_comsol_reference a,
+               const_knot_reference b) {
+            return psol_v1(dx,a,b);
+            });
 
-      auto psol_u1 = gen_psol_u1(i,j,c);
-      auto psol_v1 = gen_psol_v1(i,j,c);
-      auto psol_p1 = gen_psol_p1(i,j,c);
-      auto psol_u2 = gen_psol_u2(i,j,c);
-      auto psol_v2 = gen_psol_v2(i,j,c);
-      auto psol_p2 = gen_psol_p2(i,j,c);
+      auto psol_p1_op = create_dense_operator(comsol,knots,
+            [](const_position_reference dx,
+               const_comsol_reference a,
+               const_knot_reference b) {
+            return psol_p1(dx,a,b);
+            });
 
-      //c[i] = c0;
+      auto psol_u2_op = create_dense_operator(comsol,knots,
+            [](const_position_reference dx,
+               const_comsol_reference a,
+               const_knot_reference b) {
+            return psol_u2(dx,a,b);
+            });
+
+      auto psol_v2_op = create_dense_operator(comsol,knots,
+            [](const_position_reference dx,
+               const_comsol_reference a,
+               const_knot_reference b) {
+            return psol_v2(dx,a,b);
+            });
+
+      auto psol_p2_op = create_dense_operator(comsol,knots,
+            [](const_position_reference dx,
+               const_comsol_reference a,
+               const_knot_reference b) {
+            return psol_p2(dx,a,b);
+            });
+
+      std::cout << "assembling comsol matricies...." << std::endl;
+
+      typedef Eigen::Matrix<double,Eigen::Dynamic,1> vector_type;
+      typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> matrix_type;
+      typedef Eigen::Map<vector_type> map_type;
+
+      matrix_type psol_u1_mat(Nc,Nk);
+      psol_u1_op.assemble(psol_u1_mat);
+      matrix_type psol_v1_mat(Nc,Nk);
+      psol_v1_op.assemble(psol_v1_mat);
+      matrix_type psol_p1_mat(Nc,Nk);
+      psol_p1_op.assemble(psol_p1_mat);
+
+      matrix_type psol_u2_mat(Nc,Nk);
+      psol_u2_op.assemble(psol_u2_mat);
+      matrix_type psol_v2_mat(Nc,Nk);
+      psol_v2_op.assemble(psol_v2_mat);
+      matrix_type psol_p2_mat(Nc,Nk);
+      psol_p2_op.assemble(psol_p2_mat);
+      std::cout << "done assembling comsol matricies." << std::endl;
 
 
       // calculate solution at comsol pts
@@ -167,11 +203,35 @@ int main(int argc, char **argv) {
       vv[i] = sum(j,true,gen_psol_v1(i,j,c)*al[j][0] + gen_psol_v2(i,j,c)*al[j][1]);
       pr[i] = sum(j,true,gen_psol_p1(i,j,c)*al[j][0] + gen_psol_p2(i,j,c)*al[j][1]);
       */
-      vu[i] = sum(j,true,psol_u1*al[j][0] + psol_u2*al[j][1]);
-      vv[i] = sum(j,true,psol_v1*al[j][0] + psol_v2*al[j][1]);
-      pr[i] = sum(j,true,psol_p1*al[j][0] + psol_p2*al[j][1]);
+
+      std::cout << "calculating solution at comsol points...." << std::endl;
+    map_type(get<velocity_u>(comsol).data(),Nc) = 
+        psol_u1_mat*map_type(get<alpha1>(knots).data(),Nk)+
+        psol_u2_mat*map_type(get<alpha2>(knots).data(),Nk);
+
+    map_type(get<velocity_v>(comsol).data(),Nc) = 
+        psol_v1_mat*map_type(get<alpha1>(knots).data(),Nk)+
+        psol_v2_mat*map_type(get<alpha2>(knots).data(),Nk);
+
+    map_type(get<pressure>(comsol).data(),Nc) = 
+        psol_v1_mat*map_type(get<alpha1>(knots).data(),Nk)+
+        psol_v2_mat*map_type(get<alpha2>(knots).data(),Nk);
+      std::cout << "done calculating solution at comsol points.<< std::endl;
 
       //compare
+      Symbol<velocity_u> vu;
+      Symbol<velocity_v> vv;
+      Symbol<pressure> pr;
+
+      Symbol<dvelocity_u> dvu;
+      Symbol<dvelocity_v> dvv;
+      Symbol<dpressure> dpr;
+
+      Label<0,ComsolType> i(comsol);
+      Accumulate<std::plus<double> > sum;
+      Accumulate<Aboria::max<double> > max;
+      max.set_init(0);
+
       const double rms_error_u = std::sqrt(eval(sum(i,true,pow(vu[i]-dvu[i],2)))/comsol.size());
       const double rms_error_v = std::sqrt(eval(sum(i,true,pow(vv[i]-dvv[i],2)))/comsol.size());
       const double rms_error_p = std::sqrt(eval(sum(i,true,pow(pr[i]-dpr[i],2)))/comsol.size());
