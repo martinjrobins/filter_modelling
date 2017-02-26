@@ -293,6 +293,7 @@ double psol_p1(const Dx& dx, const A& a, const B& b) {
         return -phi_sol_dash_dash_dash(dx,a,b);
     } else {
         return (phi_sol_dash_dash_dash(dx,a,b) - phi_sol_dash_div_r2_minus_phi_sol_dash_dash_div_r(dx,a,b))*dx[0]/ndx;
+        //return (phi_sol_dash_dash_dash(dx,a,b))*dx[0]/ndx;
     }
 }
 
@@ -305,6 +306,7 @@ double psol_p2(const Dx& dx, const A& a, const B& b) {
         return -phi_sol_dash_dash_dash(dx,a,b);
     } else {
         return (phi_sol_dash_dash_dash(dx,a,b) - phi_sol_dash_div_r2_minus_phi_sol_dash_dash_div_r(dx,a,b))*dx[1]/ndx;
+        //return (phi_sol_dash_dash_dash(dx,a,b))*dx[1]/ndx;
     }
 }
 
