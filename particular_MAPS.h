@@ -223,7 +223,7 @@ double psol_du1dy(const Dx& dx, const A& a, const B& b) {
     if (dx2==0) {
         return phi_sol_dash_dash_dash(dx,a,b); 
     } else {
-        return -x*(phi_sol_dash_div_r2_minus_phi_sol_dash_dash_div_r(dx,a,b)*(2*y2-x2)/(ndx*dx2) + phi_sol_dash_dash_dash(dx,a,b)*y2/(dx2*ndx));
+        return -y*(-phi_sol_dash_div_r2_minus_phi_sol_dash_dash_div_r(dx,a,b)*3*x2/(ndx*dx2) + phi_sol_dash_dash_dash(dx,a,b)*y2/(dx2*ndx));
     }
 
 }
@@ -243,7 +243,7 @@ double psol_du2dy(const Dx& dx, const A& a, const B& b) {
     if (dx2==0) {
         return -phi_sol_dash_dash_dash(dx,a,b); 
     } else {
-        return -y*(phi_sol_dash_div_r2_minus_phi_sol_dash_dash_div_r(dx,a,b)*(y2-2*x2)/(ndx*dx2)- phi_sol_dash_dash_dash(dx,a,b)*x2/(dx2*ndx));
+        return x*(phi_sol_dash_div_r2_minus_phi_sol_dash_dash_div_r(dx,a,b)*(2*y2-x2)/(ndx*dx2) + phi_sol_dash_dash_dash(dx,a,b)*y2/(dx2*ndx));
     }
 }
 
@@ -261,7 +261,7 @@ double psol_dv1dy(const Dx& dx, const A& a, const B& b) {
     if (dx2==0) {
         return -phi_sol_dash_dash_dash(dx,a,b); 
     } else {
-        return -y*(phi_sol_dash_div_r2_minus_phi_sol_dash_dash_div_r(dx,a,b)*(y2-2*x2)/(ndx*dx2)- phi_sol_dash_dash_dash(dx,a,b)*x2/(dx2*ndx));
+        return x*(phi_sol_dash_div_r2_minus_phi_sol_dash_dash_div_r(dx,a,b)*(2*y2-x2)/(ndx*dx2) + phi_sol_dash_dash_dash(dx,a,b)*y2/(dx2*ndx));
     }
 }
 
@@ -279,7 +279,7 @@ double psol_dv2dy(const Dx& dx, const A& a, const B& b) {
     if (dx2==0) {
         return phi_sol_dash_dash_dash(dx,a,b); 
     } else {
-        return -x*(-phi_sol_dash_div_r2_minus_phi_sol_dash_dash_div_r(dx,a,b)*3*y2/(ndx*dx2) + phi_sol_dash_dash_dash(dx,a,b)*x2/(dx2*ndx));
+        return -y*(phi_sol_dash_div_r2_minus_phi_sol_dash_dash_div_r(dx,a,b)*(2*x2-y2)/(ndx*dx2) + phi_sol_dash_dash_dash(dx,a,b)*x2/(dx2*ndx));
     }
 
 }

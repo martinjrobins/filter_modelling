@@ -161,6 +161,63 @@ void solve_stokes_MAPS(KnotsType &knots, unsigned int max_iter_linear,unsigned i
             return psol_p2(dx,a,b);
             });
 
+    auto psol_du1dx_op = create_dense_operator(knots,knots,
+            [](const_position_reference dx,
+               const_particle_reference a,
+               const_particle_reference b) {
+            return psol_du1dx(dx,a,b);
+            });
+
+    auto psol_du2dx_op = create_dense_operator(knots,knots,
+            [](const_position_reference dx,
+               const_particle_reference a,
+               const_particle_reference b) {
+            return psol_du2dx(dx,a,b);
+            });
+
+    auto psol_du1dy_op = create_dense_operator(knots,knots,
+            [](const_position_reference dx,
+               const_particle_reference a,
+               const_particle_reference b) {
+            return psol_du1dy(dx,a,b);
+            });
+
+    auto psol_du2dy_op = create_dense_operator(knots,knots,
+            [](const_position_reference dx,
+               const_particle_reference a,
+               const_particle_reference b) {
+            return psol_du2dy(dx,a,b);
+            });
+
+    auto psol_dv1dx_op = create_dense_operator(knots,knots,
+            [](const_position_reference dx,
+               const_particle_reference a,
+               const_particle_reference b) {
+            return psol_dv1dx(dx,a,b);
+            });
+
+    auto psol_dv2dx_op = create_dense_operator(knots,knots,
+            [](const_position_reference dx,
+               const_particle_reference a,
+               const_particle_reference b) {
+            return psol_dv2dx(dx,a,b);
+            });
+
+    auto psol_dv1dy_op = create_dense_operator(knots,knots,
+            [](const_position_reference dx,
+               const_particle_reference a,
+               const_particle_reference b) {
+            return psol_dv1dy(dx,a,b);
+            });
+
+    auto psol_dv2dy_op = create_dense_operator(knots,knots,
+            [](const_position_reference dx,
+               const_particle_reference a,
+               const_particle_reference b) {
+            return psol_dv2dy(dx,a,b);
+            });
+
+
     map_type(get<alpha1>(knots).data(),N) = alphas.head(N);
     map_type(get<alpha2>(knots).data(),N) = alphas.tail(N);
     map_type(get<velocity_u>(knots).data(),N) = 
@@ -172,6 +229,20 @@ void solve_stokes_MAPS(KnotsType &knots, unsigned int max_iter_linear,unsigned i
     map_type(get<pressure>(knots).data(),N) = 
         psol_p1_op*alphas.head(N) + 
         psol_p2_op*alphas.tail(N);
+    map_type(get<velocity_dudx>(knots).data(),N) = 
+        psol_du1dx_op*alphas.head(N) + 
+        psol_du2dx_op*alphas.tail(N);
+    map_type(get<velocity_dudy>(knots).data(),N) = 
+        psol_du1dy_op*alphas.head(N) + 
+        psol_du2dy_op*alphas.tail(N);
+    map_type(get<velocity_dvdx>(knots).data(),N) = 
+        psol_dv1dx_op*alphas.head(N) + 
+        psol_dv2dx_op*alphas.tail(N);
+    map_type(get<velocity_dvdy>(knots).data(),N) = 
+        psol_dv1dy_op*alphas.head(N) + 
+        psol_dv2dy_op*alphas.tail(N);
+
+
 
     vtkWriteGrid("MAPS",0,knots.get_grid(true));
 

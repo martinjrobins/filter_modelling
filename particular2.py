@@ -91,7 +91,7 @@ print '---------------------------------------'
 print '           dudy (i = 1, l = 1)'
 print '---------------------------------------'
 u = diff(diff(phi(r),x),x)+diff(diff(phi(r),y),y) - diff(diff(phi(r),x),x)
-u = diff(u,x)
+u = diff(u,y)
 u = simplify(u)
 pprint(simplify(expand(u)))
 
@@ -99,7 +99,7 @@ print '---------------------------------------'
 print '           dudy (i = 1, l = 2)'
 print '---------------------------------------'
 u = -diff(diff(phi(r),x),y)
-u = diff(u,x)
+u = diff(u,y)
 u = simplify(u)
 pprint(simplify(expand(u)))
 
@@ -107,7 +107,7 @@ print '---------------------------------------'
 print '           dvdy (i = 2, l = 1)'
 print '---------------------------------------'
 u = -diff(diff(phi(r),y),x)
-u = diff(u,x)
+u = diff(u,y)
 u = simplify(u)
 pprint(simplify(expand(u)))
 
@@ -115,7 +115,7 @@ print '---------------------------------------'
 print '           dvdy (i = 2, l = 2)'
 print '---------------------------------------'
 u = diff(diff(phi(r),x),x)+diff(diff(phi(r),y),y) - diff(diff(phi(r),y),y)
-u = diff(u,x)
+u = diff(u,y)
 u = simplify(u)
 pprint(simplify(expand(u)))
 
