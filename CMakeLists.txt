@@ -54,11 +54,12 @@ set( CMAKE_EXPORT_COMPILE_COMMANDS 1 )
 set(source_files
     filter.cpp
     setup_knots.cpp
-    #solve_stokes_LMAPS.cpp
+    solve_stokes_LMAPS.cpp
     solve_stokes_MAPS.cpp
     )
 
 include_directories(Aboria/src)
+include_directories(Aboria/third-party)
 include_directories(SYSTEM ${CXXTEST_INCLUDES} ${EIGEN3_INCLUDE_DIR} ${VTK_INCLUDE_DIRS} ${Boost_INCLUDE_DIR}  ${PYTHON_INCLUDE_DIRS})
 
 add_library(filter_modelling ${source_files})

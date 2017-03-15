@@ -71,8 +71,7 @@ int main(int argc, char **argv) {
 
     // particles
     {
-        particles.init_neighbour_search(domain_min-ns_buffer,domain_max+ns_buffer,
-                fibre_radius+boundary_layer,bool2(false));
+        particles.init_neighbour_search(domain_min-ns_buffer,domain_max+ns_buffer,bool2(false));
 
         std::cout << "added "<<particles.size()<<" particles"<<std::endl;
     }
@@ -91,7 +90,7 @@ int main(int argc, char **argv) {
                 fibres.push_back(p);
             }
         }
-        fibres.init_neighbour_search(domain_min-ns_buffer,domain_max+ns_buffer,fibre_radius+boundary_layer,bool2(false));
+        fibres.init_neighbour_search(domain_min-ns_buffer,domain_max+ns_buffer,bool2(false));
 
         std::cout << "added "<<fibres.size()<<" fibres"<<std::endl;
     }
@@ -111,7 +110,8 @@ int main(int argc, char **argv) {
     Symbol<velocity_u> vu;
     Symbol<velocity_v> vv;
     Symbol<pressure> pr;
-    Symbol<alpha> al;
+    Symbol<alpha1> al1;
+    Symbol<alpha2> al2;
 
     Label<0,KnotsType> i(knots);
     Label<1,KnotsType> j(knots);
@@ -124,11 +124,11 @@ int main(int argc, char **argv) {
     auto dpf = create_dx(a,bf);
     auto dpk = create_dx(a,j);
     Accumulate<std::plus<double> > sum;
-    Accumulate<std::plus<double2> > sumv;
+    AccumulateWithinDistance<std::plus<double2> > sumv(fibre_radius);
     Accumulate<std::plus<double3> > sumv3;
     Accumulate<Aboria::max<double> > max;
     max.set_init(0);
-    Accumulate<std::bit_or<bool> > any;
+    AccumulateWithinDistance<std::bit_or<bool> > any(fibre_radius);
     any.set_init(false);
     VectorSymbolic<double,2> vector;
     VectorSymbolic<double,3> vector3;
@@ -153,8 +153,8 @@ int main(int argc, char **argv) {
         // diffusion with drift
         r[a] += std::sqrt(2.0*D*dt)*vector(N,N)
             + dt*vector(
-                    sum(j,true,gen_psol_u1(a,j,c)*al[j][0] + gen_psol_u2(a,j,c)*al[j][1]),
-                    sum(j,true,gen_psol_v1(a,j,c)*al[j][0] + gen_psol_v2(a,j,c)*al[j][1])
+                    sum(j,gen_psol_u1(a,j,c)*al1[j] + gen_psol_u2(a,j,c)*al2[j]),
+                    sum(j,gen_psol_v1(a,j,c)*al1[j] + gen_psol_v2(a,j,c)*al2[j])
                     );
 
 
@@ -165,7 +165,7 @@ int main(int argc, char **argv) {
         }
 
         // react with fibres
-        alive_[a] = !any(bf,norm(dpf) < fibre_radius,U<react_rate);
+        alive_[a] = !any(bf,U<react_rate);
 
         // react with side walls
         alive_[a] = !if_else(r[a][0] > L
@@ -177,8 +177,7 @@ int main(int argc, char **argv) {
                            );
 
         // reflect off fibres (if still alive)
-        r[a] += sumv(bf, norm(dpf)<fibre_radius
-                        ,(fibre_radius/norm(dpf)-1)*dpf);
+        r[a] += sumv(bf,(fibre_radius/norm(dpf)-1)*dpf);
 
         // reflect off side walls (if still alive)
         r[a] = vector(

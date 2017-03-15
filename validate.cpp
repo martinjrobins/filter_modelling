@@ -1,5 +1,6 @@
 #include "filter.h"
 #include "solve_stokes_MAPS.h"
+#include "solve_stokes_LMAPS.h"
 #include "setup_knots.h"
 
 int main(int argc, char **argv) {
@@ -25,8 +26,8 @@ int main(int argc, char **argv) {
         ("epsilon_falloff", po::value<double>(&epsilon_falloff)->default_value(0.3), "boundary clustering fall-off")
         ("c0", po::value<double>(&c0)->default_value(0.1), "kernel constant")
         ("nx_min", po::value<unsigned int>(&nx_min)->default_value(20), "nx min")
-        ("nx_max", po::value<unsigned int>(&nx_max)->default_value(20), "nx max")
-        ("nnx", po::value<unsigned int>(&nnx)->default_value(20), "number of nx samples")
+        ("nx_max", po::value<unsigned int>(&nx_max)->default_value(21), "nx max")
+        ("nnx", po::value<unsigned int>(&nnx)->default_value(1), "number of nx samples")
         ("fibre_resolution", po::value<double>(&fibre_resolution)->default_value(0.75), "knot resolution around fibre")
         ("seed", po::value<int>(&seed)->default_value(10), "seed")
         ("fibre_number", po::value<int>(&fibre_number)->default_value(5), "number of fibres")
@@ -100,7 +101,7 @@ int main(int argc, char **argv) {
             fibres.push_back(p);
           }
         }
-        fibres.init_neighbour_search(domain_min-ns_buffer,domain_max+ns_buffer,fibre_radius+boundary_layer,bool2(false));
+        fibres.init_neighbour_search(domain_min-ns_buffer,domain_max+ns_buffer,bool2(false));
 
         std::cout << "added "<<fibres.size()<<" fibres"<<std::endl;
       }
@@ -121,8 +122,8 @@ int main(int argc, char **argv) {
       //
       // SOLVE STOKES
       //
-      solve_stokes_MAPS(knots,max_iter_linear,restart_linear,solver_in,c0);
-      //solve_stokes_LMAPS(knots,max_iter_linear,restart_linear,solver_in,c0);
+      //solve_stokes_MAPS(knots,max_iter_linear,restart_linear,solver_in,c0);
+      solve_stokes_LMAPS(knots,max_iter_linear,restart_linear,solver_in,c0);
 
       
       const size_t Nk = knots.size();

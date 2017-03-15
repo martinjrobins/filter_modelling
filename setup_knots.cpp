@@ -35,11 +35,8 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
     while (knots.size() < N) {
         get<position>(p) = double2(uniformx(generator),uniformy(generator));
         bool outside_fibres = true;
-        for (auto tpl: box_search(fibres.get_query(),get<position>(p))) {
-            if ((get<position>(p)-get<position>(std::get<0>(tpl))).norm()
-                    < fibre_radius+fibre_resolution*delta) {
-                outside_fibres = false;
-            }
+        for (auto tpl: euclidean_search(fibres.get_query(),get<position>(p),fibre_radius+fibre_resolution*delta)) {
+            outside_fibres = false;
         }
         if (outside_fibres) {
             get<boundary>(p) = false;
@@ -141,7 +138,7 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
         }
     }
 
-    knots.init_neighbour_search(domain_min-ns_buffer,domain_max+ns_buffer,L/5,bool2(false));
+    knots.init_neighbour_search(domain_min-ns_buffer,domain_max+ns_buffer,bool2(false));
     std::cout << "added "<<knots.size()<<" knots with c0 = " <<c0<< std::endl;
 
     vtkWriteGrid("init_knots",0,knots.get_grid(true));
@@ -164,6 +161,7 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
     auto dx = create_dx(i,j);
     auto dkf = create_dx(i,bf);
     Accumulate<std::plus<double2> > sumv;
+    AccumulateWithinDistance<std::plus<double2> > sumv_sparse(s);
     Accumulate<std::plus<double> > sum;
     VectorSymbolic<double,2> vector;
     Accumulate<Aboria::min<double> > min;
@@ -272,8 +270,8 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
     // adapt knot locations
     for (int ii=0; ii<1000; ii++) {
         r[i] += dt_adapt*if_else(is_i[i]
-                    ,sumv(j,norm(dx)<s,spring_force_kk)
-                        + sumv(bf,true,spring_force_kf)
+                    ,sumv_sparse(j,spring_force_kk)
+                        + sumv(bf,spring_force_kf)
                         + spring_force_kb
                     ,vector(0,0)
                 );
@@ -304,7 +302,7 @@ void calculate_c(KnotsType &knots, double c0, const double nx, double2 domain_mi
     Label<0,KnotsType> i(knots);
     Label<1,KnotsType> j(knots);
     auto dx = create_dx(i,j);
-    Accumulate<std::plus<double> > sum;
+    AccumulateWithinDistance<std::plus<double> > sum;
     Accumulate<Aboria::min<double> > max;
     max.set_init(0);
 
@@ -316,9 +314,9 @@ void calculate_c(KnotsType &knots, double c0, const double nx, double2 domain_mi
         );
 
     for (int ii=0; ii<20; ++ii) {
-        const double cmax = eval(max(i,true,c[i]));
-        knots.reset_neighbour_search(2*cmax);
-        c[i] = mult*sqrt(1.0/sum(j,norm(dx)<2*c[i],kernel_wendland));
+        const double cmax = eval(max(i,c[i]));
+        sum.set_max_distance(2*cmax);
+        c[i] = mult*sqrt(1.0/sum(j,if_else(norm(dx)<2*c[i],kernel_wendland,0)));
     }
 
     c[i] = c0*c[i]/mult;

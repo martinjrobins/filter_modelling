@@ -1,6 +1,7 @@
 #include "filter.h"
 #include "setup_knots.h"
-#include "solve_stokes_MAPS.h"
+//#include "solve_stokes_MAPS.h"
+#include "solve_stokes_LMAPS.h"
 
 
 int main(int argc, char **argv) {
@@ -25,9 +26,9 @@ int main(int argc, char **argv) {
         ("epsilon_strength", po::value<double>(&epsilon_strength)->default_value(1), "boundary clustering strength")
         ("epsilon_falloff", po::value<double>(&epsilon_falloff)->default_value(0.3), "boundary clustering fall-off")
         ("c0_min", po::value<double>(&c0_min)->default_value(0.1), "kernel constant")
-        ("c0_max", po::value<double>(&c0_max)->default_value(0.1), "kernel constant")
+        ("c0_max", po::value<double>(&c0_max)->default_value(0.2), "kernel constant")
         ("nx", po::value<unsigned int>(&nx)->default_value(20), "nx")
-        ("nc0", po::value<unsigned int>(&nc0)->default_value(20), "number of c0 samples")
+        ("nc0", po::value<unsigned int>(&nc0)->default_value(1), "number of c0 samples")
         ("fibre_resolution", po::value<double>(&fibre_resolution)->default_value(0.75), "knot resolution around fibre")
         ("seed", po::value<int>(&seed)->default_value(10), "seed")
         ("fibre_number", po::value<int>(&fibre_number)->default_value(5), "number of fibres")
@@ -103,7 +104,7 @@ int main(int argc, char **argv) {
             fibres.push_back(p);
           }
         }
-        fibres.init_neighbour_search(domain_min-ns_buffer,domain_max+ns_buffer,fibre_radius+boundary_layer,bool2(false));
+        fibres.init_neighbour_search(domain_min-ns_buffer,domain_max+ns_buffer,bool2(false));
 
         std::cout << "added "<<fibres.size()<<" fibres"<<std::endl;
       }
@@ -124,8 +125,8 @@ int main(int argc, char **argv) {
       //
       // SOLVE STOKES
       //
-      solve_stokes_MAPS(knots,max_iter_linear,restart_linear,solver_in,c0);
-      //solve_stokes_LMAPS(knots,max_iter_linear,restart_linear,solver_in,c0);
+      //solve_stokes_MAPS(knots,max_iter_linear,restart_linear,solver_in,c0);
+      solve_stokes_LMAPS(knots,max_iter_linear,restart_linear,solver_in,c0);
       //
       
 
@@ -236,12 +237,12 @@ int main(int argc, char **argv) {
       Accumulate<Aboria::max<double> > max;
       max.set_init(0);
 
-      const double rms_error_u = std::sqrt(eval(sum(i,true,pow(vu[i]-dvu[i],2)))/comsol.size());
-      const double rms_error_v = std::sqrt(eval(sum(i,true,pow(vv[i]-dvv[i],2)))/comsol.size());
-      const double rms_error_p = std::sqrt(eval(sum(i,true,pow(pr[i]-dpr[i],2)))/comsol.size());
-      const double max_error_u = eval(max(i,true,abs(vu[i]-dvu[i])));
-      const double max_error_v = eval(max(i,true,abs(vv[i]-dvv[i])));
-      const double max_error_p = eval(max(i,true,abs(pr[i]-dpr[i])));
+      const double rms_error_u = std::sqrt(eval(sum(i,pow(vu[i]-dvu[i],2)))/comsol.size());
+      const double rms_error_v = std::sqrt(eval(sum(i,pow(vv[i]-dvv[i],2)))/comsol.size());
+      const double rms_error_p = std::sqrt(eval(sum(i,pow(pr[i]-dpr[i],2)))/comsol.size());
+      const double max_error_u = eval(max(i,abs(vu[i]-dvu[i])));
+      const double max_error_v = eval(max(i,abs(vv[i]-dvv[i])));
+      const double max_error_p = eval(max(i,abs(pr[i]-dpr[i])));
 
       file << std::setw(15) << c0
            << std::setw(15) << rms_error_u
