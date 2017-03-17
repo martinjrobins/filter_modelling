@@ -35,6 +35,21 @@ phi_sol_dash_dash_dash = diff(diff(diff(phi_sol,r),r),r)
 pprint(simplify(phi_sol_dash_dash_dash))
 
 print '---------------------------------------'
+print '           phi\'\'\'\''
+print '---------------------------------------'
+phi_sol_dash_dash_dash_dash = diff(diff(diff(diff(phi_sol,r),r),r),r)
+pprint(simplify(phi_sol_dash_dash_dash_dash))
+
+print '---------------------------------------'
+print '           phi\'\'\'\'\''
+print '---------------------------------------'
+phi_sol_dash_dash_dash_dash_dash = diff(diff(diff(diff(diff(phi_sol,r),r),r),r),r)
+pprint(simplify(phi_sol_dash_dash_dash_dash_dash))
+
+
+
+
+print '---------------------------------------'
 print '           phi\' / r-phi\'\''
 print '---------------------------------------'
 test = phi_sol_dash_div_r - phi_sol_dash_dash
@@ -45,8 +60,6 @@ print '           phi\' / r+phi\'\''
 print '---------------------------------------'
 test = phi_sol_dash_div_r + phi_sol_dash_dash
 pprint(simplify(test))
-
-
 
 print '---------------------------------------'
 print '           phi\' / r^2-phi\'\'/r'

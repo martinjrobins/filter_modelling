@@ -119,6 +119,24 @@ u = diff(u,y)
 u = simplify(u)
 pprint(simplify(expand(u)))
 
+print '---------------------------------------'
+print '           dpdxx + dpdyy (l = 1)'
+print '---------------------------------------'
+p = diff(diff(diff(phi(r),x),x),x)+diff(diff(diff(phi(r),y),y),x)
+p = diff(diff(p,x),x) + diff(diff(p,y),y)
+p = simplify(p)
+pprint(simplify(expand(p)))
+
+print '---------------------------------------'
+print '           dpdxx + dpdyy (l = 2) '
+print '---------------------------------------'
+p = diff(diff(diff(phi(r),x),x),y)+diff(diff(diff(phi(r),y),y),y)
+p = diff(diff(p,x),x) + diff(diff(p,y),y)
+p = simplify(p)
+pprint(simplify(expand(p)))
+
+
+
 
 
 print '---------------------------------------'
