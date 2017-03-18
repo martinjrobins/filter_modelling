@@ -64,6 +64,9 @@ include_directories(SYSTEM ${CXXTEST_INCLUDES} ${EIGEN3_INCLUDE_DIR} ${VTK_INCLU
 
 add_library(filter_modelling ${source_files})
 
+add_executable(check_solutions check_solutions.cpp )
+target_link_libraries(check_solutions ${VTK_LIBRARIES} ${Boost_LIBRARIES} ${CUDA_LIBRARIES} ${GPERFTOOLS_LIBRARIES})
+
 add_executable(simulation simulation.cpp )
 target_link_libraries(simulation filter_modelling ${VTK_LIBRARIES} ${Boost_LIBRARIES} ${CUDA_LIBRARIES} ${GPERFTOOLS_LIBRARIES})
 
