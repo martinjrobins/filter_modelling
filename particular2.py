@@ -16,7 +16,7 @@ print '           u (i = 1, l = 1)'
 print '---------------------------------------'
 u = diff(diff(phi(r),x),x)+diff(diff(phi(r),y),y) - diff(diff(phi(r),x),x)
 u = simplify(u)
-pprint(expand(u))
+pprint(u)
 
 print '---------------------------------------'
 print '           u (i = 1, l = 2)'
@@ -24,33 +24,40 @@ print '---------------------------------------'
 u = -diff(diff(phi(r),x),y)
 #u = simplify(u).subs(x**2+y**2,rs**2)
 u = simplify(u)
-pprint(expand(u))
+pprint(u)
 
 print '---------------------------------------'
 print '           u (i = 2, l = 1)'
 print '---------------------------------------'
 u = -diff(diff(phi(r),y),x)
 u = simplify(u)
-pprint(expand(u))
+pprint(u)
 
 print '---------------------------------------'
 print '           u (i = 2, l = 2)'
 print '---------------------------------------'
 u = diff(diff(phi(r),x),x)+diff(diff(phi(r),y),y) - diff(diff(phi(r),y),y)
 u = simplify(u)
-pprint(expand(u))
+pprint(u)
 
 print '---------------------------------------'
 print '           p (l = 1) '
 print '---------------------------------------'
-p = diff(diff(diff(phi(r),x),x),x)+diff(diff(diff(phi(r),y),y),x)
+p = -diff(diff(diff(phi(r),x),x),x)-diff(diff(diff(phi(r),y),y),x)
 p = simplify(p)
 pprint(simplify(expand(p)))
+
+print '3dash'
+pprint(simplify((x**2+y**2)/(x**2+y**2)**(3/2)))
+print '2dash'
+pprint(simplify((r)/(x**2+y**2)**(3/2)))
+print 'dash'
+pprint(simplify((-1)/(x**2+y**2)**(3/2)))
 
 print '---------------------------------------'
 print '           p (l = 2) '
 print '---------------------------------------'
-p = diff(diff(diff(phi(r),x),x),y)+diff(diff(diff(phi(r),y),y),y)
+p = -diff(diff(diff(phi(r),x),x),y)-diff(diff(diff(phi(r),y),y),y)
 p = simplify(p)
 pprint(simplify(expand(p)))
 

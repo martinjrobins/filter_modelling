@@ -67,5 +67,13 @@ print '---------------------------------------'
 test = phi_sol_dash_div_r/r - phi_sol_dash_dash/r
 pprint(simplify(test))
 
+print '---------------------------------------'
+print '           phi\' / r^2+phi\'\'/r'
+print '---------------------------------------'
+test = phi_sol_dash_div_r/r + phi_sol_dash_dash/r
+pprint(simplify(test))
+
+
+
 
 

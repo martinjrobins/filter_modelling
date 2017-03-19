@@ -1,7 +1,7 @@
 #include "filter.h"
 #include "setup_knots.h"
-//#include "solve_stokes_MAPS.h"
-#include "solve_stokes_LMAPS.h"
+#include "solve_stokes_MAPS.h"
+//#include "solve_stokes_LMAPS.h"
 
 
 int main(int argc, char **argv) {
@@ -83,7 +83,7 @@ int main(int argc, char **argv) {
       const int timesteps = Tf/dt_aim;
       const double dt = Tf/timesteps;
       const double dt_adapt = (1.0/100.0)*PI/sqrt(2*k);
-      const double2 domain_min(0,-6);
+      const double2 domain_min(0,-1);
       const double2 domain_max(L,L+1);
       const double2 ns_buffer(L/3,L/3);
 
@@ -125,8 +125,8 @@ int main(int argc, char **argv) {
       //
       // SOLVE STOKES
       //
-      //solve_stokes_MAPS(knots,max_iter_linear,restart_linear,solver_in,c0);
-      solve_stokes_LMAPS(knots,max_iter_linear,restart_linear,solver_in,c0);
+      solve_stokes_MAPS(knots,max_iter_linear,restart_linear,solver_in,c0);
+      //solve_stokes_LMAPS(knots,max_iter_linear,restart_linear,solver_in,c0);
       //
       
 

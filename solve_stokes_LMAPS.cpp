@@ -8,13 +8,13 @@ void set_submatrix_f(matrix_type& submatrix,sparse_matrix_type& matrix, KnotsTyp
         int kk = it.index();   // col index 
         for (typename sparse_matrix_type::InnerIterator it(matrix,ii); it; ++it,++j) {
             int jj = it.index();   // col index 
-            const double mat_val = matrix.coeff(kk,jj);
+            const double mat_val = matrix.coeff(jj,kk);
             if (std::abs(mat_val) > std::numeric_limits<double>::epsilon()) {
                 submatrix(k,j) = mat_val;
             } else {
                 typedef KnotsType::position::value_type double_d;
                 const double_d dx = get<position>(knots)[jj]-get<position>(knots)[kk];
-                submatrix(k,j) = function(dx,knots[kk],knots[jj]);
+                submatrix(k,j) = function(dx,knots[jj],knots[kk]);
             }
         }
     }
