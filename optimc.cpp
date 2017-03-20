@@ -23,7 +23,7 @@ int main(int argc, char **argv) {
         ("D", po::value<double>(&D)->default_value(0.01), "diffusion constant")
         ("particle_rate", po::value<double>(&particle_rate)->default_value(1000.0), "particle rate")
         ("react_rate", po::value<double>(&react_rate)->default_value(0.5), "particle reaction rate")
-        ("epsilon_strength", po::value<double>(&epsilon_strength)->default_value(2), "boundary clustering strength")
+        ("epsilon_strength", po::value<double>(&epsilon_strength)->default_value(1.5), "boundary clustering strength")
         ("epsilon_falloff", po::value<double>(&epsilon_falloff)->default_value(0.3), "boundary clustering fall-off")
         ("c0_min", po::value<double>(&c0_min)->default_value(0.1), "kernel constant")
         ("c0_max", po::value<double>(&c0_max)->default_value(0.2), "kernel constant")
