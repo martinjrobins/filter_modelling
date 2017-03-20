@@ -320,6 +320,8 @@ void calculate_c(KnotsType &knots, double c0, const double nx, double2 domain_mi
     }
 
     c[i] = c0*c[i]/mult;
+    //c[i] = c0/mult/2;
+    //c[i] = delta;
 
     vtkWriteGrid("init_knots",2,knots.get_grid(true));
     std::cout << "done calculate c."<<std::endl;
