@@ -200,11 +200,11 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
                 ,10*k*(domain_min[1]+boundary_layer-r[i][1])
                 ,if_else(r[i][1] > domain_max[1]-boundary_layer
                     ,10*k*(domain_max[1]-boundary_layer-r[i][1])
-                    //,0.0
-                    ,-epsilon_strength*delta*(
-                            exp(1.0/epsilon_falloff*(domain_min[1]+boundary_layer-r[i][1]))
-                           - exp(1.0/epsilon_falloff*(r[i][1]-domain_max[1]+boundary_layer))
-                           )
+                    ,0.0
+                    //,-epsilon_strength*delta*(
+                    //        exp(1.0/epsilon_falloff*(domain_min[1]+boundary_layer-r[i][1]))
+                    //       - exp(1.0/epsilon_falloff*(r[i][1]-domain_max[1]+boundary_layer))
+                    //       )
                     )
                 )
             )

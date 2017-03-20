@@ -3,7 +3,7 @@ template <typename Dx, typename A, typename B>
 double kernel_mq(const Dx& dx, const A& a, const B& b) {
     const double c = get<kernel_constant>(b);
     const double dx2 = dx.squaredNorm();
-    return std::sqrt(dx2 + c*c);
+    return std::sqrt(dx2 + std::pow(c,2));
 }
 
 
@@ -39,7 +39,6 @@ double phi_sol_dash_div_r(const Dx& dx, const A& a, const B& b) {
         const double c4 = std::pow(c,4);
         const double dx2 = dx.squaredNorm();
         const double dx4 = std::pow(dx2,2);
-        const double r = std::sqrt(dx2);
         const double logc = std::log(c);
         const double c_p_mq = std::sqrt(dx2+c2);
         const double logc_p_mq = std::log(c+c_p_mq);
@@ -72,7 +71,6 @@ double phi_sol_dash_dash(const Dx& dx, const A& a, const B& b) {
         const double c5 = std::pow(c,5);
         const double dx2 = dx.squaredNorm();
         const double dx4 = std::pow(dx2,2);
-        const double r = std::sqrt(dx2);
         const double logc = std::log(c);
         const double c_p_mq = std::sqrt(dx2+c2);
         const double logc_p_mq = std::log(c+c_p_mq);
@@ -84,8 +82,8 @@ double phi_sol_dash_dash(const Dx& dx, const A& a, const B& b) {
 template <typename Dx, typename A, typename B>
 double phi_sol_dash_div_r2_minus_phi_sol_dash_dash_div_r(const Dx& dx, const A& a, const B& b) {
         const double c = get<kernel_constant>(b);
-        const double c2 = c*c;
-        const double c3 = c2*c;
+        const double c2 = std::pow(c,2);
+        const double c3 = std::pow(c,3);
         const double dx2 = dx.squaredNorm();
         const double nx = std::sqrt(dx2);
         return -nx*(7.0*c3 + 8.0*c2*std::sqrt(dx2+c2) + 4.0*dx2*c + 2.0*dx2*std::sqrt(dx2+c2))/(60.0*c2 + 60.0*c*std::sqrt(dx2+c2) + 30.0*dx2);

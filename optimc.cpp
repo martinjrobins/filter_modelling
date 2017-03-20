@@ -23,7 +23,7 @@ int main(int argc, char **argv) {
         ("D", po::value<double>(&D)->default_value(0.01), "diffusion constant")
         ("particle_rate", po::value<double>(&particle_rate)->default_value(1000.0), "particle rate")
         ("react_rate", po::value<double>(&react_rate)->default_value(0.5), "particle reaction rate")
-        ("epsilon_strength", po::value<double>(&epsilon_strength)->default_value(1), "boundary clustering strength")
+        ("epsilon_strength", po::value<double>(&epsilon_strength)->default_value(2), "boundary clustering strength")
         ("epsilon_falloff", po::value<double>(&epsilon_falloff)->default_value(0.3), "boundary clustering fall-off")
         ("c0_min", po::value<double>(&c0_min)->default_value(0.1), "kernel constant")
         ("c0_max", po::value<double>(&c0_max)->default_value(0.2), "kernel constant")
@@ -219,8 +219,8 @@ int main(int argc, char **argv) {
         psol_v2_mat*map_type(get<alpha2>(knots).data(),Nk);
 
     map_type(get<pressure>(comsol).data(),Nc) = 
-        psol_v1_mat*map_type(get<alpha1>(knots).data(),Nk)+
-        psol_v2_mat*map_type(get<alpha2>(knots).data(),Nk);
+        psol_p1_mat*map_type(get<alpha1>(knots).data(),Nk)+
+        psol_p2_mat*map_type(get<alpha2>(knots).data(),Nk);
       std::cout << "done calculating solution at comsol points."<< std::endl;
 
       //compare
@@ -264,6 +264,8 @@ int main(int argc, char **argv) {
       << max_error_v << ' '
       << max_error_p << ' '
       << std::endl;
+
+      vtkWriteGrid("error",0,comsol.get_grid(true));
     }
     file.close();
 }
