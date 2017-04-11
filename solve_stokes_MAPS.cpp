@@ -16,15 +16,15 @@ void solve_stokes_MAPS(KnotsType &knots, unsigned int max_iter_linear,unsigned i
                const_particle_reference a,
                const_particle_reference b) {
                     if (get<interior>(a)) {
-                        return kernel_mq(dx,a,b);
+                        return kernel_mq(dx,get<kernel_constant>(b));
                     } else if (get<outlet>(a)) {
                         //return psol_du1dy(dx,a,b);
-                        return psol_p1(dx,a,b);
+                        return psol_p1(dx,get<kernel_constant>(b));
                     } else if (get<inlet>(a)) {
-                        //return psol_p1(dx,a,b);
-                        return psol_u1(dx,a,b);
+                        //return psol_p1(dx,get<kernel_constant>(b));
+                        return psol_u1(dx,get<kernel_constant>(b));
                     } else { // b
-                        return psol_u1(dx,a,b);
+                        return psol_u1(dx,get<kernel_constant>(b));
                     }
                     });
 
@@ -35,13 +35,13 @@ void solve_stokes_MAPS(KnotsType &knots, unsigned int max_iter_linear,unsigned i
                     if (get<interior>(a)) {
                         return 0.0;
                     } else if (get<outlet>(a)) {
-                        //return psol_du2dy(dx,a,b);
-                        return psol_p2(dx,a,b);
+                        //return psol_du2dy(dx,get<kernel_constant>(b));
+                        return psol_p2(dx,get<kernel_constant>(b));
                     } else if (get<inlet>(a)) {
-                        //return psol_p2(dx,a,b);
-                        return psol_u2(dx,a,b);
+                        //return psol_p2(dx,get<kernel_constant>(b));
+                        return psol_u2(dx,get<kernel_constant>(b));
                     } else { // b
-                        return psol_u2(dx,a,b);
+                        return psol_u2(dx,get<kernel_constant>(b));
                     }
                     });
 
@@ -55,10 +55,10 @@ void solve_stokes_MAPS(KnotsType &knots, unsigned int max_iter_linear,unsigned i
                     if (get<interior>(a)) {
                         return 0.0;
                     } else if (get<outlet>(a)) {
-                        return psol_u1(dx,a,b);
-                        //return psol_dv1dy(dx,a,b);
+                        return psol_u1(dx,get<kernel_constant>(b));
+                        //return psol_dv1dy(dx,get<kernel_constant>(b));
                     } else { // inlet or b
-                        return psol_v1(dx,a,b);
+                        return psol_v1(dx,get<kernel_constant>(b));
                     }
                     });
         
@@ -67,12 +67,12 @@ void solve_stokes_MAPS(KnotsType &knots, unsigned int max_iter_linear,unsigned i
                const_particle_reference a,
                const_particle_reference b) {
                     if (get<interior>(a)) {
-                        return kernel_mq(dx,a,b);
+                        return kernel_mq(dx,get<kernel_constant>(b));
                     } else if (get<outlet>(a)) {
-                        return psol_u2(dx,a,b);
-                        //return psol_dv2dy(dx,a,b);
+                        return psol_u2(dx,get<kernel_constant>(b));
+                        //return psol_dv2dy(dx,get<kernel_constant>(b));
                     } else { // inlet or b
-                        return psol_v2(dx,a,b);
+                        return psol_v2(dx,get<kernel_constant>(b));
                     }
                     });
 
@@ -123,98 +123,98 @@ void solve_stokes_MAPS(KnotsType &knots, unsigned int max_iter_linear,unsigned i
             [](const_position_reference dx,
                const_particle_reference a,
                const_particle_reference b) {
-            return psol_u1(dx,a,b);
+            return psol_u1(dx,get<kernel_constant>(b));
             });
 
       auto psol_v1_op = create_dense_operator(knots,knots,
             [](const_position_reference dx,
                const_particle_reference a,
                const_particle_reference b) {
-            return psol_v1(dx,a,b);
+            return psol_v1(dx,get<kernel_constant>(b));
             });
 
       auto psol_p1_op = create_dense_operator(knots,knots,
             [](const_position_reference dx,
                const_particle_reference a,
                const_particle_reference b) {
-            return psol_p1(dx,a,b);
+            return psol_p1(dx,get<kernel_constant>(b));
             });
 
       auto psol_u2_op = create_dense_operator(knots,knots,
             [](const_position_reference dx,
                const_particle_reference a,
                const_particle_reference b) {
-            return psol_u2(dx,a,b);
+            return psol_u2(dx,get<kernel_constant>(b));
             });
 
       auto psol_v2_op = create_dense_operator(knots,knots,
             [](const_position_reference dx,
                const_particle_reference a,
                const_particle_reference b) {
-            return psol_v2(dx,a,b);
+            return psol_v2(dx,get<kernel_constant>(b));
             });
 
       auto psol_p2_op = create_dense_operator(knots,knots,
             [](const_position_reference dx,
                const_particle_reference a,
                const_particle_reference b) {
-            return psol_p2(dx,a,b);
+            return psol_p2(dx,get<kernel_constant>(b));
             });
 
     auto psol_du1dx_op = create_dense_operator(knots,knots,
             [](const_position_reference dx,
                const_particle_reference a,
                const_particle_reference b) {
-            return psol_du1dx(dx,a,b);
+            return psol_du1dx(dx,get<kernel_constant>(b));
             });
 
     auto psol_du2dx_op = create_dense_operator(knots,knots,
             [](const_position_reference dx,
                const_particle_reference a,
                const_particle_reference b) {
-            return psol_du2dx(dx,a,b);
+            return psol_du2dx(dx,get<kernel_constant>(b));
             });
 
     auto psol_du1dy_op = create_dense_operator(knots,knots,
             [](const_position_reference dx,
                const_particle_reference a,
                const_particle_reference b) {
-            return psol_du1dy(dx,a,b);
+            return psol_du1dy(dx,get<kernel_constant>(b));
             });
 
     auto psol_du2dy_op = create_dense_operator(knots,knots,
             [](const_position_reference dx,
                const_particle_reference a,
                const_particle_reference b) {
-            return psol_du2dy(dx,a,b);
+            return psol_du2dy(dx,get<kernel_constant>(b));
             });
 
     auto psol_dv1dx_op = create_dense_operator(knots,knots,
             [](const_position_reference dx,
                const_particle_reference a,
                const_particle_reference b) {
-            return psol_dv1dx(dx,a,b);
+            return psol_dv1dx(dx,get<kernel_constant>(b));
             });
 
     auto psol_dv2dx_op = create_dense_operator(knots,knots,
             [](const_position_reference dx,
                const_particle_reference a,
                const_particle_reference b) {
-            return psol_dv2dx(dx,a,b);
+            return psol_dv2dx(dx,get<kernel_constant>(b));
             });
 
     auto psol_dv1dy_op = create_dense_operator(knots,knots,
             [](const_position_reference dx,
                const_particle_reference a,
                const_particle_reference b) {
-            return psol_dv1dy(dx,a,b);
+            return psol_dv1dy(dx,get<kernel_constant>(b));
             });
 
     auto psol_dv2dy_op = create_dense_operator(knots,knots,
             [](const_position_reference dx,
                const_particle_reference a,
                const_particle_reference b) {
-            return psol_dv2dy(dx,a,b);
+            return psol_dv2dy(dx,get<kernel_constant>(b));
             });
 
 

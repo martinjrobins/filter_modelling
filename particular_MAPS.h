@@ -1,15 +1,13 @@
 
-template <typename Dx, typename A, typename B>
-double kernel_mq(const Dx& dx, const A& a, const B& b) {
-    const double c = get<kernel_constant>(b);
+template <typename Dx, typename C>
+double kernel_mq(const Dx& dx, const C& c) {
     const double dx2 = dx.squaredNorm();
     return std::sqrt(dx2 + std::pow(c,2));
 }
 
 
-template <typename Dx, typename A, typename B>
-double phi_sol(const Dx& dx, const A& a, const B& b) {
-        const double c = get<kernel_constant>(b);
+template <typename Dx, typename C>
+double phi_sol(const Dx& dx, const C& c) {
         const double c2 = c*c;
         const double c3 = c2*c;
         const double dx2 = dx.squaredNorm();
@@ -18,7 +16,7 @@ double phi_sol(const Dx& dx, const A& a, const B& b) {
 }
 
 /*
-template <typename Dx, typename A, typename B>
+template <typename Dx, typename C>
 double phi_sol_dash_div_r(const Dx& dx, const A& a, const B& b) {
         const double c = get<kernel_constant>(b);
         const double c2 = c*c;
@@ -31,9 +29,8 @@ double phi_sol_dash_div_r(const Dx& dx, const A& a, const B& b) {
 }
 */
 
-template <typename Dx, typename A, typename B>
-double phi_sol_dash_div_r(const Dx& dx, const A& a, const B& b) {
-        const double c = get<kernel_constant>(b);
+template <typename Dx, typename C>
+double phi_sol_dash_div_r(const Dx& dx, const C& c) {
         const double c2 = std::pow(c,2);
         const double c3 = std::pow(c,3);
         const double c4 = std::pow(c,4);
@@ -48,7 +45,7 @@ double phi_sol_dash_div_r(const Dx& dx, const A& a, const B& b) {
 
 
 /*
-template <typename Dx, typename A, typename B>
+template <typename Dx, typename C>
 double phi_sol_dash_dash(const Dx& dx, const A& a, const B& b) {
         const double c = get<kernel_constant>(b);
         const double c2 = c*c;
@@ -62,9 +59,8 @@ double phi_sol_dash_dash(const Dx& dx, const A& a, const B& b) {
 }
 */
 
-template <typename Dx, typename A, typename B>
-double phi_sol_dash_dash(const Dx& dx, const A& a, const B& b) {
-        const double c = get<kernel_constant>(b);
+template <typename Dx, typename C>
+double phi_sol_dash_dash(const Dx& dx, const C& c) {
         const double c2 = std::pow(c,2);
         const double c3 = std::pow(c,3);
         const double c4 = std::pow(c,4);
@@ -79,9 +75,8 @@ double phi_sol_dash_dash(const Dx& dx, const A& a, const B& b) {
 }
 
 
-template <typename Dx, typename A, typename B>
-double phi_sol_dash_div_r2_minus_phi_sol_dash_dash_div_r(const Dx& dx, const A& a, const B& b) {
-        const double c = get<kernel_constant>(b);
+template <typename Dx, typename C>
+double phi_sol_dash_div_r2_minus_phi_sol_dash_dash_div_r(const Dx& dx, const C& c) {
         const double c2 = std::pow(c,2);
         const double c3 = std::pow(c,3);
         const double dx2 = dx.squaredNorm();
@@ -90,7 +85,7 @@ double phi_sol_dash_div_r2_minus_phi_sol_dash_dash_div_r(const Dx& dx, const A& 
 }
 
 /*
-template <typename Dx, typename A, typename B>
+template <typename Dx, typename C>
 double phi_sol_dash_dash_dash(const Dx& dx, const A& a, const B& b) {
         const double c = get<kernel_constant>(b);
         const double c2 = c*c;
@@ -108,9 +103,8 @@ double phi_sol_dash_dash_dash(const Dx& dx, const A& a, const B& b) {
 }
 */
 
-template <typename Dx, typename A, typename B>
-double phi_sol_dash_dash_dash(const Dx& dx, const A& a, const B& b) {
-        const double c = get<kernel_constant>(b);
+template <typename Dx, typename C>
+double phi_sol_dash_dash_dash(const Dx& dx, const C& c) {
         const double c2 = std::pow(c,2);
         const double c3 = std::pow(c,3);
         const double c4 = std::pow(c,4);
@@ -125,10 +119,10 @@ double phi_sol_dash_dash_dash(const Dx& dx, const A& a, const B& b) {
 }
 
 
-template <typename Dx, typename A, typename B>
-double psol_u1(const Dx& dx, const A& a, const B& b) {
-    const double vphi_sol_dash_div_r = phi_sol_dash_div_r(dx,a,b);
-    const double vphi_sol_dash_dash = phi_sol_dash_dash(dx,a,b);
+template <typename Dx, typename C>
+double psol_u1(const Dx& dx, const C& c) {
+    const double vphi_sol_dash_div_r = phi_sol_dash_div_r(dx,c);
+    const double vphi_sol_dash_dash = phi_sol_dash_dash(dx,c);
     const double dx2 = dx.squaredNorm();
 
     const double mu = 1.0;
@@ -140,10 +134,10 @@ double psol_u1(const Dx& dx, const A& a, const B& b) {
     }
 }
 
-template <typename Dx, typename A, typename B>
-double psol_u2(const Dx& dx, const A& a, const B& b) {
-    const double vphi_sol_dash_div_r = phi_sol_dash_div_r(dx,a,b);
-    const double vphi_sol_dash_dash = phi_sol_dash_dash(dx,a,b);
+template <typename Dx, typename C>
+double psol_u2(const Dx& dx, const C& c) {
+    const double vphi_sol_dash_div_r = phi_sol_dash_div_r(dx,c);
+    const double vphi_sol_dash_dash = phi_sol_dash_dash(dx,c);
     const double dx2 = dx.squaredNorm();
 
     const double mu = 1.0;
@@ -155,10 +149,10 @@ double psol_u2(const Dx& dx, const A& a, const B& b) {
     }
 }
 
-template <typename Dx, typename A, typename B>
-double psol_v1(const Dx& dx, const A& a, const B& b) {
-    const double vphi_sol_dash_div_r = phi_sol_dash_div_r(dx,a,b);
-    const double vphi_sol_dash_dash = phi_sol_dash_dash(dx,a,b);
+template <typename Dx, typename C>
+double psol_v1(const Dx& dx, const C& c) {
+    const double vphi_sol_dash_div_r = phi_sol_dash_div_r(dx,c);
+    const double vphi_sol_dash_dash = phi_sol_dash_dash(dx,c);
     const double dx2 = dx.squaredNorm();
 
     const double mu = 1.0;
@@ -170,10 +164,10 @@ double psol_v1(const Dx& dx, const A& a, const B& b) {
     }
 }
 
-template <typename Dx, typename A, typename B>
-double psol_v2(const Dx& dx, const A& a, const B& b) {
-    const double vphi_sol_dash_div_r = phi_sol_dash_div_r(dx,a,b);
-    const double vphi_sol_dash_dash = phi_sol_dash_dash(dx,a,b);
+template <typename Dx, typename C>
+double psol_v2(const Dx& dx, const C& c) {
+    const double vphi_sol_dash_div_r = phi_sol_dash_div_r(dx,c);
+    const double vphi_sol_dash_dash = phi_sol_dash_dash(dx,c);
     const double dx2 = dx.squaredNorm();
 
     const double mu = 1.0;
@@ -187,8 +181,8 @@ double psol_v2(const Dx& dx, const A& a, const B& b) {
 
 
 
-template <typename Dx, typename A, typename B>
-double psol_du1dx(const Dx& dx, const A& a, const B& b) {
+template <typename Dx, typename C>
+double psol_du1dx(const Dx& dx, const C& c) {
     const double dx2 = dx.squaredNorm();
     const double ndx = std::sqrt(dx2);
     const double x = dx[0];
@@ -199,15 +193,15 @@ double psol_du1dx(const Dx& dx, const A& a, const B& b) {
     const double y4 = y2*y2;
     const double mu = 1.0;
     if (dx2==0) {
-        return phi_sol_dash_dash_dash(dx,a,b); 
+        return phi_sol_dash_dash_dash(dx,c); 
     } else {
-        return -x*(phi_sol_dash_div_r2_minus_phi_sol_dash_dash_div_r(dx,a,b)*(2*y2-x2)/(ndx*dx2) + phi_sol_dash_dash_dash(dx,a,b)*y2/(dx2*ndx));
+        return -x*(phi_sol_dash_div_r2_minus_phi_sol_dash_dash_div_r(dx,c)*(2*y2-x2)/(ndx*dx2) + phi_sol_dash_dash_dash(dx,c)*y2/(dx2*ndx));
     }
 
 }
 
-template <typename Dx, typename A, typename B>
-double psol_du2dx(const Dx& dx, const A& a, const B& b) {
+template <typename Dx, typename C>
+double psol_du2dx(const Dx& dx, const C& c) {
     const double dx2 = dx.squaredNorm();
     const double ndx = std::sqrt(dx2);
     const double x = dx[0];
@@ -218,15 +212,15 @@ double psol_du2dx(const Dx& dx, const A& a, const B& b) {
     const double y4 = y2*y2;
     const double mu = 1.0;
     if (dx2==0) {
-        return -phi_sol_dash_dash_dash(dx,a,b); 
+        return -phi_sol_dash_dash_dash(dx,c); 
     } else {
-        return -y*(phi_sol_dash_div_r2_minus_phi_sol_dash_dash_div_r(dx,a,b)*(y2-2*x2)/(ndx*dx2)- phi_sol_dash_dash_dash(dx,a,b)*x2/(dx2*ndx));
+        return -y*(phi_sol_dash_div_r2_minus_phi_sol_dash_dash_div_r(dx,c)*(y2-2*x2)/(ndx*dx2)- phi_sol_dash_dash_dash(dx,c)*x2/(dx2*ndx));
     }
 
 }
 
-template <typename Dx, typename A, typename B>
-double psol_dv1dx(const Dx& dx, const A& a, const B& b) {
+template <typename Dx, typename C>
+double psol_dv1dx(const Dx& dx, const C& c) {
     const double dx2 = dx.squaredNorm();
     const double ndx = std::sqrt(dx2);
     const double x = dx[0];
@@ -237,15 +231,15 @@ double psol_dv1dx(const Dx& dx, const A& a, const B& b) {
     const double y4 = y2*y2;
     const double mu = 1.0;
     if (dx2==0) {
-        return -phi_sol_dash_dash_dash(dx,a,b); 
+        return -phi_sol_dash_dash_dash(dx,c); 
     } else {
-        return -y*(phi_sol_dash_div_r2_minus_phi_sol_dash_dash_div_r(dx,a,b)*(y2-2*x2)/(ndx*dx2)- phi_sol_dash_dash_dash(dx,a,b)*x2/(dx2*ndx));
+        return -y*(phi_sol_dash_div_r2_minus_phi_sol_dash_dash_div_r(dx,c)*(y2-2*x2)/(ndx*dx2)- phi_sol_dash_dash_dash(dx,c)*x2/(dx2*ndx));
     }
 
 }
 
-template <typename Dx, typename A, typename B>
-double psol_dv2dx(const Dx& dx, const A& a, const B& b) {
+template <typename Dx, typename C>
+double psol_dv2dx(const Dx& dx, const C& c) {
     const double dx2 = dx.squaredNorm();
     const double ndx = std::sqrt(dx2);
     const double x = dx[0];
@@ -256,15 +250,15 @@ double psol_dv2dx(const Dx& dx, const A& a, const B& b) {
     const double y4 = y2*y2;
     const double mu = 1.0;
     if (dx2==0) {
-        return phi_sol_dash_dash_dash(dx,a,b);
+        return phi_sol_dash_dash_dash(dx,c);
     } else {
-        return -x*(-phi_sol_dash_div_r2_minus_phi_sol_dash_dash_div_r(dx,a,b)*3*y2/(ndx*dx2) + phi_sol_dash_dash_dash(dx,a,b)*x2/(dx2*ndx));
+        return -x*(-phi_sol_dash_div_r2_minus_phi_sol_dash_dash_div_r(dx,c)*3*y2/(ndx*dx2) + phi_sol_dash_dash_dash(dx,c)*x2/(dx2*ndx));
     }
 
 }
 
-template <typename Dx, typename A, typename B>
-double psol_du1dy(const Dx& dx, const A& a, const B& b) {
+template <typename Dx, typename C>
+double psol_du1dy(const Dx& dx, const C& c) {
     const double dx2 = dx.squaredNorm();
     const double ndx = std::sqrt(dx2);
     const double x = dx[0];
@@ -275,16 +269,16 @@ double psol_du1dy(const Dx& dx, const A& a, const B& b) {
     const double y4 = y2*y2;
     const double mu = 1.0;
     if (dx2==0) {
-        return phi_sol_dash_dash_dash(dx,a,b); 
+        return phi_sol_dash_dash_dash(dx,c); 
     } else {
-        return -y*(-phi_sol_dash_div_r2_minus_phi_sol_dash_dash_div_r(dx,a,b)*3*x2/(ndx*dx2) + phi_sol_dash_dash_dash(dx,a,b)*y2/(dx2*ndx));
+        return -y*(-phi_sol_dash_div_r2_minus_phi_sol_dash_dash_div_r(dx,c)*3*x2/(ndx*dx2) + phi_sol_dash_dash_dash(dx,c)*y2/(dx2*ndx));
     }
 
 }
 
 
-template <typename Dx, typename A, typename B>
-double psol_du2dy(const Dx& dx, const A& a, const B& b) {
+template <typename Dx, typename C>
+double psol_du2dy(const Dx& dx, const C& c) {
     const double dx2 = dx.squaredNorm();
     const double ndx = std::sqrt(dx2);
     const double x = dx[0];
@@ -295,14 +289,14 @@ double psol_du2dy(const Dx& dx, const A& a, const B& b) {
     const double y4 = y2*y2;
     const double mu = 1.0;
     if (dx2==0) {
-        return -phi_sol_dash_dash_dash(dx,a,b); 
+        return -phi_sol_dash_dash_dash(dx,c); 
     } else {
-        return x*(phi_sol_dash_div_r2_minus_phi_sol_dash_dash_div_r(dx,a,b)*(2*y2-x2)/(ndx*dx2) + phi_sol_dash_dash_dash(dx,a,b)*y2/(dx2*ndx));
+        return x*(phi_sol_dash_div_r2_minus_phi_sol_dash_dash_div_r(dx,c)*(2*y2-x2)/(ndx*dx2) + phi_sol_dash_dash_dash(dx,c)*y2/(dx2*ndx));
     }
 }
 
-template <typename Dx, typename A, typename B>
-double psol_dv1dy(const Dx& dx, const A& a, const B& b) {
+template <typename Dx, typename C>
+double psol_dv1dy(const Dx& dx, const C& c) {
     const double dx2 = dx.squaredNorm();
     const double ndx = std::sqrt(dx2);
     const double x = dx[0];
@@ -313,14 +307,14 @@ double psol_dv1dy(const Dx& dx, const A& a, const B& b) {
     const double y4 = y2*y2;
     const double mu = 1.0;
     if (dx2==0) {
-        return -phi_sol_dash_dash_dash(dx,a,b); 
+        return -phi_sol_dash_dash_dash(dx,c); 
     } else {
-        return x*(phi_sol_dash_div_r2_minus_phi_sol_dash_dash_div_r(dx,a,b)*(2*y2-x2)/(ndx*dx2) + phi_sol_dash_dash_dash(dx,a,b)*y2/(dx2*ndx));
+        return x*(phi_sol_dash_div_r2_minus_phi_sol_dash_dash_div_r(dx,c)*(2*y2-x2)/(ndx*dx2) + phi_sol_dash_dash_dash(dx,c)*y2/(dx2*ndx));
     }
 }
 
-template <typename Dx, typename A, typename B>
-double psol_dv2dy(const Dx& dx, const A& a, const B& b) {
+template <typename Dx, typename C>
+double psol_dv2dy(const Dx& dx, const C& c) {
     const double dx2 = dx.squaredNorm();
     const double ndx = std::sqrt(dx2);
     const double x = dx[0];
@@ -331,35 +325,35 @@ double psol_dv2dy(const Dx& dx, const A& a, const B& b) {
     const double y4 = y2*y2;
     const double mu = 1.0;
     if (dx2==0) {
-        return phi_sol_dash_dash_dash(dx,a,b); 
+        return phi_sol_dash_dash_dash(dx,c); 
     } else {
-        return -y*(phi_sol_dash_div_r2_minus_phi_sol_dash_dash_div_r(dx,a,b)*(2*x2-y2)/(ndx*dx2) + phi_sol_dash_dash_dash(dx,a,b)*x2/(dx2*ndx));
+        return -y*(phi_sol_dash_div_r2_minus_phi_sol_dash_dash_div_r(dx,c)*(2*x2-y2)/(ndx*dx2) + phi_sol_dash_dash_dash(dx,c)*x2/(dx2*ndx));
     }
 
 }
 
-template <typename Dx, typename A, typename B>
-double psol_p1(const Dx& dx, const A& a, const B& b) {
+template <typename Dx, typename C>
+double psol_p1(const Dx& dx, const C& c) {
     const double dx2 = dx.squaredNorm();
     const double ndx = std::sqrt(dx2);
     const double mu = 1.0;
     if (dx2==0) {
-        return -phi_sol_dash_dash_dash(dx,a,b);
+        return -phi_sol_dash_dash_dash(dx,c);
     } else {
-        return (phi_sol_dash_dash_dash(dx,a,b) - phi_sol_dash_div_r2_minus_phi_sol_dash_dash_div_r(dx,a,b))*dx[0]/ndx;
+        return (phi_sol_dash_dash_dash(dx,c) - phi_sol_dash_div_r2_minus_phi_sol_dash_dash_div_r(dx,c))*dx[0]/ndx;
         //return (phi_sol_dash_dash_dash(dx,a,b))*dx[0]/ndx;
     }
 }
 
-template <typename Dx, typename A, typename B>
-double psol_p2(const Dx& dx, const A& a, const B& b) {
+template <typename Dx, typename C>
+double psol_p2(const Dx& dx, const C& c) {
     const double dx2 = dx.squaredNorm();
     const double ndx = std::sqrt(dx2);
     const double mu = 1.0;
     if (dx2==0) {
-        return -phi_sol_dash_dash_dash(dx,a,b);
+        return -phi_sol_dash_dash_dash(dx,c);
     } else {
-        return (phi_sol_dash_dash_dash(dx,a,b) - phi_sol_dash_div_r2_minus_phi_sol_dash_dash_div_r(dx,a,b))*dx[1]/ndx;
+        return (phi_sol_dash_dash_dash(dx,c) - phi_sol_dash_div_r2_minus_phi_sol_dash_dash_div_r(dx,c))*dx[1]/ndx;
         //return (phi_sol_dash_dash_dash(dx,a,b))*dx[1]/ndx;
     }
 }

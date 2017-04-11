@@ -138,42 +138,42 @@ int main(int argc, char **argv) {
             [](const_position_reference dx,
                const_comsol_reference a,
                const_knot_reference b) {
-            return psol_u1(dx,a,b);
+            return psol_u1(dx,get<kernel_constant>(b));
             });
 
       auto psol_v1_op = create_dense_operator(comsol,knots,
             [](const_position_reference dx,
                const_comsol_reference a,
                const_knot_reference b) {
-            return psol_v1(dx,a,b);
+            return psol_v1(dx,get<kernel_constant>(b));
             });
 
       auto psol_p1_op = create_dense_operator(comsol,knots,
             [](const_position_reference dx,
                const_comsol_reference a,
                const_knot_reference b) {
-            return psol_p1(dx,a,b);
+            return psol_p1(dx,get<kernel_constant>(b));
             });
 
       auto psol_u2_op = create_dense_operator(comsol,knots,
             [](const_position_reference dx,
                const_comsol_reference a,
                const_knot_reference b) {
-            return psol_u2(dx,a,b);
+            return psol_u2(dx,get<kernel_constant>(b));
             });
 
       auto psol_v2_op = create_dense_operator(comsol,knots,
             [](const_position_reference dx,
                const_comsol_reference a,
                const_knot_reference b) {
-            return psol_v2(dx,a,b);
+            return psol_v2(dx,get<kernel_constant>(b));
             });
 
       auto psol_p2_op = create_dense_operator(comsol,knots,
             [](const_position_reference dx,
                const_comsol_reference a,
                const_knot_reference b) {
-            return psol_p2(dx,a,b);
+            return psol_p2(dx,get<kernel_constant>(b));
             });
 
       std::cout << "assembling comsol matricies...." << std::endl;

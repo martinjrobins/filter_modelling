@@ -60,7 +60,7 @@ void solve_stokes_LMAPS(KnotsType &knots, unsigned int max_iter_linear,unsigned 
             [](const_position_reference dx,
                const_particle_reference a,
                const_particle_reference b) {
-                    return kernel_mq(dx,a,b);
+                    return kernel_mq(dx,get<kernel_constant>(b));
                 }
             ).assemble(kernel_matrix);
     std::cout << "nonZeros = "<<kernel_matrix.nonZeros()<<std::endl;
@@ -73,7 +73,7 @@ void solve_stokes_LMAPS(KnotsType &knots, unsigned int max_iter_linear,unsigned 
             [](const_position_reference dx,
                const_particle_reference a,
                const_particle_reference b) {
-                    return psol_u1(dx,a,b);
+                    return psol_u1(dx,get<kernel_constant>(b));
                 }
             ).assemble(psol_u1_matrix);
 
@@ -85,7 +85,7 @@ void solve_stokes_LMAPS(KnotsType &knots, unsigned int max_iter_linear,unsigned 
             [](const_position_reference dx,
                const_particle_reference a,
                const_particle_reference b) {
-                    return psol_u2(dx,a,b);
+                    return psol_u2(dx,get<kernel_constant>(b));
                 }
             ).assemble(psol_u2_matrix);
 
@@ -97,7 +97,7 @@ void solve_stokes_LMAPS(KnotsType &knots, unsigned int max_iter_linear,unsigned 
             [](const_position_reference dx,
                const_particle_reference a,
                const_particle_reference b) {
-                    return psol_v1(dx,a,b);
+                    return psol_v1(dx,get<kernel_constant>(b));
                 }
             ).assemble(psol_v1_matrix);
 
@@ -109,7 +109,7 @@ void solve_stokes_LMAPS(KnotsType &knots, unsigned int max_iter_linear,unsigned 
             [](const_position_reference dx,
                const_particle_reference a,
                const_particle_reference b) {
-                    return psol_v2(dx,a,b);
+                    return psol_v2(dx,get<kernel_constant>(b));
                 }
             ).assemble(psol_v2_matrix);
 
@@ -121,7 +121,7 @@ void solve_stokes_LMAPS(KnotsType &knots, unsigned int max_iter_linear,unsigned 
             [](const_position_reference dx,
                const_particle_reference a,
                const_particle_reference b) {
-                    return psol_p1(dx,a,b);
+                    return psol_p1(dx,get<kernel_constant>(b));
                 }
             ).assemble(psol_p1_matrix);
 
@@ -133,7 +133,7 @@ void solve_stokes_LMAPS(KnotsType &knots, unsigned int max_iter_linear,unsigned 
             [](const_position_reference dx,
                const_particle_reference a,
                const_particle_reference b) {
-                    return psol_p2(dx,a,b);
+                    return psol_p2(dx,get<kernel_constant>(b));
                 }
             ).assemble(psol_p2_matrix);
     sparse_matrix_type psol_dudx1_matrix(N,N);
@@ -144,7 +144,7 @@ void solve_stokes_LMAPS(KnotsType &knots, unsigned int max_iter_linear,unsigned 
             [](const_position_reference dx,
                const_particle_reference a,
                const_particle_reference b) {
-                    return psol_du1dx(dx,a,b);
+                    return psol_du1dx(dx,get<kernel_constant>(b));
                 }
             ).assemble(psol_dudx1_matrix);
     sparse_matrix_type psol_dudx2_matrix(N,N);
@@ -155,7 +155,7 @@ void solve_stokes_LMAPS(KnotsType &knots, unsigned int max_iter_linear,unsigned 
             [](const_position_reference dx,
                const_particle_reference a,
                const_particle_reference b) {
-                    return psol_du2dx(dx,a,b);
+                    return psol_du2dx(dx,get<kernel_constant>(b));
                 }
             ).assemble(psol_dudx2_matrix);
     sparse_matrix_type psol_dvdy1_matrix(N,N);
@@ -166,7 +166,7 @@ void solve_stokes_LMAPS(KnotsType &knots, unsigned int max_iter_linear,unsigned 
             [](const_position_reference dx,
                const_particle_reference a,
                const_particle_reference b) {
-                    return psol_dv1dy(dx,a,b);
+                    return psol_dv1dy(dx,get<kernel_constant>(b));
                 }
             ).assemble(psol_dvdy1_matrix);
     sparse_matrix_type psol_dvdy2_matrix(N,N);
@@ -177,7 +177,7 @@ void solve_stokes_LMAPS(KnotsType &knots, unsigned int max_iter_linear,unsigned 
             [](const_position_reference dx,
                const_particle_reference a,
                const_particle_reference b) {
-                    return psol_dv2dy(dx,a,b);
+                    return psol_dv2dy(dx,get<kernel_constant>(b));
                 }
             ).assemble(psol_dvdy2_matrix);
 
@@ -262,25 +262,25 @@ void solve_stokes_LMAPS(KnotsType &knots, unsigned int max_iter_linear,unsigned 
                 [](const_position_reference dx,
                const_particle_reference a,
                const_particle_reference b) {
-                    return psol_u1(dx,a,b);
+                    return psol_u1(dx,get<kernel_constant>(b));
                 },indicies);
         set_submatrix_f(psol_u2_submatrix,psol_u2_matrix,knots,ii,
                 [](const_position_reference dx,
                const_particle_reference a,
                const_particle_reference b) {
-                    return psol_u2(dx,a,b);
+                    return psol_u2(dx,get<kernel_constant>(b));
                 },indicies);
         set_submatrix_f(psol_v1_submatrix,psol_v1_matrix,knots,ii,
                 [](const_position_reference dx,
                const_particle_reference a,
                const_particle_reference b) {
-                    return psol_v1(dx,a,b);
+                    return psol_v1(dx,get<kernel_constant>(b));
                 },indicies);
         set_submatrix_f(psol_v2_submatrix,psol_v2_matrix,knots,ii,
                 [](const_position_reference dx,
                const_particle_reference a,
                const_particle_reference b) {
-                    return psol_v2(dx,a,b);
+                    return psol_v2(dx,get<kernel_constant>(b));
                 },indicies);
         set_row_vector_f(psol_p1_row_vector,psol_p1_matrix);
         set_row_vector_f(psol_p2_row_vector,psol_p2_matrix);
@@ -298,7 +298,7 @@ void solve_stokes_LMAPS(KnotsType &knots, unsigned int max_iter_linear,unsigned 
                     int jj = it.index();   // col index 
                     typedef KnotsType::position::value_type double_d;
                     const double_d dx = get<position>(knots)[jj]-get<position>(knots)[kk];
-                    std::cout << psol_u1_submatrix(k,j) << " " << psol_u1(dx,knots[kk],knots[jj]) << std::endl;
+                    //std::cout << psol_u1_submatrix(k,j) << " " << psol_u1(dx,knots[kk],knots[jj]) << std::endl;
                 }
             }
         }

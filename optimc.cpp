@@ -1,15 +1,23 @@
 #include "filter.h"
 #include "setup_knots.h"
-#include "solve_stokes_MAPS.h"
+
+
+#define FMAPS
+
+//#include "solve_stokes_MAPS.h"
+#include "solve_stokes_fMAPS.h"
 //#include "solve_stokes_LMAPS.h"
 
 
+
+
 int main(int argc, char **argv) {
-    unsigned int nout,max_iter_linear,restart_linear,nx,nc0;
+    unsigned int nout,max_iter_linear,restart_linear,nx,nc0,ncheb;
     int fibre_number,seed;
     double fibre_radius,particle_rate,react_rate,D,fibre_resolution;
     double dt_aim,h0_factor,k,gamma,rf,c0_min,c0_max,epsilon_strength,epsilon_falloff;
     unsigned int solver_in;
+    bool periodic;
     std::string filename;
 
     po::options_description desc("Allowed options");
@@ -20,6 +28,7 @@ int main(int argc, char **argv) {
         ("linear_solver", po::value<unsigned int>(&solver_in)->default_value(2), "linear solver")
         ("nout", po::value<unsigned int>(&nout)->default_value(100), "number of output points")
         ("k", po::value<double>(&k)->default_value(1.00), "spring constant")
+        ("periodic", po::value<bool>(&periodic)->default_value(false), "periodic in x")
         ("D", po::value<double>(&D)->default_value(0.01), "diffusion constant")
         ("particle_rate", po::value<double>(&particle_rate)->default_value(1000.0), "particle rate")
         ("react_rate", po::value<double>(&react_rate)->default_value(0.5), "particle reaction rate")
@@ -28,6 +37,7 @@ int main(int argc, char **argv) {
         ("c0_min", po::value<double>(&c0_min)->default_value(0.1), "kernel constant")
         ("c0_max", po::value<double>(&c0_max)->default_value(0.2), "kernel constant")
         ("nx", po::value<unsigned int>(&nx)->default_value(20), "nx")
+        ("ncheb", po::value<unsigned int>(&ncheb)->default_value(20), "ncheb")
         ("nc0", po::value<unsigned int>(&nc0)->default_value(1), "number of c0 samples")
         ("fibre_resolution", po::value<double>(&fibre_resolution)->default_value(0.75), "knot resolution around fibre")
         ("seed", po::value<int>(&seed)->default_value(10), "seed")
@@ -112,7 +122,7 @@ int main(int argc, char **argv) {
       //
       // SETUP KNOTS
       //
-      setup_knots(knots, fibres, fibre_radius, fibre_resolution, nx, domain_min, domain_max, c0, k,epsilon_strength,epsilon_falloff);
+      setup_knots(knots, fibres, fibre_radius, fibre_resolution, nx, domain_min, domain_max, c0, k,epsilon_strength,epsilon_falloff,periodic);
 
       //
       // CALCULATE C
@@ -125,7 +135,8 @@ int main(int argc, char **argv) {
       //
       // SOLVE STOKES
       //
-      solve_stokes_MAPS(knots,max_iter_linear,restart_linear,solver_in,c0);
+      //solve_stokes_MAPS(knots,max_iter_linear,restart_linear,solver_in,c0);
+      solve_stokes_fMAPS(knots,max_iter_linear,restart_linear,solver_in,c0,ncheb);
       //solve_stokes_LMAPS(knots,max_iter_linear,restart_linear,solver_in,c0);
       //
       
@@ -138,47 +149,98 @@ int main(int argc, char **argv) {
       typedef typename KnotsType::const_reference const_knot_reference;
       typedef typename ComsolType::const_reference const_comsol_reference;
 
+#ifdef FMAPS
+      auto psol_u1_op = create_chebyshev_operator(comsol,knots,
+              ncheb,
+            [&](const_position_reference dx,
+               const_position_reference a,
+               const_position_reference b) {
+            return psol_u1(dx,c0);
+            });
+
+      auto psol_v1_op = create_chebyshev_operator(comsol,knots,
+              ncheb,
+            [&](const_position_reference dx,
+               const_position_reference a,
+               const_position_reference b) {
+            return psol_v1(dx,c0);
+            });
+
+      auto psol_p1_op = create_chebyshev_operator(comsol,knots,
+              ncheb,
+            [&](const_position_reference dx,
+               const_position_reference a,
+               const_position_reference b) {
+            return psol_p1(dx,c0);
+            });
+
+      auto psol_u2_op = create_chebyshev_operator(comsol,knots,
+              ncheb,
+            [&](const_position_reference dx,
+               const_position_reference a,
+               const_position_reference b) {
+            return psol_u2(dx,c0);
+            });
+
+      auto psol_v2_op = create_chebyshev_operator(comsol,knots,
+              ncheb,
+            [&](const_position_reference dx,
+               const_position_reference a,
+               const_position_reference b) {
+            return psol_v2(dx,c0);
+            });
+
+      auto psol_p2_op = create_chebyshev_operator(comsol,knots,
+              ncheb,
+            [&](const_position_reference dx,
+               const_position_reference a,
+               const_position_reference b) {
+            return psol_p2(dx,c0);
+            });
+
+#else
       auto psol_u1_op = create_dense_operator(comsol,knots,
             [](const_position_reference dx,
                const_comsol_reference a,
                const_knot_reference b) {
-            return psol_u1(dx,a,b);
+            return psol_u1(dx,get<kernel_constant>(b));
             });
 
       auto psol_v1_op = create_dense_operator(comsol,knots,
             [](const_position_reference dx,
                const_comsol_reference a,
                const_knot_reference b) {
-            return psol_v1(dx,a,b);
+            return psol_v1(dx,get<kernel_constant>(b));
             });
 
       auto psol_p1_op = create_dense_operator(comsol,knots,
             [](const_position_reference dx,
                const_comsol_reference a,
                const_knot_reference b) {
-            return psol_p1(dx,a,b);
+            return psol_p1(dx,get<kernel_constant>(b));
             });
 
       auto psol_u2_op = create_dense_operator(comsol,knots,
             [](const_position_reference dx,
                const_comsol_reference a,
                const_knot_reference b) {
-            return psol_u2(dx,a,b);
+            return psol_u2(dx,get<kernel_constant>(b));
             });
 
       auto psol_v2_op = create_dense_operator(comsol,knots,
             [](const_position_reference dx,
                const_comsol_reference a,
                const_knot_reference b) {
-            return psol_v2(dx,a,b);
+            return psol_v2(dx,get<kernel_constant>(b));
             });
 
       auto psol_p2_op = create_dense_operator(comsol,knots,
             [](const_position_reference dx,
                const_comsol_reference a,
                const_knot_reference b) {
-            return psol_p2(dx,a,b);
+            return psol_p2(dx,get<kernel_constant>(b));
             });
+#endif
 
       std::cout << "assembling comsol matricies...." << std::endl;
 

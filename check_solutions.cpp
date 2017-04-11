@@ -37,6 +37,8 @@ int main() {
     typedef KnotsType::reference reference;
     typedef KnotsType::const_reference const_reference;
     typedef KnotsType::position position;
+    
+    const double c0 = 1.0;
 
     const double dx = 1.0/N;
     for (int i = 0; i < N; ++i) {
@@ -45,7 +47,7 @@ int main() {
             get<position>(knots)[index] = double2(i*dx, j*dx);
             if ((i==N/2) && (j==N/2)) {
                 get<position>(basis)[0] = double2(i*dx,j*dx);
-                get<kernel_constant>(basis)[0] = 1.0;
+                get<kernel_constant>(basis)[0] = c0;
             }
 
         }
@@ -53,23 +55,23 @@ int main() {
 
     for (reference knot: knots) {
         const double2 dx = get<position>(basis)[0] - get<position>(knot);
-        get<u1>(knot) = psol_u1(dx,knot,basis[0]);
-        get<u2>(knot) = psol_u2(dx,knot,basis[0]);
-        get<v1>(knot) = psol_v1(dx,knot,basis[0]);
-        get<v2>(knot) = psol_v2(dx,knot,basis[0]);
-        get<p1>(knot) = psol_p1(dx,knot,basis[0]);
-        get<p2>(knot) = psol_p2(dx,knot,basis[0]);
-        get<dudx1>(knot) = psol_du1dx(dx,knot,basis[0]);
-        get<dudx2>(knot) = psol_du2dx(dx,knot,basis[0]);
-        get<dudy1>(knot) = psol_du1dy(dx,knot,basis[0]);
-        get<dudy2>(knot) = psol_du2dy(dx,knot,basis[0]);
-        get<dvdx1>(knot) = psol_dv1dx(dx,knot,basis[0]);
-        get<dvdx2>(knot) = psol_dv2dx(dx,knot,basis[0]);
+        get<u1>(knot) = psol_u1(dx,c0);
+        get<u2>(knot) = psol_u2(dx,c0);
+        get<v1>(knot) = psol_v1(dx,c0);
+        get<v2>(knot) = psol_v2(dx,c0);
+        get<p1>(knot) = psol_p1(dx,c0);
+        get<p2>(knot) = psol_p2(dx,c0);
+        get<dudx1>(knot) = psol_du1dx(dx,c0);
+        get<dudx2>(knot) = psol_du2dx(dx,c0);
+        get<dudy1>(knot) = psol_du1dy(dx,c0);
+        get<dudy2>(knot) = psol_du2dy(dx,c0);
+        get<dvdx1>(knot) = psol_dv1dx(dx,c0);
+        get<dvdx2>(knot) = psol_dv2dx(dx,c0);
         /*
-        get<dvdy1>(knot) = psol_dv1dy(dx,knot,basis[0]);
-        get<dvdy2>(knot) = psol_dv2dy(dx,knot,basis[0]);
+        get<dvdy1>(knot) = psol_dv1dy(dx,get<position>(knot),get<position>(basis)[0]);
+        get<dvdy2>(knot) = psol_dv2dy(dx,get<position>(knot),get<position>(basis)[0]);
         */
-        get<mq>(knot) = kernel_mq(dx,knot,basis[0]);
+        get<mq>(knot) = kernel_mq(dx,c0);
 
             }
     for (int i = 0; i < N; ++i) {

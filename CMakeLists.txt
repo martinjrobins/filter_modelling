@@ -20,6 +20,7 @@ if (Aboria_USE_GPERFTOOLS)
     find_package(Gperftools REQUIRED)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
     set(GPERFTOOLS_LIBRARIES "-Wl,--no-as-needed ${GPERFTOOLS_LIBRARIES} -Wl,--as-needed")
+    add_definitions(-DHAVE_GPERFTOOLS)
 endif()
 
 
@@ -52,10 +53,11 @@ add_definitions(-DHAVE_EIGEN)
 set( CMAKE_EXPORT_COMPILE_COMMANDS 1 )
 
 set(source_files
+    solve_stokes_fMAPS.cpp
+    solve_stokes_MAPS.cpp
     filter.cpp
     setup_knots.cpp
     solve_stokes_LMAPS.cpp
-    solve_stokes_MAPS.cpp
     )
 
 include_directories(Aboria/src)

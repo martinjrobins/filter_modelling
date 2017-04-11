@@ -1,6 +1,6 @@
 #include "setup_knots.h"
 
-void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_radius, const double fibre_resolution_factor, const double nx, double2 domain_min, double2 domain_max, const double c0, const double k, const double epsilon_strength, const double epsilon_falloff) {
+void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_radius, const double fibre_resolution_factor, const double nx, double2 domain_min, double2 domain_max, const double c0, const double k, const double epsilon_strength, const double epsilon_falloff, const bool periodic) {
 
     std::cout << "setup knots..." << std::endl;
 
@@ -8,14 +8,19 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
     const double L = domain_max[0] - domain_min[0];
     const double delta = L/nx;
     const double fibre_resolution = fibre_resolution_factor;
-    const double s = 1.5*delta;
+    const double s = 1.50*delta;
 
     const double boundary_layer = delta/5;
     const double volume = ((domain_max-domain_min).prod()
                             - fibres.size()*PI*std::pow(fibre_radius,2))
                             /(domain_max-domain_min).prod();
     const int N = nx*nx*(domain_max[1]-domain_min[1])*volume/(domain_max[0]-domain_min[0]);
-    const double2 ns_buffer(L/2,L/2);
+    double2 ns_buffer(L/2,L/2);
+
+    if (periodic) {
+        ns_buffer[0] = 0;
+    }
+
     const int layers = 1;
 
 
@@ -77,6 +82,44 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
         }
     }
 
+    if (!periodic) {
+        const int ny = (domain_max[1]-domain_min[1])/(delta*fibre_resolution);
+        const double deltay = (domain_max[1]-domain_min[1])/ny;
+        for (int ii=1-layers; ii<ny+layers; ++ii) {
+            for (int jj=0; jj<layers; ++jj) {
+                // boundary - left
+                get<position>(p) = double2(domain_min[0]-jj*deltay,
+                        domain_min[1]+ii*deltay);
+                if ((jj==0) && (ii >= 0) && (ii <= ny)) {
+                    get<target>(p) = true;
+                } else {
+                    get<target>(p) = false;
+                }
+                get<boundary>(p) = true;
+                get<inlet>(p) = false;
+                get<interior>(p) = false;
+                get<outlet>(p) = false;
+                get<kernel_constant>(p) = c0;
+                knots.push_back(p);
+
+                // boundary - right
+                get<position>(p) = double2(domain_max[0]+jj*deltay,
+                        domain_min[1]+ii*deltay);
+                if ((jj==0) && (ii >= 0) && (ii <= ny)) {
+                    get<target>(p) = true;
+                } else {
+                    get<target>(p) = false;
+                }
+                get<boundary>(p) = true;
+                get<inlet>(p) = false;
+                get<interior>(p) = false;
+                get<outlet>(p) = false;
+                get<kernel_constant>(p) = c0;
+                knots.push_back(p);
+            }
+        }
+    }
+
     const int nxb = (domain_max[0]-domain_min[0])/(delta*fibre_resolution);
     const double deltax = (domain_max[0]-domain_min[0])/nxb;
     for (int ii=1; ii<nxb; ++ii) {
@@ -90,7 +133,11 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
             get<interior>(p) = false;
             get<kernel_constant>(p) = c0;
             knots.push_back(p);
+        }
+    }
 
+    for (int ii=1; ii<nxb; ++ii) {
+        for (int jj=0; jj<layers; ++jj) {
             // outlet
             get<position>(p) = double2(domain_min[0] + ii*deltax,domain_min[1]-jj*deltax);
             get<boundary>(p) = false;
@@ -102,46 +149,12 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
             knots.push_back(p);
         }
     }
-    const int ny = (domain_max[1]-domain_min[1])/(delta*fibre_resolution);
-    const double deltay = (domain_max[1]-domain_min[1])/ny;
-    for (int ii=1-layers; ii<ny+layers; ++ii) {
-        for (int jj=0; jj<layers; ++jj) {
-            // boundary - left
-            get<position>(p) = double2(domain_min[0]-jj*deltay,
-                                       domain_min[1]+ii*deltay);
-            if ((jj==0) && (ii >= 0) && (ii <= ny)) {
-                get<target>(p) = true;
-            } else {
-                get<target>(p) = false;
-            }
-            get<boundary>(p) = true;
-            get<inlet>(p) = false;
-            get<interior>(p) = false;
-            get<outlet>(p) = false;
-            get<kernel_constant>(p) = c0;
-            knots.push_back(p);
+    
 
-            // boundary - right
-            get<position>(p) = double2(domain_max[0]+jj*deltay,
-                                       domain_min[1]+ii*deltay);
-            if ((jj==0) && (ii >= 0) && (ii <= ny)) {
-                get<target>(p) = true;
-            } else {
-                get<target>(p) = false;
-            }
-            get<boundary>(p) = true;
-            get<inlet>(p) = false;
-            get<interior>(p) = false;
-            get<outlet>(p) = false;
-            get<kernel_constant>(p) = c0;
-            knots.push_back(p);
-        }
-    }
-
-    knots.init_neighbour_search(domain_min-ns_buffer,domain_max+ns_buffer,bool2(false));
+    knots.init_neighbour_search(domain_min-ns_buffer,domain_max+ns_buffer,bool2(periodic,false));
+    
     std::cout << "added "<<knots.size()<<" knots with c0 = " <<c0<< std::endl;
 
-    vtkWriteGrid("init_knots",0,knots.get_grid(true));
 
     Symbol<boundary> is_b;
     Symbol<target> is_t;
@@ -165,11 +178,18 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
     Accumulate<std::plus<double> > sum;
     VectorSymbolic<double,2> vector;
     Accumulate<Aboria::min<double> > min;
-    min.set_init(L);
+    min.set_init(100);
 
+    //c[i] = min(bf,norm(dkf));
+    vtkWriteGrid("init_knots",0,knots.get_grid(true));
 
-
-    auto spring_force_kk = gen_spring(i,j,k,s);
+    //auto spring_force_kk = gen_spring(i,j,k,s);
+    auto spring_force_kk = deep_copy(
+                if_else(dot(dx,dx)==0
+                    ,vector(0,0)
+                    ,(-k*(s-norm(dx))/norm(dx))*dx
+                  )
+            );
 
     auto spring_force_kf = deep_copy(
         if_else(dot(dkf,dkf)==0
@@ -209,6 +229,34 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
                 )
             )
         );
+
+    auto spring_force_periodic_kb = deep_copy(
+        vector(
+                if_else(r[i][0] < domain_min[0]+boundary_layer
+                ,10*k*(domain_min[0]+boundary_layer-r[i][0])
+                ,if_else(r[i][0] > domain_max[0]-boundary_layer
+                    ,10*k*(domain_max[0]-boundary_layer-r[i][0])
+                    ,0.0
+                    //,-epsilon_strength*delta*(
+                    //        exp(1.0/epsilon_falloff*(domain_min[0]+boundary_layer-r[i][0]))
+                    //       - exp(1.0/epsilon_falloff*(r[i][0]-domain_max[0]+boundary_layer))
+                    //       )
+                    )
+                )
+                ,if_else(r[i][1] < domain_min[1]+boundary_layer
+                ,10*k*(domain_min[1]+boundary_layer-r[i][1])
+                ,if_else(r[i][1] > domain_max[1]-boundary_layer
+                    ,10*k*(domain_max[1]-boundary_layer-r[i][1])
+                    //,0.0
+                    ,-epsilon_strength*delta*(
+                            exp(1.0/epsilon_falloff*(domain_min[1]+boundary_layer-r[i][1]))
+                           - exp(1.0/epsilon_falloff*(r[i][1]-domain_max[1]+boundary_layer))
+                           )
+                    )
+                )
+            )
+        );
+
 
     /*
     const double mult = 2.0;
@@ -269,12 +317,23 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
 
     // adapt knot locations
     for (int ii=0; ii<1000; ii++) {
-        r[i] += dt_adapt*if_else(is_i[i]
+        if (periodic) {
+            r[i] += dt_adapt*if_else(is_i[i]
+                    ,sumv_sparse(j,spring_force_kk)
+                        + sumv(bf,spring_force_kf)
+                        + spring_force_periodic_kb
+                    ,vector(0,0)
+                );
+        } else {
+             r[i] += dt_adapt*if_else(is_i[i]
                     ,sumv_sparse(j,spring_force_kk)
                         + sumv(bf,spring_force_kf)
                         + spring_force_kb
                     ,vector(0,0)
                 );
+
+        }
+
     }
 
     //kill anything outside domain
