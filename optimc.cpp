@@ -4,8 +4,8 @@
 
 #define FMAPS
 
-//#include "solve_stokes_MAPS.h"
-#include "solve_stokes_fMAPS.h"
+#include "solve_stokes_MAPS.h"
+//#include "solve_stokes_fMAPS.h"
 //#include "solve_stokes_LMAPS.h"
 
 
@@ -135,8 +135,8 @@ int main(int argc, char **argv) {
       //
       // SOLVE STOKES
       //
-      //solve_stokes_MAPS(knots,max_iter_linear,restart_linear,solver_in,c0);
-      solve_stokes_fMAPS(knots,max_iter_linear,restart_linear,solver_in,c0,ncheb);
+      solve_stokes_MAPS(knots,max_iter_linear,restart_linear,solver_in,c0);
+      //solve_stokes_fMAPS(knots,max_iter_linear,restart_linear,solver_in,c0,ncheb);
       //solve_stokes_LMAPS(knots,max_iter_linear,restart_linear,solver_in,c0);
       //
       
