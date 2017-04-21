@@ -1,5 +1,20 @@
 #include "setup_knots.h"
 
+#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
+#include <CGAL/Constrained_Delaunay_triangulation_2.h>
+#include <CGAL/Delaunay_mesher_2.h>
+#include <CGAL/Delaunay_mesh_face_base_2.h>
+#include <CGAL/Delaunay_mesh_size_criteria_2.h>
+#include <iostream>
+typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
+typedef CGAL::Triangulation_vertex_base_2<K> Vb;
+typedef CGAL::Delaunay_mesh_face_base_2<K> Fb;
+typedef CGAL::Triangulation_data_structure_2<Vb, Fb> Tds;
+typedef CGAL::Constrained_Delaunay_triangulation_2<K, Tds> CDT;
+typedef CGAL::Delaunay_mesh_size_criteria_2<CDT> Criteria;
+typedef CDT::Vertex_handle Vertex_handle;
+typedef CDT::Point Point;
+
 void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_radius, const double fibre_resolution_factor, const double nx, double2 domain_min, double2 domain_max, const double c0, const double k, const double epsilon_strength, const double epsilon_falloff, const bool periodic) {
 
     std::cout << "setup knots..." << std::endl;
@@ -28,36 +43,12 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
     //const double dt_adapt = 0.5*delta;
 
     typename KnotsType::value_type p;
-    std::default_random_engine generator;
-    std::uniform_real_distribution<double> uniformx(
-            domain_min[0]+fibre_resolution*delta,
-            domain_max[0]-fibre_resolution*delta
-            );
-    std::uniform_real_distribution<double> uniformy(
-            domain_min[1]+fibre_resolution*delta,
-            domain_max[1]-fibre_resolution*delta
-            );
-    while (knots.size() < N) {
-        get<position>(p) = double2(uniformx(generator),uniformy(generator));
-        bool outside_fibres = true;
-        for (auto tpl: euclidean_search(fibres.get_query(),get<position>(p),fibre_radius+fibre_resolution*delta)) {
-            outside_fibres = false;
-        }
-        if (outside_fibres) {
-            get<boundary>(p) = false;
-            get<inlet>(p) = false;
-            get<outlet>(p) = false;
-            get<target>(p) = true;
-            get<interior>(p) = true;
-            get<kernel_constant>(p) = c0;
-            knots.push_back(p);
-        }
-
-    }
-    std::cout << "added "<<knots.size()<<" interior knots"<<std::endl;
+    
+    CDT cdt;
 
     // fibre boundaries
     for (int ii=0; ii<fibres.size(); ++ii) {
+        Vertex_handle v1,va,vb;
         const double fdelta = delta*fibre_resolution;
         const double2 origin = get<position>(fibres)[ii];
         for (int jj=0; jj<layers; ++jj) {
@@ -67,6 +58,16 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
             const double dtheta = 2*PI/n;
             for (int kk=0; kk<n; ++kk) {
                 get<position>(p) = origin + radius*double2(cos(kk*dtheta),sin(kk*dtheta));
+                if (jj==0) {
+                    if (kk==0) {
+                        v1 = cdt.insert(Point(get<position>(p)[0],get<position>(p)[1]));
+                        va = v1;
+                    } else {
+                        vb = cdt.insert(Point(get<position>(p)[0],get<position>(p)[1]));
+                        cdt.insert_constraint(va,vb);
+                        va = vb;
+                    } 
+                }
                 if (jj==0) {
                     get<target>(p) = true;
                 } else {
@@ -79,9 +80,16 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
                 get<kernel_constant>(p) = c0;
                 knots.push_back(p);
             }
+            if (jj==0) {
+                cdt.insert_constraint(va,v1);
+            }
+
         }
     }
 
+    Vertex_handle vstart_left,vend_left,vstart_right,vend_right;
+    Vertex_handle vstart_top,vend_top,vstart_bottom,vend_bottom;
+    Vertex_handle va1,vb1,va2,vb2;
     if (!periodic) {
         const int ny = (domain_max[1]-domain_min[1])/(delta*fibre_resolution);
         const double deltay = (domain_max[1]-domain_min[1])/ny;
@@ -90,6 +98,21 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
                 // boundary - left
                 get<position>(p) = double2(domain_min[0]-jj*deltay,
                         domain_min[1]+ii*deltay);
+                if (jj==0) {
+                    if (ii==1) {
+                        vstart_left = cdt.insert(Point(get<position>(p)[0],get<position>(p)[1]));
+                        va1 = vstart_left;
+                    } else if (ii==ny) {
+                        vend_left = cdt.insert(Point(get<position>(p)[0],get<position>(p)[1]));
+                        cdt.insert_constraint(va1,vend_left);
+                    } else {
+                        vb1 = cdt.insert(Point(get<position>(p)[0],get<position>(p)[1]));
+                        cdt.insert_constraint(va1,vb1);
+                        va1 = vb1;
+                    }
+                }
+
+
                 if ((jj==0) && (ii >= 0) && (ii <= ny)) {
                     get<target>(p) = true;
                 } else {
@@ -105,6 +128,19 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
                 // boundary - right
                 get<position>(p) = double2(domain_max[0]+jj*deltay,
                         domain_min[1]+ii*deltay);
+                if (jj==0) {
+                    if (ii==1) {
+                        vstart_right = cdt.insert(Point(get<position>(p)[0],get<position>(p)[1]));
+                        va2 = vstart_right;
+                    } else if (ii==ny) {
+                        vend_right = cdt.insert(Point(get<position>(p)[0],get<position>(p)[1]));
+                        cdt.insert_constraint(va1,vend_right);
+                    } else {
+                        vb2 = cdt.insert(Point(get<position>(p)[0],get<position>(p)[1]));
+                        cdt.insert_constraint(va2,vb2);
+                        va2 = vb2;
+                    }
+                }
                 if ((jj==0) && (ii >= 0) && (ii <= ny)) {
                     get<target>(p) = true;
                 } else {
@@ -126,6 +162,19 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
         for (int jj=0; jj<layers; ++jj) {
             // inlet
             get<position>(p) = double2(domain_min[0] + ii*deltax,domain_max[1]+jj*deltax);
+            if (jj==0) {
+                if (ii==1) {
+                    vstart_top = cdt.insert(Point(get<position>(p)[0],get<position>(p)[1]));
+                    va1 = vstart_top;
+                } else if (ii==nxb) {
+                    vend_top = cdt.insert(Point(get<position>(p)[0],get<position>(p)[1]));
+                    cdt.insert_constraint(va1,vend_top);
+                } else {
+                    vb1 = cdt.insert(Point(get<position>(p)[0],get<position>(p)[1]));
+                    cdt.insert_constraint(va1,vb1);
+                    va1 = vb1;
+                }
+            }
             get<target>(p) = true;
             get<boundary>(p) = false;
             get<inlet>(p) = true;
@@ -140,6 +189,19 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
         for (int jj=0; jj<layers; ++jj) {
             // outlet
             get<position>(p) = double2(domain_min[0] + ii*deltax,domain_min[1]-jj*deltax);
+            if (jj==0) {
+                if (ii==1) {
+                    vstart_bottom = cdt.insert(Point(get<position>(p)[0],get<position>(p)[1]));
+                    va1 = vstart_top;
+                } else if (ii==nxb) {
+                    vend_bottom = cdt.insert(Point(get<position>(p)[0],get<position>(p)[1]));
+                    cdt.insert_constraint(va1,vend_bottom);
+                } else {
+                    vb1 = cdt.insert(Point(get<position>(p)[0],get<position>(p)[1]));
+                    cdt.insert_constraint(va1,vb1);
+                    va1 = vb1;
+                }
+            }
             get<boundary>(p) = false;
             get<target>(p) = true;
             get<inlet>(p) = false;
@@ -149,7 +211,54 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
             knots.push_back(p);
         }
     }
+
+    cdt.insert_constraint(vend_left,vstart_top);
+    cdt.insert_constraint(vend_top,vend_right);
+    cdt.insert_constraint(vstart_right,vend_bottom);
+    cdt.insert_constraint(vstart_bottom,vstart_left);
     
+    std::list<Point> list_of_seeds;
+    list_of_seeds.push_back(Point(deltax, deltax));
+    std::cout << "Number of vertices: " << cdt.number_of_vertices() << std::endl;
+    std::cout << "Meshing the domain..." << std::endl;
+    CGAL::refine_Delaunay_mesh_2(cdt, list_of_seeds.begin(), list_of_seeds.end(),
+            Criteria());
+    std::cout << "Number of vertices: " << cdt.number_of_vertices() << std::endl;
+    std::cout << "Number of finite faces: " << cdt.number_of_faces() << std::endl;
+    int mesh_faces_counter = 0;
+    while (knots.size() < N) {
+        get<position>(p) = double2(uniformx(generator),uniformy(generator));
+        bool outside_fibres = true;
+        for (auto tpl: euclidean_search(fibres.get_query(),get<position>(p),fibre_radius+fibre_resolution*delta)) {
+            outside_fibres = false;
+        }
+        if (outside_fibres) {
+            get<boundary>(p) = false;
+            get<inlet>(p) = false;
+            get<outlet>(p) = false;
+            get<target>(p) = true;
+            get<interior>(p) = true;
+            get<kernel_constant>(p) = c0;
+            knots.push_back(p);
+        }
+
+    }
+    std::cout << "added "<<knots.size()<<" interior knots"<<std::endl;
+
+
+    for(CDT::finite_vertices_iterator v = cdt.finite_vertices_begin();
+            v != cdt.finite_vertices_end(); ++v) {
+        const double x = v->point().x;
+        const double y = v->point().y;
+        get<position>(p) = double2(x,y);
+        get<boundary>(p) = false;
+        get<inlet>(p) = false;
+        get<outlet>(p) = false;
+        get<target>(p) = true;
+        get<interior>(p) = true;
+        get<kernel_constant>(p) = c0;
+        knots.push_back(p);
+    }
 
     knots.init_neighbour_search(domain_min-ns_buffer,domain_max+ns_buffer,bool2(periodic,false));
     
