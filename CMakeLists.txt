@@ -5,15 +5,18 @@ set(Aboria_LOG_LEVEL 1 CACHE STRING "Logging level (1 = least, 3 = most)")
 add_definitions(-DABORIA_LOG_LEVEL=${Aboria_LOG_LEVEL})
 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/Aboria/cmake"
+                    "${CMAKE_CURRENT_SOURCE_DIR}"
                         ${CMAKE_MODULE_PATH})
 
 list(APPEND CMAKE_CXX_FLAGS "-Wno-deprecated -std=c++14")
 list(APPEND CMAKE_SHARED_LINKER_FLAGS "-Wl,--no-undefined")
 
 find_package(Boost 1.50.0 COMPONENTS program_options REQUIRED)
+set(filter_libs ${Boost_LIBRARIES})
 
 find_package(VTK REQUIRED)
 add_definitions(-DHAVE_VTK)
+set(filter_libs ${filter_libs} ${VTK_LIBRARIES} )
 
 option(Aboria_USE_GPERFTOOLS "Use Google Profiling tools" OFF)
 if (Aboria_USE_GPERFTOOLS)
@@ -49,6 +52,10 @@ endif()
 find_package(Eigen3 REQUIRED)
 add_definitions(-DHAVE_EIGEN)
 
+find_package(CGAL REQUIRED)
+find_package(GMP REQUIRED)
+set(filter_libs ${filter_libs} ${CGAL_LIBRARIES} ${GMP_LIBRARIES})
+
 #export compiler flags for code completion engines
 set( CMAKE_EXPORT_COMPILE_COMMANDS 1 )
 
@@ -60,20 +67,22 @@ set(source_files
     solve_stokes_LMAPS.cpp
     )
 
-include_directories(Aboria/src)
-include_directories(Aboria/third-party)
-include_directories(SYSTEM ${CXXTEST_INCLUDES} ${EIGEN3_INCLUDE_DIR} ${VTK_INCLUDE_DIRS} ${Boost_INCLUDE_DIR}  ${PYTHON_INCLUDE_DIRS})
+set(filter_include_dirs "Aboria/src" "Aboria/third-party")
+set(filter_include_dirs ${filter_include_dirs} ${CXXTEST_INCLUDES} ${EIGEN3_INCLUDE_DIR} ${VTK_INCLUDE_DIRS} ${Boost_INCLUDE_DIR} ${CGAL_INCLUDE_DIR} ${GMP_INCLUDE_DIR})
 
-add_library(filter_modelling ${source_files})
+include_directories(${filter_include_dirs})
+
+add_library(filter_modelling SHARED ${source_files})
+target_link_libraries(filter_modelling ${filter_libs})
 
 add_executable(check_solutions check_solutions.cpp )
-target_link_libraries(check_solutions ${VTK_LIBRARIES} ${Boost_LIBRARIES} ${CUDA_LIBRARIES} ${GPERFTOOLS_LIBRARIES})
+target_link_libraries(check_solutions ${filter_libs})
 
 add_executable(simulation simulation.cpp )
-target_link_libraries(simulation filter_modelling ${VTK_LIBRARIES} ${Boost_LIBRARIES} ${CUDA_LIBRARIES} ${GPERFTOOLS_LIBRARIES})
+target_link_libraries(simulation filter_modelling )
 
 add_executable(validate validate.cpp )
-target_link_libraries(validate filter_modelling ${VTK_LIBRARIES} ${Boost_LIBRARIES} ${CUDA_LIBRARIES} ${GPERFTOOLS_LIBRARIES})
+target_link_libraries(validate filter_modelling ${filter_libs})
 
 add_executable(optimc optimc.cpp )
-target_link_libraries(optimc filter_modelling ${VTK_LIBRARIES} ${Boost_LIBRARIES} ${CUDA_LIBRARIES} ${GPERFTOOLS_LIBRARIES})
+target_link_libraries(optimc filter_modelling )
