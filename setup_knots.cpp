@@ -5,6 +5,7 @@
 #include <CGAL/Delaunay_mesher_2.h>
 #include <CGAL/Delaunay_mesh_face_base_2.h>
 #include <CGAL/Delaunay_mesh_size_criteria_2.h>
+#include <CGAL/Mesh_2/Face_badness.h>
 #include <iostream>
 typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
 typedef CGAL::Triangulation_vertex_base_2<K> Vb;
@@ -14,47 +15,56 @@ typedef CGAL::Constrained_Delaunay_triangulation_2<K, Tds> CDT;
 typedef CDT::Vertex_handle Vertex_handle;
 typedef CDT::Point Point;
 
-template <class CDT>
+template <class CDT, typename Fibres>
 class My_delaunay_mesh_size_criteria_2 : 
     public virtual CGAL::Delaunay_mesh_size_criteria_2<CDT>
 {
 protected:
   typedef typename CDT::Geom_traits Geom_traits;
+  double transition_size;
+  double transition_dist;
+  const Fibres* fibres;
 
 public:
   typedef CGAL::Delaunay_mesh_size_criteria_2<CDT> Base;
 
-  My_delaunay_mesh_size_criteria_2(const double aspect_bound = 0.125, 
+  My_delaunay_mesh_size_criteria_2(
+                                const Fibres& fibres,
+                                const double aspect_bound = 0.125, 
                                 const double size_bound = 0,
+                                const double transition_size = 0,
+                                const double transition_dist = 0,
                                 const Geom_traits& traits = Geom_traits())
-    : Base(aspect_bound,size_bound,traits) {}
+    : Base(aspect_bound,size_bound,traits),
+      transition_size(transition_size),transition_dist(transition_dist),
+      fibres(&fibres)
+    {}
+            
 
     typedef typename Base::Quality Quality; 
 
     class Is_bad: public Base::Is_bad
     {
     protected:
-        const double squared_size_bound; // squared size bound on edge length
+        double transition_size;
+        double transition_dist;
+        const Fibres* fibres;
     public:
         typedef typename Base::Is_bad::Point_2 Point_2;
 
-        Is_bad(const double aspect_bound,
+        Is_bad( const Fibres* fibres,
+                const double aspect_bound,
                 const double size_bound,
+                const double transition_size,
+                const double transition_dist,
                 const Geom_traits& traits)
-            : Base::Is_bad(aspect_bound, traits),
-            squared_size_bound(size_bound * size_bound) {}
+            : Base::Is_bad(aspect_bound, size_bound, traits),
+            transition_size(transition_size),transition_dist(transition_dist),
+            fibres(fibres)
+        {}
 
-        Mesh_2::Face_badness operator()(const Quality q) const
-        {
-            if( q.size() > 1 )
-                return Mesh_2::IMPERATIVELY_BAD;
-            if( q.sine() < this->B )
-                return Mesh_2::BAD;
-            else
-                return Mesh_2::NOT_BAD;
-        }
 
-        Mesh_2::Face_badness operator()(const typename CDT::Face_handle& fh,
+        CGAL::Mesh_2::Face_badness operator()(const typename CDT::Face_handle& fh,
                 Quality& q) const
         {
             typedef typename CDT::Geom_traits Geom_traits;
@@ -70,6 +80,7 @@ public:
             const Point_2& pa = fh->vertex(0)->point();
             const Point_2& pb = fh->vertex(1)->point();
             const Point_2& pc = fh->vertex(2)->point();
+            const double2 p_centre((pa[0]+pb[0]+pc[0])/3.0,(pa[1]+pb[1]+pc[1])/3.0);
 
             double
                 a = CGAL::to_double(squared_distance(pb, pc)),
@@ -103,16 +114,22 @@ public:
             }
 
             q.second = 0;
-            if( squared_size_bound != 0 )
+            if( this->squared_size_bound != 0 )
             {
                 //	  std::cerr << squared_size_bound << std::endl;
-                q.second = max_sq_length / squared_size_bound;
+                q.second = max_sq_length / this->squared_size_bound;
+                double max_dist2 = 0;
+                for (typename Fibres::const_reference f: fibres) {
+                    const double dist2 = (get<Fibres::position>(f)-p_centre).squaredNorm();
+                    if (dist2 > max_dist2) max_dist2 = dist2;
+                }
+                q.second *= 1.0+(1.0-transition_size)*std::tanh((std::sqrt(max_dist2)-transition_dist));
                 // normalized by size bound to deal
                 // with size field
                 if( q.size() > 1 )
                 {
                     q.first = 1; // (do not compute sine)
-                    return Mesh_2::IMPERATIVELY_BAD;
+                    return CGAL::Mesh_2::IMPERATIVELY_BAD;
                 }
             }
 
@@ -123,19 +140,20 @@ public:
             q.first = (area * area) / (max_sq_length * second_max_sq_length); // (sine)
 
             if( q.sine() < this->B )
-                return Mesh_2::BAD;
+                return CGAL::Mesh_2::BAD;
             else
-                return Mesh_2::NOT_BAD;
+                return CGAL::Mesh_2::NOT_BAD;
         }
     };
 
     Is_bad is_bad_object() const
-    { return Is_bad(this->bound(), size_bound(), 
+    { return Is_bad(fibres,this->bound(), this->size_bound(), 
+            transition_size, transition_dist,
             this->traits /* from the bad class */); }
 };
 
 
-typedef My_delaunay_mesh_size_criteria_2<CDT> Criteria;
+typedef My_delaunay_mesh_size_criteria_2<CDT,ParticlesType> Criteria;
 
 void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_radius, const double fibre_resolution_factor, const double nx, double2 domain_min, double2 domain_max, const double c0, const double k, const double epsilon_strength, const double epsilon_falloff, const bool periodic) {
 
@@ -348,7 +366,10 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
     std::cout << "Number of vertices: " << cdt.number_of_vertices() << std::endl;
     std::cout << "Meshing the domain..." << std::endl;
     CGAL::refine_Delaunay_mesh_2(cdt, list_of_seeds.begin(), list_of_seeds.end(),
-            Criteria(0.125,delta));
+            Criteria(fibres,0.125,delta,0.1,0.1));
+
+    : Base(aspect_bound,size_bound,traits),
+      transition_size(transition_
     std::cout << "Number of vertices: " << cdt.number_of_vertices() << std::endl;
     std::cout << "Number of finite faces: " << cdt.number_of_faces() << std::endl;
 
