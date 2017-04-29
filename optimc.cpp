@@ -2,10 +2,19 @@
 #include "setup_knots.h"
 
 
-#define FMAPS
+//#define FMAPS
+//#define MAPS
+#define COMPACT 
 
+#ifdef FMAPS
+#include "solve_stokes_fMAPS.h"
+#endif
+#ifdef COMPACT 
+#include "solve_stokes_Compact.h"
+#endif
+#ifdef MAPS
 #include "solve_stokes_MAPS.h"
-//#include "solve_stokes_fMAPS.h"
+#endif
 //#include "solve_stokes_LMAPS.h"
 
 
@@ -135,20 +144,106 @@ int main(int argc, char **argv) {
       //
       // SOLVE STOKES
       //
+#ifdef MAPS
       solve_stokes_MAPS(knots,max_iter_linear,restart_linear,solver_in,c0);
+#endif
+#ifdef COMPACT
+      solve_stokes_Compact(knots,max_iter_linear,restart_linear,solver_in,c0);
+#endif
       //solve_stokes_fMAPS(knots,max_iter_linear,restart_linear,solver_in,c0,ncheb);
       //solve_stokes_LMAPS(knots,max_iter_linear,restart_linear,solver_in,c0);
       //
       
-
       const size_t Nk = knots.size();
       const size_t Nc = comsol.size();
-
 
       typedef typename position::value_type const & const_position_reference;
       typedef typename KnotsType::const_reference const_knot_reference;
       typedef typename ComsolType::const_reference const_comsol_reference;
+      
+#ifdef COMPACT 
+    const double h = 10.0;
+    const double invh = 1.0/h;
+    const double search_radius = h;
 
+    auto psol_u1_op = create_sparse_operator(comsol,knots,search_radius,
+            [&](const double2& dx,
+                const_comsol_reference i,
+                const_knot_reference j) {
+                if (get<boundary>(j) || get<inlet>(j)) {
+                    return -kernel_yy(dx, invh);
+                } else if (get<outlet>(j)) {
+                    return -kernel_yy(dx, invh);
+                } else {
+                    return mu*laplace_yy(dx, invh);
+                }
+           });
+
+    auto psol_u2_op = create_sparse_operator(comsol,knots,search_radius,
+            [&](const double2& dx,
+                const_comsol_reference i,
+                const_knot_reference j) {
+                if (get<boundary>(j) || get<inlet>(j)) {
+                    return 0.0;
+                } else if (get<outlet>(j)) {
+                    return kernel_xy(dx, invh);
+                } else {
+                    return -mu*laplace_xy(dx, invh);
+                }
+           });
+
+    auto psol_v1_op = create_sparse_operator(comsol,knots,search_radius,
+            [&](const double2& dx,
+                const_comsol_reference i,
+                const_knot_reference j) {
+                if (get<boundary>(j) || get<inlet>(j)) {
+                    return kernel_xy(dx, invh);
+                } else if (get<outlet>(j)) {
+                    return kernel_xy(dx, invh);
+                } else {
+                    return -mu*laplace_xy(dx, invh);
+                }
+           });
+
+    auto psol_v2_op = create_sparse_operator(comsol,knots,search_radius,
+            [&](const double2& dx,
+                const_comsol_reference i,
+                const_knot_reference j) {
+                if (get<boundary>(j) || get<inlet>(j)) {
+                    return 0.0;
+                } else if (get<outlet>(j)) {
+                    return -kernel_xx(dx, invh);
+                } else {
+                    return mu*laplace_xx(dx, invh);
+                }
+           });
+
+    auto psol_p1_op = create_sparse_operator(comsol,knots,search_radius,
+            [&](const double2& dx,
+                const_comsol_reference i,
+                const_knot_reference j) {
+                if (get<boundary>(j) || get<inlet>(j)) {
+                    return 0.0;
+                } else if (get<outlet>(j)) {
+                    return 0.0;
+                } else {
+                    return -kernel_x(dx, invh);
+                }
+           });
+
+    auto psol_p2_op = create_sparse_operator(comsol,knots,search_radius,
+            [&](const double2& dx,
+                const_comsol_reference i,
+                const_knot_reference j) {
+                if (get<boundary>(j) || get<inlet>(j)) {
+                    return kernel(dx, invh);
+                } else if (get<outlet>(j)) {
+                    return 0.0;
+                } else {
+                    return -kernel_y(dx, invh);
+                }
+           });
+#endif
 #ifdef FMAPS
       auto psol_u1_op = create_chebyshev_operator(comsol,knots,
               ncheb,
@@ -198,7 +293,8 @@ int main(int argc, char **argv) {
             return psol_p2(dx,c0);
             });
 
-#else
+#endif
+#ifdef MAPS
       auto psol_u1_op = create_dense_operator(comsol,knots,
             [](const_position_reference dx,
                const_comsol_reference a,

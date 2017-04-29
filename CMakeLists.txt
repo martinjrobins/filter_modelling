@@ -65,6 +65,7 @@ set(source_files
     filter.cpp
     setup_knots.cpp
     solve_stokes_LMAPS.cpp
+    solve_stokes_Compact.cpp
     )
 
 set(filter_include_dirs "Aboria/src" "Aboria/third-party")

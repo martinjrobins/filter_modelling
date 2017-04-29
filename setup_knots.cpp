@@ -17,19 +17,21 @@ typedef CDT::Point Point;
 
 template <class CDT, typename Fibres>
 class My_delaunay_mesh_size_criteria_2 : 
-    public virtual CGAL::Delaunay_mesh_size_criteria_2<CDT>
+    public CGAL::Delaunay_mesh_size_criteria_2<CDT>
 {
 protected:
   typedef typename CDT::Geom_traits Geom_traits;
   double transition_size;
   double transition_dist;
   const Fibres* fibres;
+  const double fibre_radius;
 
 public:
   typedef CGAL::Delaunay_mesh_size_criteria_2<CDT> Base;
 
   My_delaunay_mesh_size_criteria_2(
                                 const Fibres& fibres,
+                                const double fibre_radius,
                                 const double aspect_bound = 0.125, 
                                 const double size_bound = 0,
                                 const double transition_size = 0,
@@ -37,7 +39,7 @@ public:
                                 const Geom_traits& traits = Geom_traits())
     : Base(aspect_bound,size_bound,traits),
       transition_size(transition_size),transition_dist(transition_dist),
-      fibres(&fibres)
+      fibres(&fibres),fibre_radius(fibre_radius)
     {}
             
 
@@ -49,10 +51,12 @@ public:
         double transition_size;
         double transition_dist;
         const Fibres* fibres;
+        const double fibre_radius;
     public:
         typedef typename Base::Is_bad::Point_2 Point_2;
 
         Is_bad( const Fibres* fibres,
+                const double fibre_radius,
                 const double aspect_bound,
                 const double size_bound,
                 const double transition_size,
@@ -60,9 +64,17 @@ public:
                 const Geom_traits& traits)
             : Base::Is_bad(aspect_bound, size_bound, traits),
             transition_size(transition_size),transition_dist(transition_dist),
-            fibres(fibres)
+            fibres(fibres),fibre_radius(fibre_radius)
         {}
 
+
+        using Base::Is_bad::operator();
+        /*
+        CGAL::Mesh_2::Face_badness operator()(const Quality q) const
+        {
+            return this->operator()(q);
+        }
+        */
 
         CGAL::Mesh_2::Face_badness operator()(const typename CDT::Face_handle& fh,
                 Quality& q) const
@@ -73,6 +85,7 @@ public:
                 Compute_squared_distance_2;
 
             Geom_traits traits; /** @warning traits with data!! */
+
 
             Compute_squared_distance_2 squared_distance = 
                 traits.compute_squared_distance_2_object();
@@ -118,12 +131,13 @@ public:
             {
                 //	  std::cerr << squared_size_bound << std::endl;
                 q.second = max_sq_length / this->squared_size_bound;
-                double max_dist2 = 0;
-                for (typename Fibres::const_reference f: fibres) {
-                    const double dist2 = (get<Fibres::position>(f)-p_centre).squaredNorm();
-                    if (dist2 > max_dist2) max_dist2 = dist2;
+                double min_dist2 = std::numeric_limits<double>::max();
+                for (typename Fibres::const_reference f: *fibres) {
+                    const double dist2 = (get<typename Fibres::position>(f)-p_centre).squaredNorm();
+                    if (dist2 < min_dist2) min_dist2 = dist2;
                 }
-                q.second *= 1.0+(1.0-transition_size)*std::tanh((std::sqrt(max_dist2)-transition_dist));
+                q.second /= (1+transition_size)/2
+                            + ((1-transition_size)/2)*std::tanh((1.0/transition_dist)*(std::sqrt(min_dist2)-fibre_radius-transition_dist));
                 // normalized by size bound to deal
                 // with size field
                 if( q.size() > 1 )
@@ -147,7 +161,7 @@ public:
     };
 
     Is_bad is_bad_object() const
-    { return Is_bad(fibres,this->bound(), this->size_bound(), 
+    { return Is_bad(fibres,fibre_radius,this->bound(), this->size_bound(), 
             transition_size, transition_dist,
             this->traits /* from the bad class */); }
 };
@@ -199,7 +213,6 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
             const double dtheta = 2*PI/n;
             for (int kk=0; kk<n; ++kk) {
                 get<position>(p) = origin + radius*double2(cos(kk*dtheta),sin(kk*dtheta));
-                std::cout << "adding f at "<<get<position>(p)<<std::endl;
                 if (jj==0) {
                     if (kk==0) {
                         v1 = cdt.insert(Point(get<position>(p)[0],get<position>(p)[1]));
@@ -240,7 +253,6 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
                 // boundary - left
                 get<position>(p) = double2(domain_min[0]-jj*deltay,
                         domain_min[1]+ii*deltay);
-                std::cout << "adding bl at "<<get<position>(p)<<std::endl;
                 if (jj==0) {
                     if (ii==0) {
                         vstart_left = cdt.insert(Point(get<position>(p)[0],get<position>(p)[1]));
@@ -271,7 +283,6 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
                 // boundary - right
                 get<position>(p) = double2(domain_max[0]+jj*deltay,
                         domain_min[1]+ii*deltay);
-                std::cout << "adding br at "<<get<position>(p)<<std::endl;
                 if (jj==0) {
                     if (ii==0) {
                         vstart_right = cdt.insert(Point(get<position>(p)[0],get<position>(p)[1]));
@@ -306,7 +317,6 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
         for (int jj=0; jj<layers; ++jj) {
             // inlet
             get<position>(p) = double2(domain_min[0] + ii*deltax,domain_max[1]+jj*deltax);
-            std::cout << "adding inlet at "<<get<position>(p)<<std::endl;
             if (jj==0) {
                 if (ii==1) {
                     vstart_top = cdt.insert(Point(get<position>(p)[0],get<position>(p)[1]));
@@ -334,7 +344,6 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
         for (int jj=0; jj<layers; ++jj) {
             // outlet
             get<position>(p) = double2(domain_min[0] + ii*deltax,domain_min[1]-jj*deltax);
-            std::cout << "adding outlet at "<<get<position>(p)<<std::endl;
             if (jj==0) {
                 if (ii==1) {
                     vstart_bottom = cdt.insert(Point(get<position>(p)[0],get<position>(p)[1]));
@@ -366,10 +375,8 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
     std::cout << "Number of vertices: " << cdt.number_of_vertices() << std::endl;
     std::cout << "Meshing the domain..." << std::endl;
     CGAL::refine_Delaunay_mesh_2(cdt, list_of_seeds.begin(), list_of_seeds.end(),
-            Criteria(fibres,0.125,delta,0.1,0.1));
+            Criteria(fibres,fibre_radius,0.125,delta,0.1,0.1));
 
-    : Base(aspect_bound,size_bound,traits),
-      transition_size(transition_
     std::cout << "Number of vertices: " << cdt.number_of_vertices() << std::endl;
     std::cout << "Number of finite faces: " << cdt.number_of_faces() << std::endl;
 
