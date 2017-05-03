@@ -9,14 +9,130 @@ void solve_stokes_Compact(KnotsType &knots, unsigned int max_iter_linear,unsigne
     typedef typename position::value_type const & const_position_reference;
     typedef typename KnotsType::const_reference const_reference;
 
-    const double h = 10.0;
+    const double h = 15.0;
     const double invh = 1.0/h;
     const double mu = 1.0;
 
     const double search_radius = h;
 
-    //----B1: u = 0 at inlet and b, p = 0 at outlet
-    //B1: p = 0 at inlet and u=0 at b, dudy = 0 at outlet
+    auto A11 = create_sparse_operator(knots,knots,search_radius,
+                [&](const double2& dx,
+                    const_reference i,
+                    const_reference j) {
+                    if (get<boundary>(i) || get<inlet>(i) || get<outlet>(i)) {
+                        if (get<boundary>(j) || get<inlet>(j) || get<outlet>(j)) {
+                            return -kernel_yy(dx,invh);
+                        } else {
+                            return mu*laplace_yy(dx,invh);
+                        }
+                    } else {
+                        if (get<boundary>(j) || get<inlet>(j) || get<outlet>(j)) {
+                            return mu*laplace_yy(dx,invh);
+                        } else {
+                            return -mu*mu*laplace2_yy(dx,invh) - kernel_xx(dx,invh);
+                        }
+                    }
+               });
+
+        auto A12 = create_sparse_operator(knots,knots,search_radius,
+                [&](const double2& dx,
+                    const_reference i,
+                    const_reference j) {
+                    if (get<boundary>(i) || get<inlet>(i) || get<outlet>(i)) {
+                        if (get<boundary>(j) || get<inlet>(j) || get<outlet>(j)) {
+                            return kernel_xy(dx,invh);
+                        } else {
+                            return -mu*laplace_xy(dx,invh);
+                        }
+                    } else {
+                        if (get<boundary>(j) || get<inlet>(j) || get<outlet>(j)) {
+                            return -mu*laplace_xy(dx,invh);
+                        } else {
+                            return mu*mu*laplace2_xy(dx,invh) - kernel_xy(dx,invh);
+                        }
+                    }
+               });
+
+        auto A22 = create_sparse_operator(knots,knots,search_radius,
+                [&](const double2& dx,
+                    const_reference i,
+                    const_reference j) {
+                    if (get<boundary>(i) || get<inlet>(i) || get<outlet>(i)) {
+                        if (get<boundary>(j) || get<inlet>(j) || get<outlet>(j)) {
+                            return -kernel_xx(dx,invh);
+                        } else {
+                            return mu*laplace_xx(dx,invh);
+                        }
+                    } else {
+                        if (get<boundary>(j) || get<inlet>(j) || get<outlet>(j)) {
+                            return mu*laplace_xx(dx,invh);
+                        } else {
+                            return -mu*mu*laplace2_xx(dx,invh) - kernel_yy(dx,invh);
+                        }
+                    }
+               });
+
+
+        auto A = create_block_operator<2,2>(A11, A12,
+                                            A12, A22);
+
+        auto B11 = create_sparse_operator(knots,knots,search_radius,
+                [&](const double2& dx,
+                    const_reference i,
+                    const_reference j) {
+                    if (get<boundary>(j) || get<inlet>(j) || get<outlet>(j)) {
+                        return -kernel_yy(dx,invh);
+                    } else {
+                        return mu*laplace_yy(dx,invh);
+                    }
+               });
+
+        auto B12 = create_sparse_operator(knots,knots,search_radius,
+                [&](const double2& dx,
+                    const_reference i,
+                    const_reference j) {
+                    if (get<boundary>(j) || get<inlet>(j) || get<outlet>(j)) {
+                        return kernel_xy(dx,invh);
+                    } else {
+                        return -mu*laplace_xy(dx,invh);
+                    }
+               });
+
+        auto B22 = create_sparse_operator(knots,knots,search_radius,
+                [&](const double2& dx,
+                    const_reference i,
+                    const_reference j) {
+                    if (get<boundary>(j) || get<inlet>(j) || get<outlet>(j)) {
+                        return -kernel_xx(dx,invh);
+                    } else {
+                        return mu*laplace_xx(dx,invh);
+                    }
+               });
+
+        auto B31 = create_sparse_operator(knots,knots,search_radius,
+                [&](const double2& dx,
+                    const_reference i,
+                    const_reference j) {
+                    if (get<boundary>(j) || get<inlet>(j) || get<outlet>(j)) {
+                        return 0.0;
+                    } else {
+                        return -kernel_x(dx,invh);
+                    }
+               });
+
+        auto B32 = create_sparse_operator(knots,knots,search_radius,
+                [&](const double2& dx,
+                    const_reference i,
+                    const_reference j) {
+                    if (get<boundary>(j) || get<inlet>(j) || get<outlet>(j)) {
+                        return 0.0;
+                    } else {
+                        return -kernel_y(dx,invh);
+                    }
+               });
+
+        
+    /*
     auto A11 = create_sparse_operator(knots,knots,search_radius,
             [&](const double2& dx,
                 const_reference i,
@@ -53,25 +169,25 @@ void solve_stokes_Compact(KnotsType &knots, unsigned int max_iter_linear,unsigne
                 const_reference j) {
                 if (get<boundary>(i) || get<inlet>(i)) {
                     if (get<boundary>(j) || get<inlet>(j)) {
-                        return 0.0;
-                    } else if (get<outlet>(j)) {
                         return kernel_xy(dx, invh);
+                    } else if (get<outlet>(j)) {
+                        return 0.0;
                     } else {
                         return -mu*laplace_xy(dx, invh);
                     }
                 } else if (get<outlet>(i)) {
                     if (get<boundary>(j) || get<inlet>(j)) {
-                        return 0.0;
-                    } else if (get<outlet>(j)) {
                         return kernel_xy(dx, invh);
+                    } else if (get<outlet>(j)) {
+                        return 0.0;
                     } else {
                         return -mu*laplace_xy(dx, invh);
                     }
                 } else {
                     if (get<boundary>(j) || get<inlet>(j)) {
-                        return -kernel_x(dx, invh);
-                    } else if (get<outlet>(j)) {
                         return -mu*laplace_xy(dx, invh);
+                    } else if (get<outlet>(j)) {
+                        return kernel_x(dx, invh);
                     } else {
                         return mu*mu*laplace2_xy(dx, invh) - kernel_xy(dx, invh);
                     }
@@ -84,19 +200,20 @@ void solve_stokes_Compact(KnotsType &knots, unsigned int max_iter_linear,unsigne
                 const_reference j) {
                 if (get<boundary>(i) || get<inlet>(i)) {
                     if (get<boundary>(j) || get<inlet>(j)) {
-                        return 0.0;
-                    } else if (get<outlet>(j)) {
-                        return 0.0;
-                    } else {
-                        return -kernel_x(dx, invh);
-                    }
-                } else if (get<outlet>(i)) {
-                    if (get<boundary>(j) || get<inlet>(j)) {
                         return kernel_xy(dx, invh);
                     } else if (get<outlet>(j)) {
                         return kernel_xy(dx, invh);
                     } else {
                         return -mu*laplace_xy(dx, invh);
+                    }
+                   
+                } else if (get<outlet>(i)) {
+                    if (get<boundary>(j) || get<inlet>(j)) {
+                        return 0.0;
+                    } else if (get<outlet>(j)) {
+                        return 0.0;
+                    } else {
+                        return -kernel_x(dx, invh);
                     }
                 } else {
                     if (get<boundary>(j) || get<inlet>(j)) {
@@ -115,25 +232,26 @@ void solve_stokes_Compact(KnotsType &knots, unsigned int max_iter_linear,unsigne
                 const_reference j) {
                 if (get<boundary>(i) || get<inlet>(i)) {
                     if (get<boundary>(j) || get<inlet>(j)) {
-                        return kernel(dx, invh);
+                        return -kernel_xx(dx, invh);
                     } else if (get<outlet>(j)) {
                         return 0.0;
                     } else {
-                        return -kernel_y(dx, invh);
+                        return mu*laplace_xx(dx, invh);
                     }
                 } else if (get<outlet>(i)) {
                     if (get<boundary>(j) || get<inlet>(j)) {
                         return 0.0;
                     } else if (get<outlet>(j)) {
-                        return -kernel_xx(dx, invh);
+                        return kernel(dx, invh);
                     } else {
-                        return mu*laplace_xx(dx, invh);
+                        return -kernel_y(dx, invh);
                     }
+                    
                 } else {
                     if (get<boundary>(j) || get<inlet>(j)) {
-                        return -kernel_y(dx, invh);
-                    } else if (get<outlet>(j)) {
                         return mu*laplace_xx(dx, invh);
+                    } else if (get<outlet>(j)) {
+                        return kernel_y(dx, invh);
                     } else {
                         return -mu*mu*laplace2_xx(dx, invh) - kernel_yy(dx, invh);
                     }
@@ -142,7 +260,7 @@ void solve_stokes_Compact(KnotsType &knots, unsigned int max_iter_linear,unsigne
 
     
     auto A = create_block_operator<2,2>(A11, A12,
-                                        A12, A22);
+                                        A21, A22);
 
 
     auto B11 = create_sparse_operator(knots,knots,search_radius,
@@ -163,9 +281,9 @@ void solve_stokes_Compact(KnotsType &knots, unsigned int max_iter_linear,unsigne
                 const_reference i,
                 const_reference j) {
                 if (get<boundary>(j) || get<inlet>(j)) {
-                    return 0.0;
-                } else if (get<outlet>(j)) {
                     return kernel_xy(dx, invh);
+                } else if (get<outlet>(j)) {
+                    return 0.0;
                 } else {
                     return -mu*laplace_xy(dx, invh);
                 }
@@ -189,9 +307,9 @@ void solve_stokes_Compact(KnotsType &knots, unsigned int max_iter_linear,unsigne
                 const_reference i,
                 const_reference j) {
                 if (get<boundary>(j) || get<inlet>(j)) {
-                    return 0.0;
-                } else if (get<outlet>(j)) {
                     return -kernel_xx(dx, invh);
+                } else if (get<outlet>(j)) {
+                    return 0.0;
                 } else {
                     return mu*laplace_xx(dx, invh);
                 }
@@ -215,13 +333,14 @@ void solve_stokes_Compact(KnotsType &knots, unsigned int max_iter_linear,unsigne
                 const_reference i,
                 const_reference j) {
                 if (get<boundary>(j) || get<inlet>(j)) {
-                    return kernel(dx, invh);
-                } else if (get<outlet>(j)) {
                     return 0.0;
+                } else if (get<outlet>(j)) {
+                    return kernel(dx, invh);
                 } else {
                     return -kernel_y(dx, invh);
                 }
            });
+    */
 
 
     std::cout << "setup equations..."<<std::endl;
@@ -240,7 +359,7 @@ void solve_stokes_Compact(KnotsType &knots, unsigned int max_iter_linear,unsigne
 
     for (int ii=0; ii<N; ++ii) {
         source(ii) = 0.0;
-        if (get<inlet>(knots)[ii]) {
+        if (get<inlet>(knots)[ii]||get<outlet>(knots)[ii]) {
             source(N+ii) = -flow_rate;
         } else {
             source(N+ii) = 0.0;
