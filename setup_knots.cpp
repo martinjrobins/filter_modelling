@@ -25,11 +25,14 @@ protected:
   double transition_dist;
   const Fibres* fibres;
   const double fibre_radius;
+  const double2 min,max;
 
 public:
   typedef CGAL::Delaunay_mesh_size_criteria_2<CDT> Base;
 
   My_delaunay_mesh_size_criteria_2(
+                                const double2 min,
+                                const double2 max,
                                 const Fibres& fibres,
                                 const double fibre_radius,
                                 const double aspect_bound = 0.125, 
@@ -39,7 +42,8 @@ public:
                                 const Geom_traits& traits = Geom_traits())
     : Base(aspect_bound,size_bound,traits),
       transition_size(transition_size),transition_dist(transition_dist),
-      fibres(&fibres),fibre_radius(fibre_radius)
+      fibres(&fibres),fibre_radius(fibre_radius),
+      min(min),max(max)
     {}
             
 
@@ -52,10 +56,13 @@ public:
         double transition_dist;
         const Fibres* fibres;
         const double fibre_radius;
+        const double2 min,max;
     public:
         typedef typename Base::Is_bad::Point_2 Point_2;
 
-        Is_bad( const Fibres* fibres,
+        Is_bad( const double2 min,
+                const double2 max,
+                const Fibres* fibres,
                 const double fibre_radius,
                 const double aspect_bound,
                 const double size_bound,
@@ -64,7 +71,8 @@ public:
                 const Geom_traits& traits)
             : Base::Is_bad(aspect_bound, size_bound, traits),
             transition_size(transition_size),transition_dist(transition_dist),
-            fibres(fibres),fibre_radius(fibre_radius)
+            fibres(fibres),fibre_radius(fibre_radius),
+            min(min),max(max)
         {}
 
 
@@ -131,13 +139,20 @@ public:
             {
                 //	  std::cerr << squared_size_bound << std::endl;
                 q.second = max_sq_length / this->squared_size_bound;
-                double min_dist2 = std::numeric_limits<double>::max();
+                double min_dist = std::numeric_limits<double>::max();
                 for (typename Fibres::const_reference f: *fibres) {
-                    const double dist2 = (get<typename Fibres::position>(f)-p_centre).squaredNorm();
-                    if (dist2 < min_dist2) min_dist2 = dist2;
+                    const double dist = (get<typename Fibres::position>(f)-p_centre).norm()-fibre_radius;
+                    if (dist < min_dist) min_dist = dist;
                 }
+                for (int d = 0; d < 2; ++d) {
+                    const double dist_min = std::abs(p_centre[d]-min[d]);
+                    const double dist_max = std::abs(max[d]-p_centre[d]);
+                    if (dist_min < min_dist) min_dist = dist_min;
+                    if (dist_max < min_dist) min_dist = dist_max;
+                }
+
                 q.second /= (1+transition_size)/2
-                            + ((1-transition_size)/2)*std::tanh((1.0/transition_dist)*(std::sqrt(min_dist2)-fibre_radius-transition_dist));
+                            + ((1-transition_size)/2)*std::tanh((1.0/transition_dist)*(min_dist-transition_dist));
                 // normalized by size bound to deal
                 // with size field
                 if( q.size() > 1 )
@@ -161,7 +176,7 @@ public:
     };
 
     Is_bad is_bad_object() const
-    { return Is_bad(fibres,fibre_radius,this->bound(), this->size_bound(), 
+    { return Is_bad(min,max,fibres,fibre_radius,this->bound(), this->size_bound(), 
             transition_size, transition_dist,
             this->traits /* from the bad class */); }
 };
@@ -375,7 +390,7 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
     std::cout << "Number of vertices: " << cdt.number_of_vertices() << std::endl;
     std::cout << "Meshing the domain..." << std::endl;
     CGAL::refine_Delaunay_mesh_2(cdt, list_of_seeds.begin(), list_of_seeds.end(),
-            Criteria(fibres,fibre_radius,0.125,delta,0.1,0.1));
+            Criteria(domain_min,domain_max,fibres,fibre_radius,0.125,delta,0.1,0.1));
 
     std::cout << "Number of vertices: " << cdt.number_of_vertices() << std::endl;
     std::cout << "Number of finite faces: " << cdt.number_of_faces() << std::endl;
@@ -439,6 +454,7 @@ void calculate_c(KnotsType &knots, double c0, const double nx, double2 domain_mi
     c[i] = c0*c[i]/mult;
     //c[i] = c0/mult/2;
     //c[i] = delta;
+    c[i] = c0;
 
     vtkWriteGrid("init_knots",2,knots.get_grid(true));
     std::cout << "done calculate c."<<std::endl;

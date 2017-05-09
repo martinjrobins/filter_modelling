@@ -3,6 +3,7 @@
 
     double kernel(const double2& dx, const double invh) {
         const double r = dx.norm()*invh;
+        if (r > 1) return 0.0;
         const double r2 = r*r;
         const double r3 = r2*r;
         const double r4 = r2*r2;
@@ -11,6 +12,7 @@
 
     double kernel_x(const double2& dx, const double invh) {
         const double r = dx.norm()*invh;
+        if (r > 1) return 0.0;
         return -26.0*dx[0]*std::pow(invh,2)*std::pow(r-1.0,9)*(5.0 + 3.0*r*(15.0 + r*(53.0+77.0*r))); 
     }
     double kernel_y(const double2& dx, const double invh) {
@@ -19,22 +21,26 @@
     }
     double kernel_xx(const double2& dx, const double invh) {
         const double r = dx.norm()*invh;
+        if (r > 1) return 0.0;
         return 26.0*std::pow(invh,2)*std::pow(r-1.0,8)*((-1.0 + r)*(5.0+3.0*r*(15.0+r*(53.0+77.0*r))) 
                                     + 132.0*(1.0+r*(8.0+21.0*r))*dx[0]*dx[0]*invh*invh); 
     }
 
     double kernel_yy(const double2& dx, const double invh) {
         const double r = dx.norm()*invh;
+        if (r > 1) return 0.0;
         return 26.0*std::pow(invh,2)*std::pow(r-1.0,8)*((-1.0 + r)*(5.0+3.0*r*(15.0+r*(53.0+77.0*r))) 
                                     + 132.0*(1.0+r*(8.0+21.0*r))*dx[1]*dx[1]*invh*invh); 
     }
     double kernel_xy(const double2& dx, const double invh) {
         const double r = dx.norm()*invh;
+        if (r > 1) return 0.0;
         return 3432.0*dx[0]*dx[1]*std::pow(invh,4)*std::pow(r-1.0,8)*(1.0 + r*(8.0 + 21.0*r)); 
     }
 
     double laplace_xx(const double2& dx, const double invh) {
         const double r = dx.norm()*invh;
+        if (r > 1) return 0.0;
         const double r2 = r*r;
         const double r3 = r2*r;
         const double r4 = r2*r2;
@@ -43,6 +49,7 @@
     };
     double laplace_yy(const double2& dx, const double invh) {
         const double r = dx.norm()*invh;
+        if (r > 1) return 0.0;
         const double r2 = r*r;
         const double r3 = r2*r;
         const double r4 = r2*r2;
@@ -51,10 +58,12 @@
     };
     double laplace_xy(const double2& dx, const double invh) {
         const double r = dx.norm()*invh;
+        if (r > 1) return 0.0;
         return 205920.0*dx[0]*dx[1]*std::pow(invh,6)*std::pow(r-1.0,6)*(-3.0+r*(-18.0+49.0*r));
     }
     double laplace2_xx(const double2& dx, const double invh) {
         const double r = dx.norm()*invh;
+        if (r > 1) return 0.0;
         const double r2 = r*r;
         const double r3 = r2*r;
         const double r4 = r2*r2;
@@ -63,6 +72,7 @@
     };
     double laplace2_yy(const double2& dx, const double invh) {
         const double r = dx.norm()*invh;
+        if (r > 1) return 0.0;
         const double r2 = r*r;
         const double r3 = r2*r;
         const double r4 = r2*r2;
@@ -71,6 +81,7 @@
     };
     double laplace2_xy(const double2& dx, const double invh) {
         const double r = dx.norm()*invh;
+        if (r > 1) return 0.0;
         return 34594560.0*dx[0]*dx[1]*std::pow(invh,8)*std::pow(r-1.0,4)*(8.0+r*(-31.0+28.0*r));
     };
 

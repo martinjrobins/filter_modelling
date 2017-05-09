@@ -159,17 +159,34 @@ int main(int argc, char **argv) {
 
       typedef typename position::value_type const & const_position_reference;
       typedef typename KnotsType::const_reference const_knot_reference;
+      typedef typename KnotsType::reference knot_reference;
       typedef typename ComsolType::const_reference const_comsol_reference;
+      typedef typename ComsolType::reference comsol_reference;
+
+      for (comsol_reference i: comsol) {
+          get<kernel_constant>(i) = c0;
+      }
+
       
 #ifdef COMPACT 
-    const double h = 10.0;
-    const double invh = 1.0/h;
-    const double search_radius = h;
+    double min_c = get<kernel_constant>(knots)[0];
+    double max_c = min_c;
+    for (knot_reference i: knots) {
+        if (get<kernel_constant>(i) > max_c) {
+            max_c = get<kernel_constant>(i);
+        }
+        if (get<kernel_constant>(i) < min_c) {
+            min_c = get<kernel_constant>(i);
+        }
+    }
+    std::cout << "max _c  = "<<max_c<<std::endl;
+    const double search_radius = max_c;
 
     auto psol_u1_op = create_sparse_operator(comsol,knots,search_radius,
             [&](const double2& dx,
                 const_comsol_reference i,
                 const_knot_reference j) {
+                const double invh = 2.0/(get<kernel_constant>(i)+get<kernel_constant>(j));
                 if (get<boundary>(j) || get<inlet>(j)) {
                     return -kernel_yy(dx, invh);
                 } else if (get<outlet>(j)) {
@@ -183,10 +200,11 @@ int main(int argc, char **argv) {
             [&](const double2& dx,
                 const_comsol_reference i,
                 const_knot_reference j) {
+                const double invh = 2.0/(get<kernel_constant>(i)+get<kernel_constant>(j));
                 if (get<boundary>(j) || get<inlet>(j)) {
-                    return 0.0;
-                } else if (get<outlet>(j)) {
                     return kernel_xy(dx, invh);
+                } else if (get<outlet>(j)) {
+                    return 0.0;
                 } else {
                     return -mu*laplace_xy(dx, invh);
                 }
@@ -196,6 +214,7 @@ int main(int argc, char **argv) {
             [&](const double2& dx,
                 const_comsol_reference i,
                 const_knot_reference j) {
+                const double invh = 2.0/(get<kernel_constant>(i)+get<kernel_constant>(j));
                 if (get<boundary>(j) || get<inlet>(j)) {
                     return kernel_xy(dx, invh);
                 } else if (get<outlet>(j)) {
@@ -203,16 +222,18 @@ int main(int argc, char **argv) {
                 } else {
                     return -mu*laplace_xy(dx, invh);
                 }
+                
            });
 
     auto psol_v2_op = create_sparse_operator(comsol,knots,search_radius,
             [&](const double2& dx,
                 const_comsol_reference i,
                 const_knot_reference j) {
+                const double invh = 2.0/(get<kernel_constant>(i)+get<kernel_constant>(j));
                 if (get<boundary>(j) || get<inlet>(j)) {
-                    return 0.0;
-                } else if (get<outlet>(j)) {
                     return -kernel_xx(dx, invh);
+                } else if (get<outlet>(j)) {
+                    return 0.0;
                 } else {
                     return mu*laplace_xx(dx, invh);
                 }
@@ -222,6 +243,7 @@ int main(int argc, char **argv) {
             [&](const double2& dx,
                 const_comsol_reference i,
                 const_knot_reference j) {
+                const double invh = 2.0/(get<kernel_constant>(i)+get<kernel_constant>(j));
                 if (get<boundary>(j) || get<inlet>(j)) {
                     return 0.0;
                 } else if (get<outlet>(j)) {
@@ -235,10 +257,11 @@ int main(int argc, char **argv) {
             [&](const double2& dx,
                 const_comsol_reference i,
                 const_knot_reference j) {
+                const double invh = 2.0/(get<kernel_constant>(i)+get<kernel_constant>(j));
                 if (get<boundary>(j) || get<inlet>(j)) {
-                    return kernel(dx, invh);
-                } else if (get<outlet>(j)) {
                     return 0.0;
+                } else if (get<outlet>(j)) {
+                    return kernel(dx, invh);
                 } else {
                     return -kernel_y(dx, invh);
                 }
