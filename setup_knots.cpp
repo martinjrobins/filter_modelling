@@ -140,19 +140,23 @@ public:
                 //	  std::cerr << squared_size_bound << std::endl;
                 q.second = max_sq_length / this->squared_size_bound;
                 double min_dist = std::numeric_limits<double>::max();
-                for (typename Fibres::const_reference f: *fibres) {
-                    const double dist = (get<typename Fibres::position>(f)-p_centre).norm()-fibre_radius;
-                    if (dist < min_dist) min_dist = dist;
-                }
-                for (int d = 0; d < 2; ++d) {
-                    const double dist_min = std::abs(p_centre[d]-min[d]);
-                    const double dist_max = std::abs(max[d]-p_centre[d]);
-                    if (dist_min < min_dist) min_dist = dist_min;
-                    if (dist_max < min_dist) min_dist = dist_max;
+                
+                for (auto pref: {pa,pb,pc}) {
+                    const double2 p(pref[0],pref[1]);
+                    for (typename Fibres::const_reference f: *fibres) {
+                        const double dist = (get<typename Fibres::position>(f)-p).norm()-fibre_radius;
+                        if (dist < min_dist) min_dist = dist;
+                    }
+                    for (int d = 0; d < 2; ++d) {
+                        const double dist_min = std::abs(p[d]-min[d]);
+                        const double dist_max = std::abs(max[d]-p[d]);
+                        if (dist_min < min_dist) min_dist = dist_min;
+                        if (dist_max < min_dist) min_dist = dist_max;
+                    }
                 }
 
                 q.second /= (1+transition_size)/2
-                            + ((1-transition_size)/2)*std::tanh((1.0/transition_dist)*(min_dist-transition_dist));
+                            + ((1-transition_size)/2)*std::tanh((3.0/transition_dist)*(2*min_dist-transition_dist));
                 // normalized by size bound to deal
                 // with size field
                 if( q.size() > 1 )
@@ -390,7 +394,7 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
     std::cout << "Number of vertices: " << cdt.number_of_vertices() << std::endl;
     std::cout << "Meshing the domain..." << std::endl;
     CGAL::refine_Delaunay_mesh_2(cdt, list_of_seeds.begin(), list_of_seeds.end(),
-            Criteria(domain_min,domain_max,fibres,fibre_radius,0.125,delta,0.1,0.1));
+            Criteria(domain_min,domain_max,fibres,fibre_radius,0.125,delta,fibre_resolution,0.3));
 
     std::cout << "Number of vertices: " << cdt.number_of_vertices() << std::endl;
     std::cout << "Number of finite faces: " << cdt.number_of_faces() << std::endl;

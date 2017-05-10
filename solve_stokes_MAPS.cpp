@@ -107,7 +107,8 @@ double solve_stokes_MAPS(KnotsType &knots, unsigned int max_iter_linear,unsigned
     }
 
     std::cout << "solve w MAPS ..."<<std::endl;
-    alphas = A_eigen.colPivHouseholderQr().solve(source);
+    alphas = A_eigen.householderQr().solve(source);
+    //alphas = A_eigen.colPivHouseholderQr().solve(source);
     double relative_error = (A_eigen*alphas - source).norm() / source.norm();
     cout << "The relative error is:\n" << relative_error << endl;
     
