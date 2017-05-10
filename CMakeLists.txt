@@ -82,8 +82,5 @@ target_link_libraries(check_solutions ${filter_libs})
 add_executable(simulation simulation.cpp )
 target_link_libraries(simulation filter_modelling )
 
-add_executable(validate validate.cpp )
-target_link_libraries(validate filter_modelling ${filter_libs})
-
 add_executable(optimc optimc.cpp )
 target_link_libraries(optimc filter_modelling )

@@ -9,6 +9,7 @@ int main(int argc, char **argv) {
     double fibre_resolution,fibre_radius,particle_rate,react_rate,D;
     double dt_aim,k,gamma,rf,c0,epsilon_strength,epsilon_falloff;
     unsigned int solver_in;
+    bool periodic;
 
     po::options_description desc("Allowed options");
     desc.add_options()
@@ -20,6 +21,7 @@ int main(int argc, char **argv) {
         ("k", po::value<double>(&k)->default_value(1.00), "spring constant")
         ("D", po::value<double>(&D)->default_value(0.01), "diffusion constant")
         ("particle_rate", po::value<double>(&particle_rate)->default_value(1000.0), "particle rate")
+        ("periodic", po::value<bool>(&periodic)->default_value(false), "periodic in x")
         ("react_rate", po::value<double>(&react_rate)->default_value(0.5), "particle reaction rate")
         ("epsilon_strength", po::value<double>(&epsilon_strength)->default_value(2.0), "boundary clustering fall-off")
         ("epsilon_falloff", po::value<double>(&epsilon_falloff)->default_value(0.3), "boundary clustering fall-off")
@@ -95,9 +97,57 @@ int main(int argc, char **argv) {
         std::cout << "added "<<fibres.size()<<" fibres"<<std::endl;
     }
 
-    setup_knots(knots, fibres, fibre_radius, fibre_resolution, nx, domain_min, domain_max, c0, k,epsilon_strength,epsilon_falloff);
+    setup_knots(knots, fibres, fibre_radius, fibre_resolution, nx, domain_min, domain_max, c0, k,epsilon_strength,epsilon_falloff,periodic);
 
     solve_stokes_MAPS(knots,max_iter_linear,restart_linear,solver_in,c0);
+
+    typedef typename position::value_type const & const_position_reference;
+    typedef typename KnotsType::const_reference const_knot_reference;
+    typedef typename KnotsType::reference knot_reference;
+    typedef typename ParticlesType::const_reference const_particles_reference;
+    typedef typename ParticlesType::reference particles_reference;
+
+    auto psol_u1_op = create_dense_operator(particles,knots,
+            [](const_position_reference dx,
+               const_particles_reference a,
+               const_knot_reference b) {
+            return psol_u1(dx,get<kernel_constant>(b));
+            });
+
+      auto psol_v1_op = create_dense_operator(particles,knots,
+            [](const_position_reference dx,
+               const_particles_reference a,
+               const_knot_reference b) {
+            return psol_v1(dx,get<kernel_constant>(b));
+            });
+
+      auto psol_p1_op = create_dense_operator(particles,knots,
+            [](const_position_reference dx,
+               const_particles_reference a,
+               const_knot_reference b) {
+            return psol_p1(dx,get<kernel_constant>(b));
+            });
+
+      auto psol_u2_op = create_dense_operator(particles,knots,
+            [](const_position_reference dx,
+               const_particles_reference a,
+               const_knot_reference b) {
+            return psol_u2(dx,get<kernel_constant>(b));
+            });
+
+      auto psol_v2_op = create_dense_operator(particles,knots,
+            [](const_position_reference dx,
+               const_particles_reference a,
+               const_knot_reference b) {
+            return psol_v2(dx,get<kernel_constant>(b));
+            });
+
+      auto psol_p2_op = create_dense_operator(particles,knots,
+            [](const_position_reference dx,
+               const_particles_reference a,
+               const_knot_reference b) {
+            return psol_p2(dx,get<kernel_constant>(b));
+            });
 
     Symbol<boundary> is_b;
     Symbol<inlet> is_in;
@@ -151,13 +201,16 @@ int main(int argc, char **argv) {
 
 
         // diffusion with drift
-        r[a] += std::sqrt(2.0*D*dt)*vector(N,N)
-            + dt*vector(
-                    sum(j,gen_psol_u1(a,j,c)*al1[j] + gen_psol_u2(a,j,c)*al2[j]),
-                    sum(j,gen_psol_v1(a,j,c)*al1[j] + gen_psol_v2(a,j,c)*al2[j])
-                    );
+        typedef Eigen::Matrix<double,Eigen::Dynamic,1> vector_type;
+        typedef Eigen::Map<vector_type> map_type;
+        map_type(get<velocity_u>(particles).data(),particles.size()) = 
+            psol_u1_op*map_type(get<alpha1>(knots).data(),knots.size())+
+            psol_u2_op*map_type(get<alpha2>(knots).data(),knots.size());
+        map_type(get<velocity_v>(particles).data(),particles.size()) = 
+            psol_v1_op*map_type(get<alpha1>(knots).data(),knots.size())+
+            psol_v2_op*map_type(get<alpha2>(knots).data(),knots.size());
 
-
+        r[a] += std::sqrt(2.0*D*dt)*vector(N[a],N[a]) + dt*vector(vu[a],vv[a]);
 
         if (ii % timesteps_per_out == 0) {
             std::cout << "timestep "<<ii<<" of "<<timesteps<<std::endl;
@@ -165,13 +218,13 @@ int main(int argc, char **argv) {
         }
 
         // react with fibres
-        alive_[a] = !any(bf,U<react_rate);
+        alive_[a] = !any(bf,U[a]<react_rate);
 
         // react with side walls
         alive_[a] = !if_else(r[a][0] > L
-                           ,U<react_rate
+                           ,U[a]<react_rate
                            ,if_else(r[a][0] < 0
-                               ,U<react_rate
+                               ,U[a]<react_rate
                                ,false
                                )
                            );

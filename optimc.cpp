@@ -3,8 +3,8 @@
 
 
 //#define FMAPS
-//#define MAPS
-#define COMPACT 
+#define MAPS
+//#define COMPACT 
 
 #ifdef FMAPS
 #include "solve_stokes_fMAPS.h"
@@ -367,6 +367,7 @@ int main(int argc, char **argv) {
       typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> matrix_type;
       typedef Eigen::Map<vector_type> map_type;
 
+      /*
       matrix_type psol_u1_mat(Nc,Nk);
       psol_u1_op.assemble(psol_u1_mat);
       matrix_type psol_v1_mat(Nc,Nk);
@@ -381,6 +382,7 @@ int main(int argc, char **argv) {
       matrix_type psol_p2_mat(Nc,Nk);
       psol_p2_op.assemble(psol_p2_mat);
       std::cout << "done assembling comsol matricies." << std::endl;
+      */
 
 
       // calculate solution at comsol pts
@@ -392,16 +394,16 @@ int main(int argc, char **argv) {
 
       std::cout << "calculating solution at comsol points...." << std::endl;
     map_type(get<velocity_u>(comsol).data(),Nc) = 
-        psol_u1_mat*map_type(get<alpha1>(knots).data(),Nk)+
-        psol_u2_mat*map_type(get<alpha2>(knots).data(),Nk);
+        psol_u1_op*map_type(get<alpha1>(knots).data(),Nk)+
+        psol_u2_op*map_type(get<alpha2>(knots).data(),Nk);
 
     map_type(get<velocity_v>(comsol).data(),Nc) = 
-        psol_v1_mat*map_type(get<alpha1>(knots).data(),Nk)+
-        psol_v2_mat*map_type(get<alpha2>(knots).data(),Nk);
+        psol_v1_op*map_type(get<alpha1>(knots).data(),Nk)+
+        psol_v2_op*map_type(get<alpha2>(knots).data(),Nk);
 
     map_type(get<pressure>(comsol).data(),Nc) = 
-        psol_p1_mat*map_type(get<alpha1>(knots).data(),Nk)+
-        psol_p2_mat*map_type(get<alpha2>(knots).data(),Nk);
+        psol_p1_op*map_type(get<alpha1>(knots).data(),Nk)+
+        psol_p2_op*map_type(get<alpha2>(knots).data(),Nk);
       std::cout << "done calculating solution at comsol points."<< std::endl;
 
       //compare
