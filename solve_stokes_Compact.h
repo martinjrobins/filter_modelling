@@ -17,6 +17,7 @@
     }
     double kernel_y(const double2& dx, const double invh) {
         const double r = dx.norm()*invh;
+        if (r > 1) return 0.0;
         return -26.0*dx[1]*std::pow(invh,2)*std::pow(r-1.0,9)*(5.0 + 3.0*r*(15.0 + r*(53.0+77.0*r))); 
     }
     double kernel_xx(const double2& dx, const double invh) {
