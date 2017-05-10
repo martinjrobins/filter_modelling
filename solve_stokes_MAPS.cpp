@@ -1,6 +1,6 @@
 #include "solve_stokes_MAPS.h"
 
-void solve_stokes_MAPS(KnotsType &knots, unsigned int max_iter_linear,unsigned int restart_linear,unsigned int solver_in, double c0) {
+double solve_stokes_MAPS(KnotsType &knots, unsigned int max_iter_linear,unsigned int restart_linear,unsigned int solver_in, double c0) {
     std::cout << "solving stokes..."<<knots.size()<<std::endl;
 
     const double flow_rate = 1.0;
@@ -247,4 +247,5 @@ void solve_stokes_MAPS(KnotsType &knots, unsigned int max_iter_linear,unsigned i
     vtkWriteGrid("MAPS",0,knots.get_grid(true));
 
     std::cout << "done solving stokes"<<std::endl;
+    return relative_error;
 }

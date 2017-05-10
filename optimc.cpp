@@ -80,6 +80,7 @@ int main(int argc, char **argv) {
            << std::setw(15) << "max_error_u"
            << std::setw(15) << "max_error_v"
            << std::setw(15) << "max_error_p"
+           << std::setw(15) << "solve_error"
            << std::endl;
 
     for (double c0 = c0_min; c0 < c0_max; c0+=c0_increment) {
@@ -145,10 +146,10 @@ int main(int argc, char **argv) {
       // SOLVE STOKES
       //
 #ifdef MAPS
-      solve_stokes_MAPS(knots,max_iter_linear,restart_linear,solver_in,c0);
+      const double relative_error = solve_stokes_MAPS(knots,max_iter_linear,restart_linear,solver_in,c0);
 #endif
 #ifdef COMPACT
-      solve_stokes_Compact(knots,max_iter_linear,restart_linear,solver_in,c0);
+      const double relative_error = solve_stokes_Compact(knots,max_iter_linear,restart_linear,solver_in,c0);
 #endif
       //solve_stokes_fMAPS(knots,max_iter_linear,restart_linear,solver_in,c0,ncheb);
       //solve_stokes_LMAPS(knots,max_iter_linear,restart_linear,solver_in,c0);
@@ -434,6 +435,7 @@ int main(int argc, char **argv) {
            << std::setw(15) << max_error_u
            << std::setw(15) << max_error_v
            << std::setw(15) << max_error_p
+           << std::setw(15) << relative_error
            << std::endl;
 
       std::cout << "rms errors = "

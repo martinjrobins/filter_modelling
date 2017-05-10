@@ -1,6 +1,6 @@
 #include "solve_stokes_Compact.h"
 
-void solve_stokes_Compact(KnotsType &knots, unsigned int max_iter_linear,unsigned int restart_linear,unsigned int solver_in, double c0) {
+double solve_stokes_Compact(KnotsType &knots, unsigned int max_iter_linear,unsigned int restart_linear,unsigned int solver_in, double c0) {
     std::cout << "solving stokes..."<<knots.size()<<std::endl;
 
     const double flow_rate = 1.0;
@@ -294,12 +294,12 @@ void solve_stokes_Compact(KnotsType &knots, unsigned int max_iter_linear,unsigne
     solver.compute(A_eigen);
     if(solver.info()!=Eigen::Success) {
         std::cout << "decomp failed" <<std::endl;
-        return;
+        return std::numeric_limits<double>::max();
     }
     alphas = solver.solve(source);
     if(solver.info()!=Eigen::Success) {
         std::cout << "solve failed" <<std::endl;
-        return;
+        return std::numeric_limits<double>::max();
     }
     //alphas = A_eigen.colPivHouseholderQr().solve(source);
     double relative_error = (A_eigen*alphas - source).norm() / source.norm();
@@ -328,4 +328,6 @@ void solve_stokes_Compact(KnotsType &knots, unsigned int max_iter_linear,unsigne
     vtkWriteGrid("MAPS",0,knots.get_grid(true));
 
     std::cout << "done solving stokes"<<std::endl;
+
+    return relative_error;
 }

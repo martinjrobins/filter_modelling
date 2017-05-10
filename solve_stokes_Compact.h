@@ -86,4 +86,4 @@
     };
 
 
-void solve_stokes_Compact(KnotsType &knots, unsigned int max_iter_linear,unsigned int restart_linear,unsigned int solver_in, double c0);
+double solve_stokes_Compact(KnotsType &knots, unsigned int max_iter_linear,unsigned int restart_linear,unsigned int solver_in, double c0);
