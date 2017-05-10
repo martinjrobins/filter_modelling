@@ -25,7 +25,8 @@ double solve_stokes_Compact(KnotsType &knots, unsigned int max_iter_linear,unsig
 
     const double search_radius = max_c;
 
-    auto A11 = create_sparse_operator(knots,knots,search_radius,
+    //auto A11 = create_sparse_operator(knots,knots,search_radius,
+    auto A11 = create_dense_operator(knots,knots,
             [&](const double2& dx,
                 const_reference i,
                 const_reference j) {
@@ -58,7 +59,8 @@ double solve_stokes_Compact(KnotsType &knots, unsigned int max_iter_linear,unsig
                     }
                 }
            });
-    auto A12 = create_sparse_operator(knots,knots,search_radius,
+    //auto A12 = create_sparse_operator(knots,knots,search_radius,
+    auto A12 = create_dense_operator(knots,knots,
             [&](const double2& dx,
                 const_reference i,
                 const_reference j) {
@@ -92,7 +94,8 @@ double solve_stokes_Compact(KnotsType &knots, unsigned int max_iter_linear,unsig
                 }
            });
 
-    auto A21 = create_sparse_operator(knots,knots,search_radius,
+    //auto A21 = create_sparse_operator(knots,knots,search_radius,
+    auto A21 = create_dense_operator(knots,knots,
             [&](const double2& dx,
                 const_reference i,
                 const_reference j) {
@@ -128,7 +131,8 @@ double solve_stokes_Compact(KnotsType &knots, unsigned int max_iter_linear,unsig
                 }
            });
 
-    auto A22 = create_sparse_operator(knots,knots,search_radius,
+    auto A22 = create_dense_operator(knots,knots,
+    //auto A22 = create_sparse_operator(knots,knots,search_radius,
             [&](const double2& dx,
                 const_reference i,
                 const_reference j) {
@@ -168,7 +172,8 @@ double solve_stokes_Compact(KnotsType &knots, unsigned int max_iter_linear,unsig
                                         A21, A22);
 
 
-    auto B11 = create_sparse_operator(knots,knots,search_radius,
+    auto B11 = create_dense_operator(knots,knots,
+    //auto B11 = create_sparse_operator(knots,knots,search_radius,
             [&](const double2& dx,
                 const_reference i,
                 const_reference j) {
@@ -184,7 +189,8 @@ double solve_stokes_Compact(KnotsType &knots, unsigned int max_iter_linear,unsig
                 }
            });
 
-    auto B12 = create_sparse_operator(knots,knots,search_radius,
+    //auto B12 = create_sparse_operator(knots,knots,search_radius,
+    auto B12 = create_dense_operator(knots,knots,
             [&](const double2& dx,
                 const_reference i,
                 const_reference j) {
@@ -200,7 +206,8 @@ double solve_stokes_Compact(KnotsType &knots, unsigned int max_iter_linear,unsig
                 }
            });
 
-    auto B21 = create_sparse_operator(knots,knots,search_radius,
+    //auto B21 = create_sparse_operator(knots,knots,search_radius,
+    auto B21 = create_dense_operator(knots,knots,
             [&](const double2& dx,
                 const_reference i,
                 const_reference j) {
@@ -214,7 +221,8 @@ double solve_stokes_Compact(KnotsType &knots, unsigned int max_iter_linear,unsig
                 }
            });
 
-    auto B22 = create_sparse_operator(knots,knots,search_radius,
+    //auto B22 = create_sparse_operator(knots,knots,search_radius,
+    auto B22 = create_dense_operator(knots,knots,
             [&](const double2& dx,
                 const_reference i,
                 const_reference j) {
@@ -229,7 +237,8 @@ double solve_stokes_Compact(KnotsType &knots, unsigned int max_iter_linear,unsig
                 }
            });
 
-    auto B31 = create_sparse_operator(knots,knots,search_radius,
+    //auto B31 = create_sparse_operator(knots,knots,search_radius,
+    auto B31 = create_dense_operator(knots,knots,
             [&](const double2& dx,
                 const_reference i,
                 const_reference j) {
@@ -244,7 +253,8 @@ double solve_stokes_Compact(KnotsType &knots, unsigned int max_iter_linear,unsig
                 }
            });
 
-    auto B32 = create_sparse_operator(knots,knots,search_radius,
+    //auto B32 = create_sparse_operator(knots,knots,search_radius,
+    auto B32 = create_dense_operator(knots,knots,
             [&](const double2& dx,
                 const_reference i,
                 const_reference j) {
@@ -263,8 +273,8 @@ double solve_stokes_Compact(KnotsType &knots, unsigned int max_iter_linear,unsig
     std::cout << "setup equations..."<<std::endl;
 
     typedef Eigen::Matrix<double,Eigen::Dynamic,1> vector_type;
-    //typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> matrix_type;
-    typedef Eigen::SparseMatrix<double> matrix_type; 
+    typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> matrix_type;
+    //typedef Eigen::SparseMatrix<double> matrix_type; 
     typedef Eigen::Map<vector_type> map_type;
 
     const size_t N = knots.size();
@@ -290,6 +300,7 @@ double solve_stokes_Compact(KnotsType &knots, unsigned int max_iter_linear,unsig
 
     // calculate velocity weights
     //Eigen::SparseLU<matrix_type> solver;
+    /*
     Eigen::SimplicialLDLT<matrix_type> solver;
     solver.compute(A_eigen);
     if(solver.info()!=Eigen::Success) {
@@ -301,7 +312,8 @@ double solve_stokes_Compact(KnotsType &knots, unsigned int max_iter_linear,unsig
         std::cout << "solve failed" <<std::endl;
         return std::numeric_limits<double>::max();
     }
-    //alphas = A_eigen.colPivHouseholderQr().solve(source);
+    */
+    alphas = A_eigen.llt().solve(source);
     double relative_error = (A_eigen*alphas - source).norm() / source.norm();
     cout << "The relative error is:\n" << relative_error << endl;
     

@@ -3,8 +3,8 @@
 
 
 //#define FMAPS
-#define MAPS
-//#define COMPACT 
+//#define MAPS
+#define COMPACT 
 
 #ifdef FMAPS
 #include "solve_stokes_fMAPS.h"
@@ -183,7 +183,8 @@ int main(int argc, char **argv) {
     std::cout << "max _c  = "<<max_c<<std::endl;
     const double search_radius = max_c;
 
-    auto psol_u1_op = create_sparse_operator(comsol,knots,search_radius,
+    //auto psol_u1_op = create_sparse_operator(comsol,knots,search_radius,
+    auto psol_u1_op = create_dense_operator(comsol,knots,
             [&](const double2& dx,
                 const_comsol_reference i,
                 const_knot_reference j) {
@@ -197,7 +198,8 @@ int main(int argc, char **argv) {
                 }
            });
 
-    auto psol_u2_op = create_sparse_operator(comsol,knots,search_radius,
+    auto psol_u2_op = create_dense_operator(comsol,knots,
+    //auto psol_u2_op = create_sparse_operator(comsol,knots,search_radius,
             [&](const double2& dx,
                 const_comsol_reference i,
                 const_knot_reference j) {
@@ -211,7 +213,8 @@ int main(int argc, char **argv) {
                 }
            });
 
-    auto psol_v1_op = create_sparse_operator(comsol,knots,search_radius,
+    auto psol_v1_op = create_dense_operator(comsol,knots,
+    //auto psol_v1_op = create_sparse_operator(comsol,knots,search_radius,
             [&](const double2& dx,
                 const_comsol_reference i,
                 const_knot_reference j) {
@@ -226,7 +229,8 @@ int main(int argc, char **argv) {
                 
            });
 
-    auto psol_v2_op = create_sparse_operator(comsol,knots,search_radius,
+    //auto psol_v2_op = create_sparse_operator(comsol,knots,search_radius,
+    auto psol_v2_op = create_dense_operator(comsol,knots,
             [&](const double2& dx,
                 const_comsol_reference i,
                 const_knot_reference j) {
@@ -240,7 +244,8 @@ int main(int argc, char **argv) {
                 }
            });
 
-    auto psol_p1_op = create_sparse_operator(comsol,knots,search_radius,
+    //auto psol_p1_op = create_sparse_operator(comsol,knots,search_radius,
+    auto psol_p1_op = create_dense_operator(comsol,knots,
             [&](const double2& dx,
                 const_comsol_reference i,
                 const_knot_reference j) {
@@ -254,7 +259,8 @@ int main(int argc, char **argv) {
                 }
            });
 
-    auto psol_p2_op = create_sparse_operator(comsol,knots,search_radius,
+    //auto psol_p2_op = create_sparse_operator(comsol,knots,search_radius,
+    auto psol_p2_op = create_dense_operator(comsol,knots,
             [&](const double2& dx,
                 const_comsol_reference i,
                 const_knot_reference j) {
