@@ -5,10 +5,13 @@
 #include <CGAL/Delaunay_mesher_2.h>
 #include <CGAL/Delaunay_mesh_face_base_2.h>
 #include <CGAL/Delaunay_mesh_size_criteria_2.h>
+#include <CGAL/Delaunay_mesh_vertex_base_2.h>
 #include <CGAL/Mesh_2/Face_badness.h>
+#include <CGAL/lloyd_optimize_mesh_2.h>
 #include <iostream>
 typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
-typedef CGAL::Triangulation_vertex_base_2<K> Vb;
+//typedef CGAL::Triangulation_vertex_base_2<K> Vb;
+typedef CGAL::Delaunay_mesh_vertex_base_2<K> Vb;
 typedef CGAL::Delaunay_mesh_face_base_2<K> Fb;
 typedef CGAL::Triangulation_data_structure_2<Vb, Fb> Tds;
 typedef CGAL::Constrained_Delaunay_triangulation_2<K, Tds> CDT;
@@ -155,8 +158,8 @@ public:
                     }
                 }
 
-                q.second /= (1+transition_size)/2
-                            + ((1-transition_size)/2)*std::tanh((3.0/transition_dist)*(2*min_dist-transition_dist));
+                q.second /= std::pow((1+transition_size)/2
+                            + ((1-transition_size)/2)*std::tanh((2.0/transition_dist)*(2*min_dist-transition_dist)),2);
                 // normalized by size bound to deal
                 // with size field
                 if( q.size() > 1 )
@@ -398,6 +401,12 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
 
     std::cout << "Number of vertices: " << cdt.number_of_vertices() << std::endl;
     std::cout << "Number of finite faces: " << cdt.number_of_faces() << std::endl;
+
+    std::cout << "Run Lloyd optimization...";
+    CGAL::lloyd_optimize_mesh_2(cdt,
+            CGAL::parameters::max_iteration_number = 10);
+    std::cout << " done." << std::endl;
+    std::cout << "Number of vertices: " << cdt.number_of_vertices() << std::endl;
 
     for(CDT::Finite_vertices_iterator v = cdt.finite_vertices_begin();
             v != cdt.finite_vertices_end(); ++v) {
