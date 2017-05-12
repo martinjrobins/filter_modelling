@@ -191,7 +191,7 @@ public:
 
 typedef My_delaunay_mesh_size_criteria_2<CDT,ParticlesType> Criteria;
 
-void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_radius, const double fibre_resolution_factor, const double nx, double2 domain_min, double2 domain_max, const double c0, const double k, const double epsilon_strength, const double epsilon_falloff, const bool periodic) {
+void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_radius, const double fibre_resolution_factor, const double nx, double2 domain_min, double2 domain_max, const double c0, const double k, const double epsilon_strength, const double epsilon_falloff, const bool periodic,const int nbucket) {
 
     std::cout << "setup knots..." << std::endl;
 
@@ -423,7 +423,7 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
         knots.push_back(p);
     }
 
-    knots.init_neighbour_search(domain_min-ns_buffer,domain_max+ns_buffer,bool2(periodic,false));
+    knots.init_neighbour_search(domain_min-ns_buffer,domain_max+ns_buffer,bool2(periodic,false),nbucket);
     
     std::cout << "added "<<knots.size()<<" knots with c0 = " <<c0<< std::endl;
 

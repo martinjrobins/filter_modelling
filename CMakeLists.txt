@@ -84,3 +84,6 @@ target_link_libraries(simulation filter_modelling )
 
 add_executable(optimc optimc.cpp )
 target_link_libraries(optimc filter_modelling )
+
+add_executable(fmm_eval fmm_eval.cpp )
+target_link_libraries(fmm_eval filter_modelling )

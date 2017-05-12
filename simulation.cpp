@@ -27,8 +27,8 @@ int main(int argc, char **argv) {
         ("epsilon_falloff", po::value<double>(&epsilon_falloff)->default_value(0.3), "boundary clustering fall-off")
 
         ("c0", po::value<double>(&c0)->default_value(0.1), "kernel constant")
-        ("nx", po::value<unsigned int>(&nx)->default_value(20), "nx")
-        ("fibre_resolution", po::value<double>(&fibre_resolution)->default_value(0.75), "number of knots around each fibre")
+        ("nx", po::value<unsigned int>(&nx)->default_value(10), "nx")
+        ("fibre_resolution", po::value<double>(&fibre_resolution)->default_value(0.2), "number of knots around each fibre")
         ("seed", po::value<int>(&seed)->default_value(10), "seed")
         ("fibre_number", po::value<int>(&fibre_number)->default_value(3), "number of fibres")
         ("fibre_radius", po::value<double>(&fibre_radius)->default_value(0.05), "radius of fibres")
@@ -97,7 +97,7 @@ int main(int argc, char **argv) {
         std::cout << "added "<<fibres.size()<<" fibres"<<std::endl;
     }
 
-    setup_knots(knots, fibres, fibre_radius, fibre_resolution, nx, domain_min, domain_max, c0, k,epsilon_strength,epsilon_falloff,periodic);
+    setup_knots(knots, fibres, fibre_radius, fibre_resolution, nx, domain_min, domain_max, c0, k,epsilon_strength,epsilon_falloff,periodic,10);
 
     solve_stokes_MAPS(knots,max_iter_linear,restart_linear,solver_in,c0);
 

@@ -43,6 +43,20 @@ double phi_sol_dash_div_r(const Dx& dx, const C& c) {
 
 }
 
+template <typename Dx, typename C>
+double phi_sol_dash_div_r_fast(const Dx& dx, const C& c) {
+        const double c2 = c*c;
+        const double c3 = c*c2;
+        const double c4 = c2*c2;
+        const double dx2 = dx.squaredNorm();
+        const double dx4 = dx2*dx2;
+        const double logc = std::log(c);
+        const double c_p_mq = std::sqrt(dx2+c2);
+        const double logc_p_mq = std::log(c+c_p_mq);
+        return (-30*c4*logc - 30*c4*logc_p_mq + 7*c4 - 30*c3*c_p_mq*logc - 30*c3*c_p_mq*logc_p_mq + 13*c3*c_p_mq + 32*c2*dx2 + 4*c*dx2*c_p_mq + 4*dx4)/(180*(c+c_p_mq));
+
+}
+
 
 /*
 template <typename Dx, typename C>
@@ -74,11 +88,35 @@ double phi_sol_dash_dash(const Dx& dx, const C& c) {
 
 }
 
+template <typename Dx, typename C>
+double phi_sol_dash_dash_fast(const Dx& dx, const C& c) {
+        const double c2 = c*c;
+        const double c3 = c*c2;
+        const double c4 = c2*c2;
+        const double c5 = c2*c3;
+        const double dx2 = dx.squaredNorm();
+        const double dx4 = dx2*dx2;
+        const double logc = std::log(c);
+        const double c_p_mq = std::sqrt(dx2+c2);
+        const double logc_p_mq = std::log(c+c_p_mq);
+        return (-60*c5*logc - 60*c5*logc_p_mq + 20*c5 - 60*c4*c_p_mq*logc - 60*c4*c_p_mq*logc_p_mq + 20*c4*c_p_mq - 30*c3*dx2*logc - 30*c3*dx2*logc_p_mq + 91*c3*dx2 + 84*c2*dx2*c_p_mq + 32*c*dx4 + 16*dx4*c_p_mq)/(180*(2*c2+2*c*c_p_mq+dx2));
+
+}
+
 
 template <typename Dx, typename C>
 double phi_sol_dash_div_r2_minus_phi_sol_dash_dash_div_r(const Dx& dx, const C& c) {
         const double c2 = std::pow(c,2);
         const double c3 = std::pow(c,3);
+        const double dx2 = dx.squaredNorm();
+        const double nx = std::sqrt(dx2);
+        return -nx*(7.0*c3 + 8.0*c2*std::sqrt(dx2+c2) + 4.0*dx2*c + 2.0*dx2*std::sqrt(dx2+c2))/(60.0*c2 + 60.0*c*std::sqrt(dx2+c2) + 30.0*dx2);
+}
+
+template <typename Dx, typename C>
+double phi_sol_dash_div_r2_minus_phi_sol_dash_dash_div_r_fast(const Dx& dx, const C& c) {
+        const double c2 = c*c;
+        const double c3 = c2*c;
         const double dx2 = dx.squaredNorm();
         const double nx = std::sqrt(dx2);
         return -nx*(7.0*c3 + 8.0*c2*std::sqrt(dx2+c2) + 4.0*dx2*c + 2.0*dx2*std::sqrt(dx2+c2))/(60.0*c2 + 60.0*c*std::sqrt(dx2+c2) + 30.0*dx2);
@@ -111,6 +149,21 @@ double phi_sol_dash_dash_dash(const Dx& dx, const C& c) {
         const double c5 = std::pow(c,5);
         const double dx2 = dx.squaredNorm();
         const double dx4 = std::pow(dx2,2);
+        const double r = std::sqrt(dx2);
+        const double logc = std::log(c);
+        const double c_p_mq = std::sqrt(dx2+c2);
+        const double logc_p_mq = std::log(c+c_p_mq);
+        return r*(45*c5 + 45*c4*c_p_mq + 69*c3*dx2 + 46*c2*dx2*c_p_mq + 24*c*dx4 + 8*dx4*c_p_mq)/(30*(4*c4 + 4*c3*c_p_mq + 5*c2*dx2 + 3*c*dx2*c_p_mq + dx4));
+}
+
+template <typename Dx, typename C>
+double phi_sol_dash_dash_dash_fast(const Dx& dx, const C& c) {
+        const double c2 = c*c;
+        const double c3 = c*c2;
+        const double c4 = c2*c2;
+        const double c5 = c2*c3;
+        const double dx2 = dx.squaredNorm();
+        const double dx4 = dx2*dx2;
         const double r = std::sqrt(dx2);
         const double logc = std::log(c);
         const double c_p_mq = std::sqrt(dx2+c2);

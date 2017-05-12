@@ -1,10 +1,11 @@
 #pragma once
 #include "filter.h"
 
+
     double kernel(const double2& dx, const double invh) {
-        const double r = dx.norm()*invh;
-        if (r > 1) return 0.0;
-        const double r2 = r*r;
+        const double r2 = dx.dot(dx)/std::pow(invh,2);
+        if (r2 > 1) return 0.0;
+        const double r = std::sqrt(r2);
         const double r3 = r2*r;
         const double r4 = r2*r2;
         return std::pow(1.0-r,10)*(429*r4 + 450*r3 + 210*r2 + 50*r + 5); 
