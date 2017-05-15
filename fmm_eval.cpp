@@ -24,7 +24,8 @@ template <unsigned int N, typename U1K, typename U2K,
 void eval_solution(KnotsType& knots, ComsolType& comsol, 
                    U1K& u1k, U2K& u2k,V1K& v1k, V2K& v2k,P1K& p1k, P2K& p2k,
                    double& rms_error_u, double& rms_error_v, double& rms_error_p,
-                   double& time_setup, double& time_eval) {
+                   double& rms_diff_u, double& rms_diff_v, double& rms_diff_p,
+                   double& time_setup, double& time_eval, double& time_direct_eval) {
     const unsigned int D = KnotsType::dimension; 
     auto psol_u1_fmm = make_fmm_query(knots.get_query(),make_black_box_expansion<D,N>(u1k));
     auto psol_u2_fmm = make_fmm_query(knots.get_query(),make_black_box_expansion<D,N>(u2k));
@@ -62,6 +63,7 @@ void eval_solution(KnotsType& knots, ComsolType& comsol,
 
     t0 = Clock::now();
     rms_error_u = rms_error_v = rms_error_p = 0;
+    rms_diff_u = rms_diff_v = rms_diff_p = 0;
     double max_error_u, max_error_v, max_error_p;
     max_error_u = max_error_v = max_error_p = 0;
     for (ComsolType::reference i: comsol) {
@@ -76,21 +78,30 @@ void eval_solution(KnotsType& knots, ComsolType& comsol,
             p += p1k(dx,get<position>(i),get<position>(j))*get<alpha1>(j);
             p += p2k(dx,get<position>(i),get<position>(j))*get<alpha2>(j);
         }
-        u = std::abs(u-get<velocity_u>(i));
-        v = std::abs(v-get<velocity_v>(i));
-        p = std::abs(p-get<pressure>(i));
-        if (u > max_error_u) max_error_u = u;
-        if (v > max_error_v) max_error_v = v;
-        if (p > max_error_p) max_error_p = p;
-        rms_error_u += std::pow(u,2);
-        rms_error_v += std::pow(v,2);
-        rms_error_p += std::pow(p,2);
+        double diff_u = std::abs(u-get<velocity_u>(i));
+        double diff_v = std::abs(v-get<velocity_v>(i));
+        double diff_p = std::abs(p-get<pressure>(i));
+        double error_u = std::abs(u-get<dvelocity_u>(i));
+        double error_v = std::abs(v-get<dvelocity_v>(i));
+        double error_p = std::abs(p-get<dpressure>(i));
+        if (error_u > max_error_u) max_error_u = error_u;
+        if (error_v > max_error_v) max_error_v = error_v;
+        if (error_p > max_error_p) max_error_p = error_p;
+        rms_diff_u += std::pow(diff_u,2);
+        rms_diff_v += std::pow(diff_v,2);
+        rms_diff_p += std::pow(diff_p,2);
+        rms_error_u += std::pow(error_u,2);
+        rms_error_v += std::pow(error_v,2);
+        rms_error_p += std::pow(error_p,2);
     }
     rms_error_u = std::sqrt(rms_error_u/comsol.size());
     rms_error_v = std::sqrt(rms_error_v/comsol.size());
     rms_error_p = std::sqrt(rms_error_p/comsol.size());
+    rms_diff_u = std::sqrt(rms_diff_u/comsol.size());
+    rms_diff_v = std::sqrt(rms_diff_v/comsol.size());
+    rms_diff_p = std::sqrt(rms_diff_p/comsol.size());
     t1 = Clock::now();
-    double time_direct_eval = (t1 - t0).count();
+    time_direct_eval = (t1 - t0).count();
 
     /*
     //compare
@@ -189,6 +200,24 @@ int main(int argc, char **argv) {
     std::ofstream file;
     file.open(filename.c_str());
     file   << std::setw(15) << "nbucket"
+           << std::setw(15) << "rms_diff_u5"
+           << std::setw(15) << "rms_diff_u6"
+           << std::setw(15) << "rms_diff_u7"
+           << std::setw(15) << "rms_diff_u8"
+           << std::setw(15) << "rms_diff_u9"
+           << std::setw(15) << "rms_diff_u10"
+           << std::setw(15) << "rms_diff_v5"
+           << std::setw(15) << "rms_diff_v6"
+           << std::setw(15) << "rms_diff_v7"
+           << std::setw(15) << "rms_diff_v8"
+           << std::setw(15) << "rms_diff_v9"
+           << std::setw(15) << "rms_diff_v10"
+           << std::setw(15) << "rms_diff_p5"
+           << std::setw(15) << "rms_diff_p6"
+           << std::setw(15) << "rms_diff_p7"
+           << std::setw(15) << "rms_diff_p8"
+           << std::setw(15) << "rms_diff_p9"
+           << std::setw(15) << "rms_diff_p10"
            << std::setw(15) << "rms_error_u5"
            << std::setw(15) << "rms_error_u6"
            << std::setw(15) << "rms_error_u7"
@@ -219,6 +248,12 @@ int main(int argc, char **argv) {
            << std::setw(15) << "timet_eval8"
            << std::setw(15) << "timet_eval9"
            << std::setw(15) << "timet_eval10"
+           << std::setw(15) << "timet_direct_eval5"
+           << std::setw(15) << "timet_direct_eval6"
+           << std::setw(15) << "timet_direct_eval7"
+           << std::setw(15) << "timet_direct_eval8"
+           << std::setw(15) << "timet_direct_eval9"
+           << std::setw(15) << "timet_direct_eval10"
            << std::endl;
 
     for (int nbucket = nbucket_min; nbucket < nbucket_max; ++nbucket) {
@@ -336,40 +371,76 @@ int main(int argc, char **argv) {
 
 
       std::cout << "calculating solution at comsol points...." << std::endl;
-      double rms_error_u[6], rms_error_v[6], rms_error_p[6], time_eval[6], time_setup[6];
+      double rms_error_u[6], rms_error_v[6], rms_error_p[6]; 
+      double rms_diff_u[6], rms_diff_v[6], rms_diff_p[6]; 
+      double time_eval[6], time_setup[6], time_direct_eval[6];
       eval_solution<5>(knots, comsol, 
                     psol_u1_kernel, psol_u2_kernel,
                     psol_v1_kernel, psol_v2_kernel,
                     psol_p1_kernel, psol_p2_kernel,
-                    rms_error_u[0], rms_error_v[0], rms_error_p[0], time_setup[0], time_eval[0]);
+                    rms_error_u[0], rms_error_v[0], rms_error_p[0], 
+                    rms_diff_u[0], rms_diff_v[0], rms_diff_p[0], 
+                    time_setup[0], time_eval[0], time_direct_eval[0]);
       eval_solution<6>(knots, comsol, 
                     psol_u1_kernel, psol_u2_kernel,
                     psol_v1_kernel, psol_v2_kernel,
                     psol_p1_kernel, psol_p2_kernel,
-                    rms_error_u[1], rms_error_v[1], rms_error_p[1], time_setup[1], time_eval[1]);
+                    rms_error_u[1], rms_error_v[1], rms_error_p[1], 
+                    rms_diff_u[1], rms_diff_v[1], rms_diff_p[1], 
+                    time_setup[1], time_eval[1], time_direct_eval[1]);
       eval_solution<7>(knots, comsol, 
                     psol_u1_kernel, psol_u2_kernel,
                     psol_v1_kernel, psol_v2_kernel,
                     psol_p1_kernel, psol_p2_kernel,
-                    rms_error_u[2], rms_error_v[2], rms_error_p[2], time_setup[2], time_eval[2]);
+                    rms_error_u[2], rms_error_v[2], rms_error_p[2], 
+                    rms_diff_u[2], rms_diff_v[2], rms_diff_p[2], 
+                    time_setup[2], time_eval[2], time_direct_eval[2]);
       eval_solution<8>(knots, comsol, 
                     psol_u1_kernel, psol_u2_kernel,
                     psol_v1_kernel, psol_v2_kernel,
                     psol_p1_kernel, psol_p2_kernel,
-                    rms_error_u[3], rms_error_v[3], rms_error_p[3], time_setup[3], time_eval[3]);
+                    rms_error_u[3], rms_error_v[3], rms_error_p[3], 
+                    rms_diff_u[3], rms_diff_v[3], rms_diff_p[3], 
+                    time_setup[3], time_eval[3], time_direct_eval[3]);
       eval_solution<9>(knots, comsol, 
                     psol_u1_kernel, psol_u2_kernel,
                     psol_v1_kernel, psol_v2_kernel,
                     psol_p1_kernel, psol_p2_kernel,
-                    rms_error_u[4], rms_error_v[4], rms_error_p[4], time_setup[4], time_eval[4]);
+                    rms_error_u[4], rms_error_v[4], rms_error_p[4], 
+                    rms_diff_u[4], rms_diff_v[4], rms_diff_p[4], 
+                    time_setup[4], time_eval[4], time_direct_eval[4]);
       eval_solution<10>(knots, comsol, 
                     psol_u1_kernel, psol_u2_kernel,
                     psol_v1_kernel, psol_v2_kernel,
                     psol_p1_kernel, psol_p2_kernel,
-                    rms_error_u[5], rms_error_v[5], rms_error_p[5], time_setup[5], time_eval[5]);
+                    rms_error_u[5], rms_error_v[5], rms_error_p[5], 
+                    rms_diff_u[5], rms_diff_v[5], rms_diff_p[5], 
+                    time_setup[5], time_eval[5], time_direct_eval[5]);
+
+
+
+
       
 
       file << std::setw(15) << nbucket 
+           << std::setw(15) << rms_diff_u[0]
+           << std::setw(15) << rms_diff_u[1]
+           << std::setw(15) << rms_diff_u[2]
+           << std::setw(15) << rms_diff_u[3]
+           << std::setw(15) << rms_diff_u[4]
+           << std::setw(15) << rms_diff_u[5]
+           << std::setw(15) << rms_diff_v[0]
+           << std::setw(15) << rms_diff_v[1]
+           << std::setw(15) << rms_diff_v[2]
+           << std::setw(15) << rms_diff_v[3]
+           << std::setw(15) << rms_diff_v[4]
+           << std::setw(15) << rms_diff_v[5]
+           << std::setw(15) << rms_diff_p[0]
+           << std::setw(15) << rms_diff_p[1]
+           << std::setw(15) << rms_diff_p[2]
+           << std::setw(15) << rms_diff_p[3]
+           << std::setw(15) << rms_diff_p[4]
+           << std::setw(15) << rms_diff_p[5]
            << std::setw(15) << rms_error_u[0]
            << std::setw(15) << rms_error_u[1]
            << std::setw(15) << rms_error_u[2]
@@ -400,6 +471,13 @@ int main(int argc, char **argv) {
            << std::setw(15) << time_eval[3]
            << std::setw(15) << time_eval[4]
            << std::setw(15) << time_eval[5]
+           << std::setw(15) << time_direct_eval[0]
+           << std::setw(15) << time_direct_eval[1]
+           << std::setw(15) << time_direct_eval[2]
+           << std::setw(15) << time_direct_eval[3]
+           << std::setw(15) << time_direct_eval[4]
+           << std::setw(15) << time_direct_eval[5]
+
            << std::endl;
 
     }

@@ -7,5 +7,5 @@ fr=0.1
 nx=10
 c0=0.0345
 
-nohup nice ./fmm_eval --nbucket_min ${nbucket_min} --nbucket_max ${nbucket_max} --nx ${nx} --fibre_resolution ${fr} --c0 ${c0} &
+nohup nice ./fmm_eval --nbucket_min ${nbucket_min} --nbucket_max ${nbucket_max} --nx ${nx} --fibre_resolution ${fr} --c0 ${c0} --filename fmm_eval.out &
 
