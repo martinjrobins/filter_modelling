@@ -81,9 +81,9 @@ void eval_solution(KnotsType& knots, ComsolType& comsol,
         double diff_u = std::abs(u-get<velocity_u>(i));
         double diff_v = std::abs(v-get<velocity_v>(i));
         double diff_p = std::abs(p-get<pressure>(i));
-        double error_u = std::abs(u-get<dvelocity_u>(i));
-        double error_v = std::abs(v-get<dvelocity_v>(i));
-        double error_p = std::abs(p-get<dpressure>(i));
+        double error_u = std::abs(get<velocity_u>(i)-get<dvelocity_u>(i));
+        double error_v = std::abs(get<velocity_v>(i)-get<dvelocity_v>(i));
+        double error_p = std::abs(get<pressure>(i)-get<dpressure>(i));
         if (error_u > max_error_u) max_error_u = error_u;
         if (error_v > max_error_v) max_error_v = error_v;
         if (error_p > max_error_p) max_error_p = error_p;
@@ -132,12 +132,19 @@ void eval_solution(KnotsType& knots, ComsolType& comsol,
       << rms_error_p << ' '
       << std::endl;
 
-      std::cout << "max errors = "
+    std::cout << "max errors = "
       << max_error_u << ' '
       << max_error_v << ' '
       << max_error_p << ' '
       << std::endl;
 
+    std::cout << "fmm rms error = "
+      << rms_diff_u << ' '
+      << rms_diff_v << ' '
+      << rms_diff_p << ' '
+      << std::endl;
+
+    
     std::cout << "time for setup = " << time_setup << std::endl;
     std::cout << "time for eval = " << time_eval << std::endl;
     std::cout << "time for direct eval = " << time_direct_eval << std::endl;
@@ -151,7 +158,7 @@ int main(int argc, char **argv) {
     unsigned int nout,max_iter_linear,restart_linear,nx;
     int fibre_number,seed,nbucket_min,nbucket_max,ncheb_min,ncheb_max;
     double fibre_radius,particle_rate,react_rate,D,fibre_resolution;
-    double dt_aim,h0_factor,k,gamma,rf,epsilon_strength,epsilon_falloff,c0;
+    double dt_aim,h0_factor,k,gamma,rf,c0;
     unsigned int solver_in;
     bool periodic;
     std::string filename;
@@ -168,10 +175,8 @@ int main(int argc, char **argv) {
         ("D", po::value<double>(&D)->default_value(0.01), "diffusion constant")
         ("particle_rate", po::value<double>(&particle_rate)->default_value(1000.0), "particle rate")
         ("react_rate", po::value<double>(&react_rate)->default_value(0.5), "particle reaction rate")
-        ("epsilon_strength", po::value<double>(&epsilon_strength)->default_value(1.5), "boundary clustering strength")
-        ("epsilon_falloff", po::value<double>(&epsilon_falloff)->default_value(0.3), "boundary clustering fall-off")
         ("nbucket_min", po::value<int>(&nbucket_min)->default_value(10), "number of points in bucket")
-        ("nbucket_max", po::value<int>(&nbucket_max)->default_value(40), "number of points in bucket max")
+        ("nbucket_max", po::value<int>(&nbucket_max)->default_value(100), "number of points in bucket max")
         ("ncheb_min", po::value<int>(&ncheb_min)->default_value(3), "number of cheb points")
         ("ncheb_max", po::value<int>(&ncheb_max)->default_value(10), "number of cheb points max")
         ("nx", po::value<unsigned int>(&nx)->default_value(10), "nx")
@@ -179,9 +184,9 @@ int main(int argc, char **argv) {
         ("seed", po::value<int>(&seed)->default_value(10), "seed")
         ("fibre_number", po::value<int>(&fibre_number)->default_value(5), "number of fibres")
         ("fibre_radius", po::value<double>(&fibre_radius)->default_value(0.3), "radius of fibres")
-        ("c0", po::value<double>(&c0)->default_value(0.1), "kernel constant")
+        ("c0", po::value<double>(&c0)->default_value(0.0835), "kernel constant")
         ("dt", po::value<double>(&dt_aim)->default_value(0.001), "timestep")
-        ("filename", po::value<std::string>(&filename)->default_value("optim.out"), "filename")
+        ("filename", po::value<std::string>(&filename)->default_value("fmm_eval.out"), "filename")
     ;
 
 
@@ -256,7 +261,8 @@ int main(int argc, char **argv) {
            << std::setw(15) << "timet_direct_eval10"
            << std::endl;
 
-    for (int nbucket = nbucket_min; nbucket < nbucket_max; ++nbucket) {
+    for (int nbucket = nbucket_min; nbucket < nbucket_max; 
+            nbucket += static_cast<int>((nbucket_max-nbucket_min)/5.0)) {
       std::cout << "nbucket = "<<nbucket<<std::endl;
       KnotsType knots;
       ParticlesType particles;
@@ -305,7 +311,7 @@ int main(int argc, char **argv) {
       //
       // SETUP KNOTS
       //
-      setup_knots(knots, fibres, fibre_radius, fibre_resolution, nx, domain_min, domain_max, c0, k,epsilon_strength,epsilon_falloff,periodic,nbucket);
+      setup_knots(knots, fibres, fibre_radius, fibre_resolution, nx, domain_min, domain_max, c0, k,periodic,nbucket);
 
       //
       // CALCULATE C

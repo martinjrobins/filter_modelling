@@ -2,12 +2,14 @@
 #include "solve_stokes_MAPS.h"
 #include "setup_knots.h"
 
+#define MAPS
+
 int main(int argc, char **argv) {
 
     unsigned int nout,max_iter_linear,restart_linear,nx;
     int fibre_number,seed;
     double fibre_resolution,fibre_radius,particle_rate,react_rate,D;
-    double dt_aim,k,gamma,rf,c0,epsilon_strength,epsilon_falloff;
+    double dt_aim,k,gamma,rf,c0;
     unsigned int solver_in;
     bool periodic;
 
@@ -23,15 +25,13 @@ int main(int argc, char **argv) {
         ("particle_rate", po::value<double>(&particle_rate)->default_value(1000.0), "particle rate")
         ("periodic", po::value<bool>(&periodic)->default_value(false), "periodic in x")
         ("react_rate", po::value<double>(&react_rate)->default_value(0.5), "particle reaction rate")
-        ("epsilon_strength", po::value<double>(&epsilon_strength)->default_value(2.0), "boundary clustering fall-off")
-        ("epsilon_falloff", po::value<double>(&epsilon_falloff)->default_value(0.3), "boundary clustering fall-off")
 
-        ("c0", po::value<double>(&c0)->default_value(0.1), "kernel constant")
+        ("c0", po::value<double>(&c0)->default_value(0.0345), "kernel constant")
         ("nx", po::value<unsigned int>(&nx)->default_value(10), "nx")
-        ("fibre_resolution", po::value<double>(&fibre_resolution)->default_value(0.2), "number of knots around each fibre")
+        ("fibre_resolution", po::value<double>(&fibre_resolution)->default_value(0.1), "number of knots around each fibre")
+        ("fibre_radius", po::value<double>(&fibre_radius)->default_value(0.3), "radius of fibres")
         ("seed", po::value<int>(&seed)->default_value(10), "seed")
         ("fibre_number", po::value<int>(&fibre_number)->default_value(3), "number of fibres")
-        ("fibre_radius", po::value<double>(&fibre_radius)->default_value(0.05), "radius of fibres")
         ("dt", po::value<double>(&dt_aim)->default_value(0.001), "timestep")
     ;
 
@@ -49,106 +49,118 @@ int main(int argc, char **argv) {
     ParticlesType particles;
     ParticlesType fibres;
 
-    const double up_mult = 1.5;
-    const double c2 = std::pow(c0,2);
-    const double c3 = std::pow(c0,3);
-    const double c4 = std::pow(c0,4);
-    const double mu = 1.0;
-    const double Tf = 2.0;
-    const double L = 1.0;
-    const double delta = L/nx;
-    const int ny = up_mult*L/delta;
-    const double deltay = up_mult*L/ny;
-    const double boundary_layer = delta/5;
-    const double s = 1.1*delta;
-    const int timesteps = Tf/dt_aim;
-    const double dt = Tf/timesteps;
-    const double2 domain_min(0,0);
-    const double2 domain_max(L,up_mult*L+1e-10);
-    const double2 ns_buffer(L/2,1e-10);
+      const double c2 = std::pow(c0,2);
+      const double c3 = std::pow(c0,3);
+      const double c4 = std::pow(c0,4);
+      const double mu = 1.0;
+      const double flow_rate = 1.0;
+      const double Tf = 2.0;
+      const double L = fibre_number*1.0;
+      const double delta = L/nx;
+      const double boundary_layer = delta/5;
+      const double s = 1.1*delta;
+      const int timesteps = Tf/dt_aim;
+      const double dt = Tf/timesteps;
+      const double dt_adapt = (1.0/100.0)*PI/sqrt(2*k);
+      const double2 domain_min(0,-1);
+      const double2 domain_max(L,L+1);
+      const double2 ns_buffer(L/3,L/3);
 
-    std::poisson_distribution<int> poisson(particle_rate*dt);
-    std::uniform_real_distribution<double> uniform(L/10.0,L-L/10.0);
-    std::default_random_engine generator(seed);
+      std::default_random_engine generator(seed);
 
-    // particles
-    {
-        particles.init_neighbour_search(domain_min-ns_buffer,domain_max+ns_buffer,bool2(false));
 
-        std::cout << "added "<<particles.size()<<" particles"<<std::endl;
-    }
-
-    // fibres
-    {
+      // fibres
+      {
         typename ParticlesType::value_type p;
         for (int ii=0; ii<fibre_number; ++ii) {
-            for (int jj=0; jj<fibre_number; ++jj) {
-                const double dx = L/fibre_number;
-                const double2 origin = double2(
-                                            (ii+0.5)*dx,
-                                            (jj+0.5)*dx+0.5*(up_mult-1)*L
-                                            );
-                get<position>(p) = origin;
-                fibres.push_back(p);
-            }
+          for (int jj=0; jj<fibre_number; ++jj) {
+            const double dx = L/fibre_number;
+            const double2 origin = double2(
+              (ii+0.5)*dx,
+              (jj+0.5)*dx
+            );
+            get<position>(p) = origin;
+            fibres.push_back(p);
+          }
         }
         fibres.init_neighbour_search(domain_min-ns_buffer,domain_max+ns_buffer,bool2(false));
 
         std::cout << "added "<<fibres.size()<<" fibres"<<std::endl;
-    }
+      }
 
-    setup_knots(knots, fibres, fibre_radius, fibre_resolution, nx, domain_min, domain_max, c0, k,epsilon_strength,epsilon_falloff,periodic,10);
+      //
+      // SETUP KNOTS
+      //
+      setup_knots(knots, fibres, fibre_radius, fibre_resolution, nx, domain_min, domain_max, c0, k,periodic,10);
 
-    solve_stokes_MAPS(knots,max_iter_linear,restart_linear,solver_in,c0);
+      //
+      // CALCULATE C
+      //
+      calculate_c(knots,c0,nx,domain_min,domain_max);
 
-    typedef typename position::value_type const & const_position_reference;
-    typedef typename KnotsType::const_reference const_knot_reference;
-    typedef typename KnotsType::reference knot_reference;
-    typedef typename ParticlesType::const_reference const_particles_reference;
-    typedef typename ParticlesType::reference particles_reference;
+      max_iter_linear = knots.size()*4;
+      restart_linear = max_iter_linear+1;
 
-    auto psol_u1_op = create_dense_operator(particles,knots,
-            [](const_position_reference dx,
-               const_particles_reference a,
-               const_knot_reference b) {
-            return psol_u1(dx,get<kernel_constant>(b));
-            });
+      //
+      // SOLVE STOKES
+      //
+#ifdef MAPS
+      const double relative_error = solve_stokes_MAPS(knots,max_iter_linear,restart_linear,solver_in,c0);
+#endif
+#ifdef COMPACT
+      const double relative_error = solve_stokes_Compact(knots,max_iter_linear,restart_linear,solver_in,c0);
+#endif
+      //solve_stokes_fMAPS(knots,max_iter_linear,restart_linear,solver_in,c0,ncheb);
+      //solve_stokes_LMAPS(knots,max_iter_linear,restart_linear,solver_in,c0);
+      //
+      
+      const size_t Nk = knots.size();
 
-      auto psol_v1_op = create_dense_operator(particles,knots,
-            [](const_position_reference dx,
-               const_particles_reference a,
-               const_knot_reference b) {
-            return psol_v1(dx,get<kernel_constant>(b));
-            });
+      typedef typename position::value_type const & const_position_reference;
+      typedef typename KnotsType::const_reference const_knot_reference;
+      typedef typename KnotsType::reference knot_reference;
 
-      auto psol_p1_op = create_dense_operator(particles,knots,
-            [](const_position_reference dx,
-               const_particles_reference a,
-               const_knot_reference b) {
-            return psol_p1(dx,get<kernel_constant>(b));
-            });
+#ifdef MAPS
+      auto psol_u1_kernel = 
+            [&](const double2& dx, const double2&, const double2&) {
+                return psol_u1(dx,c0);
+            };
+      auto psol_u2_kernel = 
+            [&](const double2& dx, const double2&, const double2&) {
+                return psol_u2(dx,c0);
+            };
+      auto psol_v1_kernel = 
+            [&](const double2& dx, const double2&, const double2&) {
+                return psol_v1(dx,c0);
+            };
+      auto psol_v2_kernel = 
+            [&](const double2& dx, const double2&, const double2&) {
+                return psol_v2(dx,c0);
+            };
+      auto psol_p1_kernel = 
+            [&](const double2& dx, const double2&, const double2&) {
+                return psol_p1(dx,c0);
+            };
+      auto psol_p2_kernel = 
+            [&](const double2& dx, const double2&, const double2&) {
+                return psol_p2(dx,c0);
+            };
 
-      auto psol_u2_op = create_dense_operator(particles,knots,
-            [](const_position_reference dx,
-               const_particles_reference a,
-               const_knot_reference b) {
-            return psol_u2(dx,get<kernel_constant>(b));
-            });
+#endif
 
-      auto psol_v2_op = create_dense_operator(particles,knots,
-            [](const_position_reference dx,
-               const_particles_reference a,
-               const_knot_reference b) {
-            return psol_v2(dx,get<kernel_constant>(b));
-            });
+      std::cout << "making fmm_queries" <<std::endl;
+      auto psol_u1_fmm = make_fmm_query(knots.get_query(),make_black_box_expansion<2,7>(psol_u1_kernel));
+      auto psol_u2_fmm = make_fmm_query(knots.get_query(),make_black_box_expansion<2,7>(psol_u2_kernel));
+      auto psol_v1_fmm = make_fmm_query(knots.get_query(),make_black_box_expansion<2,7>(psol_v1_kernel));
+      auto psol_v2_fmm = make_fmm_query(knots.get_query(),make_black_box_expansion<2,7>(psol_v2_kernel));
 
-      auto psol_p2_op = create_dense_operator(particles,knots,
-            [](const_position_reference dx,
-               const_particles_reference a,
-               const_knot_reference b) {
-            return psol_p2(dx,get<kernel_constant>(b));
-            });
-
+      std::cout << "calculating expansions" <<std::endl;
+      psol_u1_fmm.calculate_expansions(get<alpha1>(knots));
+      psol_u2_fmm.calculate_expansions(get<alpha2>(knots));
+      psol_v1_fmm.calculate_expansions(get<alpha1>(knots));
+      psol_v2_fmm.calculate_expansions(get<alpha2>(knots));
+      std::cout << "done calculating expansions" <<std::endl;
+    
     Symbol<boundary> is_b;
     Symbol<inlet> is_in;
     Symbol<outlet> is_out;
@@ -173,42 +185,39 @@ int main(int argc, char **argv) {
     auto dkf = create_dx(i,bf);
     auto dpf = create_dx(a,bf);
     auto dpk = create_dx(a,j);
-    Accumulate<std::plus<double> > sum;
     AccumulateWithinDistance<std::plus<double2> > sumv(fibre_radius);
-    Accumulate<std::plus<double3> > sumv3;
-    Accumulate<Aboria::max<double> > max;
-    max.set_init(0);
     AccumulateWithinDistance<std::bit_or<bool> > any(fibre_radius);
     any.set_init(false);
     VectorSymbolic<double,2> vector;
-    VectorSymbolic<double,3> vector3;
-    VectorSymbolic<double,9> matrix;
     Normal N;
     Uniform U;
-
 
     std::cout << "starting timesteps!"<<std::endl;
     const int timesteps_per_out = timesteps/nout;
     for (int ii=0; ii<timesteps; ++ii) {
         // add new particles
+        std::poisson_distribution<int> poisson(particle_rate*dt);
+        std::uniform_real_distribution<double> uniform(L/10.0,L-L/10.0);
         const int new_n = poisson(generator);
         for (int jj=0; jj<new_n; ++jj) {
             ParticlesType::value_type p;
-            get<position>(p) = double2(uniform(generator),up_mult*L);
+            get<position>(p) = double2(uniform(generator),domain_max[1]);
             get<kernel_constant>(p) = c0;
             particles.push_back(p);
         }
 
 
-        // diffusion with drift
-        typedef Eigen::Matrix<double,Eigen::Dynamic,1> vector_type;
-        typedef Eigen::Map<vector_type> map_type;
-        map_type(get<velocity_u>(particles).data(),particles.size()) = 
-            psol_u1_op*map_type(get<alpha1>(knots).data(),knots.size())+
-            psol_u2_op*map_type(get<alpha2>(knots).data(),knots.size());
-        map_type(get<velocity_v>(particles).data(),particles.size()) = 
-            psol_v1_op*map_type(get<alpha1>(knots).data(),knots.size())+
-            psol_v2_op*map_type(get<alpha2>(knots).data(),knots.size());
+        // evaluate velocity field
+        for (ParticlesType::reference p: particles) {
+            get<velocity_u>(p) = psol_u1_fmm.evaluate_expansion(get<position>(p),
+                    get<alpha1>(knots)) 
+                + psol_u2_fmm.evaluate_expansion(get<position>(p),
+                        get<alpha2>(knots));
+            get<velocity_v>(p) = psol_v1_fmm.evaluate_expansion(get<position>(p),
+                    get<alpha1>(knots)) 
+                + psol_v2_fmm.evaluate_expansion(get<position>(p),
+                        get<alpha2>(knots));
+        }
 
         r[a] += std::sqrt(2.0*D*dt)*vector(N[a],N[a]) + dt*vector(vu[a],vv[a]);
 

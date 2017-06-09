@@ -24,7 +24,7 @@ int main(int argc, char **argv) {
     unsigned int nout,max_iter_linear,restart_linear,nx,nc0,ncheb;
     int fibre_number,seed;
     double fibre_radius,particle_rate,react_rate,D,fibre_resolution;
-    double dt_aim,h0_factor,k,gamma,rf,c0_min,c0_max,epsilon_strength,epsilon_falloff;
+    double dt_aim,h0_factor,k,gamma,rf,c0_min,c0_max;
     unsigned int solver_in;
     bool periodic;
     std::string filename;
@@ -41,8 +41,6 @@ int main(int argc, char **argv) {
         ("D", po::value<double>(&D)->default_value(0.01), "diffusion constant")
         ("particle_rate", po::value<double>(&particle_rate)->default_value(1000.0), "particle rate")
         ("react_rate", po::value<double>(&react_rate)->default_value(0.5), "particle reaction rate")
-        ("epsilon_strength", po::value<double>(&epsilon_strength)->default_value(1.5), "boundary clustering strength")
-        ("epsilon_falloff", po::value<double>(&epsilon_falloff)->default_value(0.3), "boundary clustering fall-off")
         ("c0_min", po::value<double>(&c0_min)->default_value(0.1), "kernel constant")
         ("c0_max", po::value<double>(&c0_max)->default_value(0.2), "kernel constant")
         ("nx", po::value<unsigned int>(&nx)->default_value(20), "nx")
@@ -132,7 +130,7 @@ int main(int argc, char **argv) {
       //
       // SETUP KNOTS
       //
-      setup_knots(knots, fibres, fibre_radius, fibre_resolution, nx, domain_min, domain_max, c0, k,epsilon_strength,epsilon_falloff,periodic,10);
+      setup_knots(knots, fibres, fibre_radius, fibre_resolution, nx, domain_min, domain_max, c0, k,periodic,10);
 
       //
       // CALCULATE C
