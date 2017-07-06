@@ -9,7 +9,7 @@ int main(int argc, char **argv) {
 
     unsigned int nout,max_iter_linear,restart_linear,nx;
     int fibre_number,seed;
-    double fibre_resolution,fibre_radius,particle_rate,react_rate,D;
+    double fibre_resolution,fibre_radius,particle_rate,particle_radius,react_rate,D;
     double dt_aim,k,gamma,rf,c0;
     unsigned int solver_in;
     bool periodic;
@@ -25,12 +25,13 @@ int main(int argc, char **argv) {
         ("D", po::value<double>(&D)->default_value(0.01), "diffusion constant")
         ("particle_rate", po::value<double>(&particle_rate)->default_value(500.0), "particle rate")
         ("periodic", po::value<bool>(&periodic)->default_value(false), "periodic in x")
-        ("react_rate", po::value<double>(&react_rate)->default_value(0.5), "particle reaction rate")
+        ("react_rate", po::value<double>(&react_rate)->default_value(1.0), "particle reaction rate")
 
         ("c0", po::value<double>(&c0)->default_value(0.0835), "kernel constant")
         ("nx", po::value<unsigned int>(&nx)->default_value(10), "nx")
         ("fibre_resolution", po::value<double>(&fibre_resolution)->default_value(0.2), "number of knots around each fibre")
         ("fibre_radius", po::value<double>(&fibre_radius)->default_value(0.3), "radius of fibres")
+        ("particle_radius", po::value<double>(&particle_radius)->default_value(0.3/100.0), "radius of fibres")
         ("seed", po::value<int>(&seed)->default_value(10), "seed")
         ("fibre_number", po::value<int>(&fibre_number)->default_value(5), "number of fibres")
         ("dt", po::value<double>(&dt_aim)->default_value(0.001), "timestep")
@@ -48,6 +49,7 @@ int main(int argc, char **argv) {
 
     KnotsType knots;
     ParticlesType particles;
+    ParticlesType dead_particles;
     ParticlesType fibres;
 
       const double c2 = std::pow(c0,2);
@@ -65,7 +67,7 @@ int main(int argc, char **argv) {
       const double dt_adapt = (1.0/100.0)*PI/sqrt(2*k);
       const double2 domain_min(0,-1);
       const double2 domain_max(L,L+1);
-      const double2 ns_buffer(L/3,0.5);
+      const double2 ns_buffer(L/3,2*particle_radius);
 
       std::default_random_engine generator(seed);
 
@@ -188,7 +190,7 @@ int main(int argc, char **argv) {
       auto dpf = create_dx(a,bf);
       auto dpk = create_dx(a,j);
       AccumulateWithinDistance<std::plus<double2> > sumv(fibre_radius);
-      AccumulateWithinDistance<std::bit_or<bool> > any(fibre_radius);
+      AccumulateWithinDistance<std::bit_or<bool> > any(fibre_radius+particle_radius);
       any.set_init(false);
       VectorSymbolic<double,2> vector;
       Normal N;
@@ -204,11 +206,11 @@ int main(int argc, char **argv) {
       for (int ii=0; ii<timesteps; ++ii) {
           // add new particles
           std::poisson_distribution<int> poisson(particle_rate*dt);
-          std::uniform_real_distribution<double> uniform(L/10.0,L-L/10.0);
+          std::uniform_real_distribution<double> uniform(2*particle_radius,L-2*particle_radius);
           const int new_n = poisson(generator);
           for (int jj=0; jj<new_n; ++jj) {
               ParticlesType::value_type p;
-              get<position>(p) = double2(uniform(generator),domain_max[1]);
+              get<position>(p) = double2(uniform(generator),domain_max[1]-particle_radius);
               get<kernel_constant>(p) = c0;
               particles.push_back(p);
           }
@@ -216,7 +218,10 @@ int main(int argc, char **argv) {
           // evaluate velocity field
           
           t0 = Clock::now();
-          for (ParticlesType::reference p: particles) {
+
+          #pragma omp parallel for
+          for (int i = 0; i < particles.size(); ++i) {
+              ParticlesType::reference p = particles[i];
               get<velocity_u>(p) = psol_u1_fmm.evaluate_expansion(get<position>(p),
                       get<alpha1>(knots)) 
                   + psol_u2_fmm.evaluate_expansion(get<position>(p),
@@ -235,34 +240,69 @@ int main(int argc, char **argv) {
           if (ii % timesteps_per_out == 0) {
               std::cout << "timestep "<<ii<<" of "<<timesteps<<" (time_vel_eval = "<<time_vel_eval<<" time_vel_rest = "<<time_vel_rest<<std::endl;
               vtkWriteGrid("particles",ii,particles.get_grid(true));
+              vtkWriteGrid("dead_particles",ii,dead_particles.get_grid(true));
           }
 
           // react with fibres
-          alive_[a] = !any(bf,U[a]<react_rate);
+          // alive_[a] = !any(bf,U[a]<react_rate);
+          std::uniform_real_distribution<double> uni(0,1);
+          #pragma omp parallel for
+          for (int i = 0; i < particles.size(); ++i) {
+              ParticlesType::reference p = particles[i];
+              for (const auto& i: euclidean_search(fibres.get_query(),
+                          get<position>(p),fibre_radius+particle_radius)) {
+                  //ParticlesType::reference f = std::get<0>(i);
+                  const double2& dx = std::get<1>(i);
+                  if (uni(get<Aboria::random>(p)) < react_rate) {
+                      dead_particles.push_back(p);
+                      get<alive>(p) = false;
+                  } else {
+                      get<position>(p) += ((fibre_radius+particle_radius)/dx.norm()-1)*dx;
+                  }
+              }
+              if (get<alive>(p) == true) {
+                  if (get<position>(p)[0] > L-particle_radius) {
+                      if (uni(get<Aboria::random>(p)) < react_rate) {
+                          dead_particles.push_back(p);
+                          get<alive>(p) = false;
+                      } else {
+                          get<position>(p) += 2*(L-particle_radius)-get<position>(p)[0];
+                      }
+                  } else if (get<position>(p)[0] < particle_radius) {
+                      if (uni(get<Aboria::random>(p)) < react_rate) {
+                          dead_particles.push_back(p);
+                          get<alive>(p) = false;
+                      } else {
+                          get<position>(p) += 2*particle_radius-get<position>(p)[0];
+                      }
+                  }
+              }
+              particles.delete_particles();
+          }
 
           // react with side walls
-          alive_[a] = !if_else(r[a][0] > L
-                  ,U[a]<react_rate
-                  ,if_else(r[a][0] < 0
-                      ,U[a]<react_rate
-                      ,false
-                      )
-                  );
+          //alive_[a] = !if_else(r[a][0] > L
+          //        ,U[a]<react_rate
+          //        ,if_else(r[a][0] < 0
+          //            ,U[a]<react_rate
+          //            ,false
+          //            )
+          //        );
 
           // reflect off fibres (if still alive)
-          r[a] += sumv(bf,(fibre_radius/norm(dpf)-1)*dpf);
+          //r[a] += sumv(bf,(fibre_radius/norm(dpf)-1)*dpf);
 
           // reflect off side walls (if still alive)
-          r[a] = vector(
-                  if_else(r[a][0] > L
-                      ,2*L-r[a][0]
-                      ,if_else(r[a][0] < 0
-                          ,-r[a][0]
-                          ,r[a][0]
-                          )
-                      )
-                  ,r[a][1]
-                  );
+          //r[a] = vector(
+          //        if_else(r[a][0] > L
+          //            ,2*L-r[a][0]
+          //            ,if_else(r[a][0] < 0
+          //                ,-r[a][0]
+          //                ,r[a][0]
+          //                )
+          //            )
+          //        ,r[a][1]
+          //        );
 
           t1 = Clock::now();
           time_vel_rest += (t1 - t0).count();
