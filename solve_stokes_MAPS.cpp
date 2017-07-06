@@ -221,6 +221,7 @@ double solve_stokes_MAPS(KnotsType &knots, unsigned int max_iter_linear,unsigned
 
     map_type(get<alpha1>(knots).data(),N) = alphas.head(N);
     map_type(get<alpha2>(knots).data(),N) = alphas.tail(N);
+    /*
     map_type(get<velocity_u>(knots).data(),N) = 
         psol_u1_op*alphas.head(N) + 
         psol_u2_op*alphas.tail(N);
@@ -246,6 +247,7 @@ double solve_stokes_MAPS(KnotsType &knots, unsigned int max_iter_linear,unsigned
 
 
     vtkWriteGrid("MAPS",0,knots.get_grid(true));
+    */
 
     std::cout << "done solving stokes"<<std::endl;
     return relative_error;

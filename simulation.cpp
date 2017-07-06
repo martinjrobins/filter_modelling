@@ -4,6 +4,7 @@
 
 #define MAPS
 
+
 int main(int argc, char **argv) {
 
     unsigned int nout,max_iter_linear,restart_linear,nx;
@@ -22,16 +23,16 @@ int main(int argc, char **argv) {
         ("nout", po::value<unsigned int>(&nout)->default_value(100), "number of output points")
         ("k", po::value<double>(&k)->default_value(1.00), "spring constant")
         ("D", po::value<double>(&D)->default_value(0.01), "diffusion constant")
-        ("particle_rate", po::value<double>(&particle_rate)->default_value(1000.0), "particle rate")
+        ("particle_rate", po::value<double>(&particle_rate)->default_value(500.0), "particle rate")
         ("periodic", po::value<bool>(&periodic)->default_value(false), "periodic in x")
         ("react_rate", po::value<double>(&react_rate)->default_value(0.5), "particle reaction rate")
 
-        ("c0", po::value<double>(&c0)->default_value(0.0345), "kernel constant")
+        ("c0", po::value<double>(&c0)->default_value(0.0835), "kernel constant")
         ("nx", po::value<unsigned int>(&nx)->default_value(10), "nx")
-        ("fibre_resolution", po::value<double>(&fibre_resolution)->default_value(0.1), "number of knots around each fibre")
+        ("fibre_resolution", po::value<double>(&fibre_resolution)->default_value(0.2), "number of knots around each fibre")
         ("fibre_radius", po::value<double>(&fibre_radius)->default_value(0.3), "radius of fibres")
         ("seed", po::value<int>(&seed)->default_value(10), "seed")
-        ("fibre_number", po::value<int>(&fibre_number)->default_value(3), "number of fibres")
+        ("fibre_number", po::value<int>(&fibre_number)->default_value(5), "number of fibres")
         ("dt", po::value<double>(&dt_aim)->default_value(0.001), "timestep")
     ;
 
@@ -54,8 +55,8 @@ int main(int argc, char **argv) {
       const double c4 = std::pow(c0,4);
       const double mu = 1.0;
       const double flow_rate = 1.0;
-      const double Tf = 2.0;
       const double L = fibre_number*1.0;
+      const double Tf = 2.0*L;
       const double delta = L/nx;
       const double boundary_layer = delta/5;
       const double s = 1.1*delta;
@@ -64,7 +65,7 @@ int main(int argc, char **argv) {
       const double dt_adapt = (1.0/100.0)*PI/sqrt(2*k);
       const double2 domain_min(0,-1);
       const double2 domain_max(L,L+1);
-      const double2 ns_buffer(L/3,L/3);
+      const double2 ns_buffer(L/3,0.5);
 
       std::default_random_engine generator(seed);
 
@@ -84,6 +85,7 @@ int main(int argc, char **argv) {
           }
         }
         fibres.init_neighbour_search(domain_min-ns_buffer,domain_max+ns_buffer,bool2(false));
+        particles.init_neighbour_search(domain_min-ns_buffer,domain_max+ns_buffer,bool2(false));
 
         std::cout << "added "<<fibres.size()<<" fibres"<<std::endl;
       }
@@ -149,10 +151,10 @@ int main(int argc, char **argv) {
 #endif
 
       std::cout << "making fmm_queries" <<std::endl;
-      auto psol_u1_fmm = make_fmm_query(knots.get_query(),make_black_box_expansion<2,7>(psol_u1_kernel));
-      auto psol_u2_fmm = make_fmm_query(knots.get_query(),make_black_box_expansion<2,7>(psol_u2_kernel));
-      auto psol_v1_fmm = make_fmm_query(knots.get_query(),make_black_box_expansion<2,7>(psol_v1_kernel));
-      auto psol_v2_fmm = make_fmm_query(knots.get_query(),make_black_box_expansion<2,7>(psol_v2_kernel));
+      auto psol_u1_fmm = make_fmm_query(knots.get_query(),make_black_box_expansion<2,8>(psol_u1_kernel));
+      auto psol_u2_fmm = make_fmm_query(knots.get_query(),make_black_box_expansion<2,8>(psol_u2_kernel));
+      auto psol_v1_fmm = make_fmm_query(knots.get_query(),make_black_box_expansion<2,8>(psol_v1_kernel));
+      auto psol_v2_fmm = make_fmm_query(knots.get_query(),make_black_box_expansion<2,8>(psol_v2_kernel));
 
       std::cout << "calculating expansions" <<std::endl;
       psol_u1_fmm.calculate_expansions(get<alpha1>(knots));
@@ -160,99 +162,111 @@ int main(int argc, char **argv) {
       psol_v1_fmm.calculate_expansions(get<alpha1>(knots));
       psol_v2_fmm.calculate_expansions(get<alpha2>(knots));
       std::cout << "done calculating expansions" <<std::endl;
-    
-    Symbol<boundary> is_b;
-    Symbol<inlet> is_in;
-    Symbol<outlet> is_out;
-    Symbol<interior> is_i;
-    Symbol<position> r;
-    Symbol<alive> alive_;
-    Symbol<kernel_constant> c;
 
-    Symbol<velocity_u> vu;
-    Symbol<velocity_v> vv;
-    Symbol<pressure> pr;
-    Symbol<alpha1> al1;
-    Symbol<alpha2> al2;
+      Symbol<boundary> is_b;
+      Symbol<inlet> is_in;
+      Symbol<outlet> is_out;
+      Symbol<interior> is_i;
+      Symbol<position> r;
+      Symbol<alive> alive_;
+      Symbol<kernel_constant> c;
 
-    Label<0,KnotsType> i(knots);
-    Label<1,KnotsType> j(knots);
-    Label<0,ParticlesType> a(particles);
-    Label<1,ParticlesType> b(particles);
-    Label<0,ParticlesType> af(fibres);
-    Label<1,ParticlesType> bf(fibres);
-    auto dx = create_dx(i,j);
-    auto dkf = create_dx(i,bf);
-    auto dpf = create_dx(a,bf);
-    auto dpk = create_dx(a,j);
-    AccumulateWithinDistance<std::plus<double2> > sumv(fibre_radius);
-    AccumulateWithinDistance<std::bit_or<bool> > any(fibre_radius);
-    any.set_init(false);
-    VectorSymbolic<double,2> vector;
-    Normal N;
-    Uniform U;
+      Symbol<velocity_u> vu;
+      Symbol<velocity_v> vv;
+      Symbol<pressure> pr;
+      Symbol<alpha1> al1;
+      Symbol<alpha2> al2;
 
-    std::cout << "starting timesteps!"<<std::endl;
-    const int timesteps_per_out = timesteps/nout;
-    for (int ii=0; ii<timesteps; ++ii) {
-        // add new particles
-        std::poisson_distribution<int> poisson(particle_rate*dt);
-        std::uniform_real_distribution<double> uniform(L/10.0,L-L/10.0);
-        const int new_n = poisson(generator);
-        for (int jj=0; jj<new_n; ++jj) {
-            ParticlesType::value_type p;
-            get<position>(p) = double2(uniform(generator),domain_max[1]);
-            get<kernel_constant>(p) = c0;
-            particles.push_back(p);
-        }
+      Label<0,KnotsType> i(knots);
+      Label<1,KnotsType> j(knots);
+      Label<0,ParticlesType> a(particles);
+      Label<1,ParticlesType> b(particles);
+      Label<0,ParticlesType> af(fibres);
+      Label<1,ParticlesType> bf(fibres);
+      auto dx = create_dx(i,j);
+      auto dkf = create_dx(i,bf);
+      auto dpf = create_dx(a,bf);
+      auto dpk = create_dx(a,j);
+      AccumulateWithinDistance<std::plus<double2> > sumv(fibre_radius);
+      AccumulateWithinDistance<std::bit_or<bool> > any(fibre_radius);
+      any.set_init(false);
+      VectorSymbolic<double,2> vector;
+      Normal N;
+      Uniform U;
 
+#undef NDEBUG
+      std::cout << "starting timesteps!"<<std::endl;
+      const int timesteps_per_out = timesteps/nout;
+      auto t0 = Clock::now();
+      auto t1 = Clock::now();
+      double time_vel_eval = 0;
+      double time_vel_rest = 0;
+      for (int ii=0; ii<timesteps; ++ii) {
+          // add new particles
+          std::poisson_distribution<int> poisson(particle_rate*dt);
+          std::uniform_real_distribution<double> uniform(L/10.0,L-L/10.0);
+          const int new_n = poisson(generator);
+          for (int jj=0; jj<new_n; ++jj) {
+              ParticlesType::value_type p;
+              get<position>(p) = double2(uniform(generator),domain_max[1]);
+              get<kernel_constant>(p) = c0;
+              particles.push_back(p);
+          }
 
-        // evaluate velocity field
-        for (ParticlesType::reference p: particles) {
-            get<velocity_u>(p) = psol_u1_fmm.evaluate_expansion(get<position>(p),
-                    get<alpha1>(knots)) 
-                + psol_u2_fmm.evaluate_expansion(get<position>(p),
-                        get<alpha2>(knots));
-            get<velocity_v>(p) = psol_v1_fmm.evaluate_expansion(get<position>(p),
-                    get<alpha1>(knots)) 
-                + psol_v2_fmm.evaluate_expansion(get<position>(p),
-                        get<alpha2>(knots));
-        }
+          // evaluate velocity field
+          
+          t0 = Clock::now();
+          for (ParticlesType::reference p: particles) {
+              get<velocity_u>(p) = psol_u1_fmm.evaluate_expansion(get<position>(p),
+                      get<alpha1>(knots)) 
+                  + psol_u2_fmm.evaluate_expansion(get<position>(p),
+                          get<alpha2>(knots));
+              get<velocity_v>(p) = psol_v1_fmm.evaluate_expansion(get<position>(p),
+                      get<alpha1>(knots)) 
+                  + psol_v2_fmm.evaluate_expansion(get<position>(p),
+                          get<alpha2>(knots));
+          }
+          t1 = Clock::now();
+          time_vel_eval += (t1 - t0).count();
+          t0 = Clock::now();
 
-        r[a] += std::sqrt(2.0*D*dt)*vector(N[a],N[a]) + dt*vector(vu[a],vv[a]);
+          r[a] += std::sqrt(2.0*D*dt)*vector(N[a],N[a]) + dt*vector(vu[a],vv[a]);
 
-        if (ii % timesteps_per_out == 0) {
-            std::cout << "timestep "<<ii<<" of "<<timesteps<<std::endl;
-            vtkWriteGrid("particles",ii,particles.get_grid(true));
-        }
+          if (ii % timesteps_per_out == 0) {
+              std::cout << "timestep "<<ii<<" of "<<timesteps<<" (time_vel_eval = "<<time_vel_eval<<" time_vel_rest = "<<time_vel_rest<<std::endl;
+              vtkWriteGrid("particles",ii,particles.get_grid(true));
+          }
 
-        // react with fibres
-        alive_[a] = !any(bf,U[a]<react_rate);
+          // react with fibres
+          alive_[a] = !any(bf,U[a]<react_rate);
 
-        // react with side walls
-        alive_[a] = !if_else(r[a][0] > L
-                           ,U[a]<react_rate
-                           ,if_else(r[a][0] < 0
-                               ,U[a]<react_rate
-                               ,false
-                               )
-                           );
+          // react with side walls
+          alive_[a] = !if_else(r[a][0] > L
+                  ,U[a]<react_rate
+                  ,if_else(r[a][0] < 0
+                      ,U[a]<react_rate
+                      ,false
+                      )
+                  );
 
-        // reflect off fibres (if still alive)
-        r[a] += sumv(bf,(fibre_radius/norm(dpf)-1)*dpf);
+          // reflect off fibres (if still alive)
+          r[a] += sumv(bf,(fibre_radius/norm(dpf)-1)*dpf);
 
-        // reflect off side walls (if still alive)
-        r[a] = vector(
-                      if_else(r[a][0] > L
-                          ,2*L-r[a][0]
-                          ,if_else(r[a][0] < 0
-                              ,-r[a][0]
-                              ,r[a][0]
-                              )
+          // reflect off side walls (if still alive)
+          r[a] = vector(
+                  if_else(r[a][0] > L
+                      ,2*L-r[a][0]
+                      ,if_else(r[a][0] < 0
+                          ,-r[a][0]
+                          ,r[a][0]
                           )
-                     ,r[a][1]
-                     );
+                      )
+                  ,r[a][1]
+                  );
 
-    }
+          t1 = Clock::now();
+          time_vel_rest += (t1 - t0).count();
+
+      }
 
 }
