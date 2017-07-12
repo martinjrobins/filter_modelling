@@ -8,7 +8,7 @@
 int main(int argc, char **argv) {
 
     unsigned int nout,max_iter_linear,restart_linear,nx;
-    int fibre_number,seed;
+    int fibre_number,seed,fibre_arrangement;
     double fibre_resolution,fibre_radius,particle_rate,particle_radius,react_rate,D;
     double dt_aim,k,gamma,rf,c0;
     unsigned int solver_in;
@@ -30,6 +30,7 @@ int main(int argc, char **argv) {
         ("c0", po::value<double>(&c0)->default_value(0.0835), "kernel constant")
         ("nx", po::value<unsigned int>(&nx)->default_value(10), "nx")
         ("fibre_resolution", po::value<double>(&fibre_resolution)->default_value(0.2), "number of knots around each fibre")
+        ("fibre_arrangement", po::value<int>(&fibre_arrangement)->default_value(0), "(0=regular, 1=hexigonal)")
         ("fibre_radius", po::value<double>(&fibre_radius)->default_value(0.3), "radius of fibres")
         ("particle_radius", po::value<double>(&particle_radius)->default_value(0.3/100.0), "radius of fibres")
         ("seed", po::value<int>(&seed)->default_value(10), "seed")
@@ -75,17 +76,35 @@ int main(int argc, char **argv) {
       // fibres
       {
         typename ParticlesType::value_type p;
-        for (int ii=0; ii<fibre_number; ++ii) {
-          for (int jj=0; jj<fibre_number; ++jj) {
-            const double dx = L/fibre_number;
-            const double2 origin = double2(
-              (ii+0.5)*dx,
-              (jj+0.5)*dx
-            );
-            get<position>(p) = origin;
-            fibres.push_back(p);
-          }
+        if (fibre_arrangement == 1) {
+            for (int jj=0; jj<fibre_number; ++jj) {
+              for (int ii=0; ii<(jj%2==0?fibre_number:fibre_number-1); ++ii) {
+                const double dx = L/fibre_number;
+                double2 origin = double2(
+                  (ii+0.5)*dx,
+                  (jj+0.5)*dx
+                );
+                if (jj%2==1) {
+                    origin[0] += 0.5*dx;
+                }
+                get<position>(p) = origin;
+                fibres.push_back(p);
+              }
+            }
+        } else {
+            for (int ii=0; ii<fibre_number; ++ii) {
+              for (int jj=0; jj<fibre_number; ++jj) {
+                const double dx = L/fibre_number;
+                const double2 origin = double2(
+                  (ii+0.5)*dx,
+                  (jj+0.5)*dx
+                );
+                get<position>(p) = origin;
+                fibres.push_back(p);
+              }
+            }
         }
+
         fibres.init_neighbour_search(domain_min-ns_buffer,domain_max+ns_buffer,bool2(false));
         particles.init_neighbour_search(domain_min-ns_buffer,domain_max+ns_buffer,bool2(false));
 
