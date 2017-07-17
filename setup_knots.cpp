@@ -295,7 +295,7 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
                 } else {
                     get<target>(p) = false;
                 }
-                get<boundary>(p) = true;
+                get<boundary>(p) = false;
                 get<inlet>(p) = false;
                 get<interior>(p) = false;
                 get<outlet>(p) = false;
@@ -323,7 +323,7 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
                 } else {
                     get<target>(p) = false;
                 }
-                get<boundary>(p) = true;
+                get<boundary>(p) = false;
                 get<inlet>(p) = false;
                 get<interior>(p) = false;
                 get<outlet>(p) = false;

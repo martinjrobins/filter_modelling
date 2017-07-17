@@ -9,7 +9,7 @@ double solve_stokes_MAPS(KnotsType &knots, unsigned int max_iter_linear,unsigned
     typedef typename position::value_type const & const_position_reference;
     typedef typename KnotsType::const_reference const_particle_reference;
 
-    //----B1: u = 0 at inlet and b, p = 0 at outlet
+    //----B1: u = 0 at inlet and b, p = 0 at outlet, dudx = 0 at sides
     //B1: p = 0 at inlet and u=0 at b, dudy = 0 at outlet
     auto A11 = create_dense_operator(knots,knots,
             [](const_position_reference dx,
@@ -23,7 +23,9 @@ double solve_stokes_MAPS(KnotsType &knots, unsigned int max_iter_linear,unsigned
                     } else if (get<inlet>(a)) {
                         //return psol_p1(dx,get<kernel_constant>(b));
                         return psol_u1(dx,get<kernel_constant>(b));
-                    } else { // b
+                    } else if (get<boundary>(a)) { // b
+                        return psol_u1(dx,get<kernel_constant>(b));
+                    } else {
                         return psol_u1(dx,get<kernel_constant>(b));
                     }
                     });
@@ -40,13 +42,15 @@ double solve_stokes_MAPS(KnotsType &knots, unsigned int max_iter_linear,unsigned
                     } else if (get<inlet>(a)) {
                         //return psol_p2(dx,get<kernel_constant>(b));
                         return psol_u2(dx,get<kernel_constant>(b));
-                    } else { // b
+                    } else if (get<boundary>(a)) { // b
+                        return psol_u2(dx,get<kernel_constant>(b));
+                    } else {
                         return psol_u2(dx,get<kernel_constant>(b));
                     }
                     });
 
 
-    //-----B2: v = -flow_rate at inlet and v=0 at b, u = 0 at outlet
+    //-----B2: v = -flow_rate at inlet and v=0 at b, u = 0 at outlet, dvdx=0 at sides
     //B2: v = -flow_rate at inlet and v=0 at b, dvdy = 0 at outlet
     auto A21 = create_dense_operator(knots,knots,
             [](const_position_reference dx,
@@ -57,8 +61,10 @@ double solve_stokes_MAPS(KnotsType &knots, unsigned int max_iter_linear,unsigned
                     } else if (get<outlet>(a)) {
                         return psol_u1(dx,get<kernel_constant>(b));
                         //return psol_dv1dy(dx,get<kernel_constant>(b));
-                    } else { // inlet or b
+                    } else if (get<inlet>(a) || get<boundary>(a)) { // inlet or b
                         return psol_v1(dx,get<kernel_constant>(b));
+                    } else {
+                        return psol_dv1dx(dx,get<kernel_constant>(b));
                     }
                     });
         
@@ -71,8 +77,10 @@ double solve_stokes_MAPS(KnotsType &knots, unsigned int max_iter_linear,unsigned
                     } else if (get<outlet>(a)) {
                         return psol_u2(dx,get<kernel_constant>(b));
                         //return psol_dv2dy(dx,get<kernel_constant>(b));
-                    } else { // inlet or b
+                    } else if (get<inlet>(a) || get<boundary>(a)) { // inlet or b
                         return psol_v2(dx,get<kernel_constant>(b));
+                    } else {
+                        return psol_dv2dx(dx,get<kernel_constant>(b));
                     }
                     });
 
@@ -221,6 +229,7 @@ double solve_stokes_MAPS(KnotsType &knots, unsigned int max_iter_linear,unsigned
 
     map_type(get<alpha1>(knots).data(),N) = alphas.head(N);
     map_type(get<alpha2>(knots).data(),N) = alphas.tail(N);
+
     /*
     map_type(get<velocity_u>(knots).data(),N) = 
         psol_u1_op*alphas.head(N) + 

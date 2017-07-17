@@ -27,35 +27,34 @@ void eval_solution(KnotsType& knots, ComsolType& comsol,
                    double& rms_diff_u, double& rms_diff_v, double& rms_diff_p,
                    double& time_setup, double& time_eval, double& time_direct_eval) {
     const unsigned int D = KnotsType::dimension; 
-    auto psol_u1_fmm = make_fmm_query(knots.get_query(),make_black_box_expansion<D,N>(u1k));
-    auto psol_u2_fmm = make_fmm_query(knots.get_query(),make_black_box_expansion<D,N>(u2k));
-    auto psol_v1_fmm = make_fmm_query(knots.get_query(),make_black_box_expansion<D,N>(v1k));
-    auto psol_v2_fmm = make_fmm_query(knots.get_query(),make_black_box_expansion<D,N>(v2k));
-    auto psol_p1_fmm = make_fmm_query(knots.get_query(),make_black_box_expansion<D,N>(p1k));
-    auto psol_p2_fmm = make_fmm_query(knots.get_query(),make_black_box_expansion<D,N>(p2k));
-
     auto t0 = Clock::now();
-    psol_u1_fmm.calculate_expansions(get<alpha1>(knots));
-    psol_u2_fmm.calculate_expansions(get<alpha2>(knots));
-    psol_v1_fmm.calculate_expansions(get<alpha1>(knots));
-    psol_v2_fmm.calculate_expansions(get<alpha2>(knots));
-    psol_p1_fmm.calculate_expansions(get<alpha1>(knots));
-    psol_p2_fmm.calculate_expansions(get<alpha2>(knots));
+    auto psol_u1_fmm = make_fmm_with_source(knots,make_black_box_expansion<D,N>(u1k),
+                                            get<alpha1>(knots));
+    auto psol_u2_fmm = make_fmm_with_source(knots,make_black_box_expansion<D,N>(u2k),
+                                            get<alpha2>(knots));
+    auto psol_v1_fmm = make_fmm_with_source(knots,make_black_box_expansion<D,N>(v1k),
+                                            get<alpha1>(knots));
+    auto psol_v2_fmm = make_fmm_with_source(knots,make_black_box_expansion<D,N>(v2k),
+                                            get<alpha2>(knots));
+    auto psol_p1_fmm = make_fmm_with_source(knots,make_black_box_expansion<D,N>(p1k),
+                                            get<alpha1>(knots));
+    auto psol_p2_fmm = make_fmm_with_source(knots,make_black_box_expansion<D,N>(p2k),
+                                            get<alpha2>(knots));
     auto t1 = Clock::now();
     time_setup = (t1 - t0).count();
     t0 = Clock::now();
     for (ComsolType::reference p: comsol) {
-        get<velocity_u>(p) = psol_u1_fmm.evaluate_expansion(get<position>(p),
+        get<velocity_u>(p) = psol_u1_fmm.evaluate_at_point(get<position>(p),
                 get<alpha1>(knots)) 
-            + psol_u2_fmm.evaluate_expansion(get<position>(p),
+            + psol_u2_fmm.evaluate_at_point(get<position>(p),
                     get<alpha2>(knots));
-        get<velocity_v>(p) = psol_v1_fmm.evaluate_expansion(get<position>(p),
+        get<velocity_v>(p) = psol_v1_fmm.evaluate_at_point(get<position>(p),
                 get<alpha1>(knots)) 
-            + psol_v2_fmm.evaluate_expansion(get<position>(p),
+            + psol_v2_fmm.evaluate_at_point(get<position>(p),
                     get<alpha2>(knots));
-        get<pressure>(p) =   psol_p1_fmm.evaluate_expansion(get<position>(p),
+        get<pressure>(p) =   psol_p1_fmm.evaluate_at_point(get<position>(p),
                 get<alpha1>(knots)) 
-            + psol_p2_fmm.evaluate_expansion(get<position>(p),
+            + psol_p2_fmm.evaluate_at_point(get<position>(p),
                     get<alpha2>(knots));
     }
     t1 = Clock::now();

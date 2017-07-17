@@ -56,6 +56,7 @@ int main(int argc, char **argv) {
       const double c2 = std::pow(c0,2);
       const double c3 = std::pow(c0,3);
       const double c4 = std::pow(c0,4);
+      const bool reflective = false;
       const double mu = 1.0;
       const double flow_rate = 1.0;
       const double L = fibre_number*1.0;
@@ -68,7 +69,7 @@ int main(int argc, char **argv) {
       const double dt_adapt = (1.0/100.0)*PI/sqrt(2*k);
       const double2 domain_min(0,-1);
       const double2 domain_max(L,L+1);
-      const double2 ns_buffer(L/3,2*particle_radius);
+      const double2 ns_buffer(static_cast<int>(reflective)*L/3,2*particle_radius);
 
       std::default_random_engine generator(seed);
 
@@ -106,7 +107,7 @@ int main(int argc, char **argv) {
         }
 
         fibres.init_neighbour_search(domain_min-ns_buffer,domain_max+ns_buffer,bool2(false));
-        particles.init_neighbour_search(domain_min-ns_buffer,domain_max+ns_buffer,bool2(false));
+        particles.init_neighbour_search(domain_min-ns_buffer,domain_max+ns_buffer,bool2(!reflective,false));
 
         std::cout << "added "<<fibres.size()<<" fibres"<<std::endl;
       }
@@ -172,16 +173,19 @@ int main(int argc, char **argv) {
 #endif
 
       std::cout << "making fmm_queries" <<std::endl;
-      auto psol_u1_fmm = make_fmm_query(knots.get_query(),make_black_box_expansion<2,8>(psol_u1_kernel));
-      auto psol_u2_fmm = make_fmm_query(knots.get_query(),make_black_box_expansion<2,8>(psol_u2_kernel));
-      auto psol_v1_fmm = make_fmm_query(knots.get_query(),make_black_box_expansion<2,8>(psol_v1_kernel));
-      auto psol_v2_fmm = make_fmm_query(knots.get_query(),make_black_box_expansion<2,8>(psol_v2_kernel));
+      auto psol_u1_fmm = make_fmm_with_source(knots,
+                                    make_black_box_expansion<2,8>(psol_u1_kernel),
+                                    get<alpha1>(knots));
+      auto psol_u2_fmm = make_fmm_with_source(knots,
+                                    make_black_box_expansion<2,8>(psol_u2_kernel),
+                                    get<alpha2>(knots));
+      auto psol_v1_fmm = make_fmm_with_source(knots,
+                                    make_black_box_expansion<2,8>(psol_v1_kernel),
+                                    get<alpha1>(knots));
+      auto psol_v2_fmm = make_fmm_with_source(knots,
+                                    make_black_box_expansion<2,8>(psol_v2_kernel),
+                                    get<alpha2>(knots));
 
-      std::cout << "calculating expansions" <<std::endl;
-      psol_u1_fmm.calculate_expansions(get<alpha1>(knots));
-      psol_u2_fmm.calculate_expansions(get<alpha2>(knots));
-      psol_v1_fmm.calculate_expansions(get<alpha1>(knots));
-      psol_v2_fmm.calculate_expansions(get<alpha2>(knots));
       std::cout << "done calculating expansions" <<std::endl;
 
       Symbol<boundary> is_b;
@@ -241,13 +245,13 @@ int main(int argc, char **argv) {
           #pragma omp parallel for
           for (int i = 0; i < particles.size(); ++i) {
               ParticlesType::reference p = particles[i];
-              get<velocity_u>(p) = psol_u1_fmm.evaluate_expansion(get<position>(p),
+              get<velocity_u>(p) = psol_u1_fmm.evaluate_at_point(get<position>(p),
                       get<alpha1>(knots)) 
-                  + psol_u2_fmm.evaluate_expansion(get<position>(p),
+                  + psol_u2_fmm.evaluate_at_point(get<position>(p),
                           get<alpha2>(knots));
-              get<velocity_v>(p) = psol_v1_fmm.evaluate_expansion(get<position>(p),
+              get<velocity_v>(p) = psol_v1_fmm.evaluate_at_point(get<position>(p),
                       get<alpha1>(knots)) 
-                  + psol_v2_fmm.evaluate_expansion(get<position>(p),
+                  + psol_v2_fmm.evaluate_at_point(get<position>(p),
                           get<alpha2>(knots));
           }
           t1 = Clock::now();
@@ -279,21 +283,11 @@ int main(int argc, char **argv) {
                       get<position>(p) += ((fibre_radius+particle_radius)/dx.norm()-1)*dx;
                   }
               }
-              if (get<alive>(p) == true) {
+              if (reflective && get<alive>(p) == true) {
                   if (get<position>(p)[0] > L-particle_radius) {
-                      if (uni(get<Aboria::random>(p)) < react_rate) {
-                          dead_particles.push_back(p);
-                          get<alive>(p) = false;
-                      } else {
                           get<position>(p) += 2*(L-particle_radius)-get<position>(p)[0];
-                      }
                   } else if (get<position>(p)[0] < particle_radius) {
-                      if (uni(get<Aboria::random>(p)) < react_rate) {
-                          dead_particles.push_back(p);
-                          get<alive>(p) = false;
-                      } else {
                           get<position>(p) += 2*particle_radius-get<position>(p)[0];
-                      }
                   }
               }
               particles.delete_particles();
