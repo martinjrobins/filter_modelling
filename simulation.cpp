@@ -13,6 +13,7 @@ int main(int argc, char **argv) {
     double dt_aim,k,gamma,rf,c0;
     unsigned int solver_in;
     bool periodic;
+    std::string base_dir;
 
     po::options_description desc("Allowed options");
     desc.add_options()
@@ -34,6 +35,7 @@ int main(int argc, char **argv) {
         ("fibre_radius", po::value<double>(&fibre_radius)->default_value(0.3), "radius of fibres")
         ("particle_radius", po::value<double>(&particle_radius)->default_value(0.3/100.0), "radius of fibres")
         ("seed", po::value<int>(&seed)->default_value(10), "seed")
+        ("base_dir", po::value<std::string>(&base_dir)->default_value("default"), "base filename for output")
         ("fibre_number", po::value<int>(&fibre_number)->default_value(5), "number of fibres")
         ("dt", po::value<double>(&dt_aim)->default_value(0.001), "timestep")
     ;
@@ -262,8 +264,8 @@ int main(int argc, char **argv) {
 
           if (ii % timesteps_per_out == 0) {
               std::cout << "timestep "<<ii<<" of "<<timesteps<<" (time_vel_eval = "<<time_vel_eval<<" time_vel_rest = "<<time_vel_rest<<std::endl;
-              vtkWriteGrid("particles",ii,particles.get_grid(true));
-              vtkWriteGrid("dead_particles",ii,dead_particles.get_grid(true));
+              vtkWriteGrid((base_dir + "particles").c_str(),ii,particles.get_grid(true));
+              vtkWriteGrid((base_dir + "dead_particles").c_str(),ii,dead_particles.get_grid(true));
           }
 
           // react with fibres
