@@ -149,7 +149,7 @@ int main(int argc, char **argv) {
       const double relative_error = solve_stokes_Compact(knots,max_iter_linear,restart_linear,solver_in,c0);
 #endif
 #ifdef FMAPS
-      const unsigned int Ncheb = 4;
+      const unsigned int Ncheb = 8;
       const double relative_error = solve_stokes_fMAPS<Ncheb>(knots,max_iter_linear,restart_linear,solver_in,c0);
 #endif
       //solve_stokes_LMAPS(knots,max_iter_linear,restart_linear,solver_in,c0);
@@ -316,6 +316,57 @@ int main(int argc, char **argv) {
                const_position_reference b) {
             return psol_p2(dx,c0);
             });
+
+      /*
+    auto psol_u1_op = create_chebyshev_operator(comsol,knots,
+            Ncheb,
+            [&](const_position_reference dx,
+               const_position_reference a,
+               const_position_reference b) {
+            return psol_u1(dx,c0);
+            });
+
+      auto psol_v1_op = create_chebyshev_operator(comsol,knots,
+            Ncheb,
+            [&](const_position_reference dx,
+               const_position_reference a,
+               const_position_reference b) {
+            return psol_v1(dx,c0);
+            });
+
+      auto psol_p1_op = create_chebyshev_operator(comsol,knots,
+            Ncheb,
+            [&](const_position_reference dx,
+               const_position_reference a,
+               const_position_reference b) {
+            return psol_p1(dx,c0);
+            });
+
+      auto psol_u2_op = create_chebyshev_operator(comsol,knots,
+            Ncheb,
+            [&](const_position_reference dx,
+               const_position_reference a,
+               const_position_reference b) {
+            return psol_u2(dx,c0);
+            });
+
+      auto psol_v2_op = create_chebyshev_operator(comsol,knots,
+            Ncheb,
+            [&](const_position_reference dx,
+               const_position_reference a,
+               const_position_reference b) {
+            return psol_v2(dx,c0);
+            });
+
+      auto psol_p2_op = create_chebyshev_operator(comsol,knots,
+            Ncheb,
+            [&](const_position_reference dx,
+               const_position_reference a,
+               const_position_reference b) {
+            return psol_p2(dx,c0);
+            });
+            */
+
 
 #endif
 #ifdef MAPS

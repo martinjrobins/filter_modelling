@@ -62,6 +62,136 @@ double solve_stokes_fMAPS(KnotsType &knots, unsigned int max_iter_linear,unsigne
         other_ids(get<id>(side_knots)[i]) = ii; 
         ++ii;
     }
+
+    /*
+    //----B1: u = 0 at inlet and b, p = 0 at outlet
+    //B1: p = 0 at inlet and u=0 at b, dudy = 0 at outlet
+    auto A11_interior = create_chebyshev_operator(interior_knots,knots,
+            Ncheb,
+            [&](const_position_reference dx,
+               const_position_reference a,
+               const_position_reference b) {
+                        return kernel_mq(dx,c0);
+                    });
+    
+    auto A11_outlet = create_chebyshev_operator(outlet_knots,knots,
+            Ncheb,
+            [&](const_position_reference dx,
+               const_position_reference a,
+               const_position_reference b) {
+                        return psol_p1(dx,c0);
+                    });
+
+    auto A11_inlet_boundary = create_chebyshev_operator(inlet_boundary_knots,knots,
+            Ncheb,
+            [&](const_position_reference dx,
+               const_position_reference a,
+               const_position_reference b) {
+                        return psol_u1(dx,c0);
+                    });
+
+    auto A11_side = create_chebyshev_operator(side_knots,knots,
+            Ncheb,
+            [&](const_position_reference dx,
+               const_position_reference a,
+               const_position_reference b) {
+                        return psol_u1(dx,c0);
+                    });
+
+    
+
+    auto A12_interior = create_zero_operator(interior_knots,knots);
+
+    auto A12_outlet = create_chebyshev_operator(outlet_knots,knots,
+            Ncheb,
+            [&](const_position_reference dx,
+               const_position_reference a,
+               const_position_reference b) {
+                        return psol_p2(dx,c0);
+                    });
+
+    auto A12_inlet_boundary = create_chebyshev_operator(inlet_boundary_knots,knots,
+            Ncheb,
+            [&](const_position_reference dx,
+               const_position_reference a,
+               const_position_reference b) {
+                        return psol_u2(dx,c0);
+                    
+                    });
+
+    auto A12_side = create_chebyshev_operator(side_knots,knots,
+            Ncheb,
+            [&](const_position_reference dx,
+               const_position_reference a,
+               const_position_reference b) {
+                        return psol_u2(dx,c0);
+                    });
+
+    
+
+    //-----B2: v = -flow_rate at inlet and v=0 at b, u = 0 at outlet
+    //B2: v = -flow_rate at inlet and v=0 at b, dvdy = 0 at outlet
+    auto A21_interior = create_zero_operator(interior_knots,knots);
+
+    auto A21_outlet = create_chebyshev_operator(outlet_knots,knots,
+            Ncheb,
+            [&](const_position_reference dx,
+               const_position_reference a,
+               const_position_reference b) {
+                        return psol_u1(dx,c0);
+                    });
+
+    auto A21_inlet_boundary = create_chebyshev_operator(inlet_boundary_knots,knots,
+            Ncheb,
+            [&](const_position_reference dx,
+               const_position_reference a,
+               const_position_reference b) {
+                        return psol_v1(dx,c0);
+                    });
+
+    auto A21_side = create_chebyshev_operator(side_knots,knots,
+            Ncheb,
+            [&](const_position_reference dx,
+               const_position_reference a,
+               const_position_reference b) {
+                        return psol_dv1dx(dx,c0);
+                    });
+
+    auto A22_interior = create_chebyshev_operator(interior_knots,knots,
+            Ncheb,
+            [&](const_position_reference dx,
+               const_position_reference a,
+               const_position_reference b) {
+                        return kernel_mq(dx,c0);
+                    });
+    
+
+   auto A22_outlet = create_chebyshev_operator(outlet_knots,knots,
+            Ncheb,
+            [&](const_position_reference dx,
+               const_position_reference a,
+               const_position_reference b) {
+                        return psol_u2(dx,c0);
+                    });
+
+    auto A22_inlet_boundary = create_chebyshev_operator(inlet_boundary_knots,knots,
+            Ncheb,
+            [&](const_position_reference dx,
+               const_position_reference a,
+               const_position_reference b) {
+                        return psol_v2(dx,c0);
+                    });
+
+    auto A22_side = create_chebyshev_operator(side_knots,knots,
+            Ncheb,
+            [&](const_position_reference dx,
+               const_position_reference a,
+               const_position_reference b) {
+                        return psol_dv2dx(dx,c0);
+                    });
+    */
+
+
     
 
     //----B1: u = 0 at inlet and b, p = 0 at outlet
@@ -72,16 +202,8 @@ double solve_stokes_fMAPS(KnotsType &knots, unsigned int max_iter_linear,unsigne
                const_position_reference b) {
                         return kernel_mq(dx,c0);
                     });
-    /*
-    auto A11_interior = create_dense_operator(interior_knots,knots,
-            [&](const_position_reference dx,
-               const_knot_reference a,
-               const_knot_reference b) {
-                        return kernel_mq(dx,c0);
-                    });
-                    */
-
-    auto A11_outlet = create_h2_operator<Ncheb>(outlet_knots,knots,
+   
+    auto A11_outlet = create_matrix_operator(outlet_knots,knots,
             [&](const_position_reference dx,
                const_position_reference a,
                const_position_reference b) {
@@ -95,7 +217,7 @@ double solve_stokes_fMAPS(KnotsType &knots, unsigned int max_iter_linear,unsigne
                         return psol_u1(dx,c0);
                     });
 
-    auto A11_side = create_h2_operator<Ncheb>(side_knots,knots,
+    auto A11_side = create_matrix_operator(side_knots,knots,
             [&](const_position_reference dx,
                const_position_reference a,
                const_position_reference b) {
@@ -106,7 +228,7 @@ double solve_stokes_fMAPS(KnotsType &knots, unsigned int max_iter_linear,unsigne
 
     auto A12_interior = create_zero_operator(interior_knots,knots);
 
-    auto A12_outlet = create_h2_operator<Ncheb>(outlet_knots,knots,
+    auto A12_outlet = create_matrix_operator(outlet_knots,knots,
             [&](const_position_reference dx,
                const_position_reference a,
                const_position_reference b) {
@@ -121,7 +243,7 @@ double solve_stokes_fMAPS(KnotsType &knots, unsigned int max_iter_linear,unsigne
                     
                     });
 
-    auto A12_side = create_h2_operator<Ncheb>(side_knots,knots,
+    auto A12_side = create_matrix_operator(side_knots,knots,
             [&](const_position_reference dx,
                const_position_reference a,
                const_position_reference b) {
@@ -134,7 +256,7 @@ double solve_stokes_fMAPS(KnotsType &knots, unsigned int max_iter_linear,unsigne
     //B2: v = -flow_rate at inlet and v=0 at b, dvdy = 0 at outlet
     auto A21_interior = create_zero_operator(interior_knots,knots);
 
-    auto A21_outlet = create_h2_operator<Ncheb>(outlet_knots,knots,
+    auto A21_outlet = create_matrix_operator(outlet_knots,knots,
             [&](const_position_reference dx,
                const_position_reference a,
                const_position_reference b) {
@@ -148,7 +270,7 @@ double solve_stokes_fMAPS(KnotsType &knots, unsigned int max_iter_linear,unsigne
                         return psol_v1(dx,c0);
                     });
 
-    auto A21_side = create_h2_operator<Ncheb>(side_knots,knots,
+    auto A21_side = create_matrix_operator(side_knots,knots,
             [&](const_position_reference dx,
                const_position_reference a,
                const_position_reference b) {
@@ -161,17 +283,9 @@ double solve_stokes_fMAPS(KnotsType &knots, unsigned int max_iter_linear,unsigne
                const_position_reference b) {
                         return kernel_mq(dx,c0);
                     });
-    /*
-    auto A22_interior = create_dense_operator(interior_knots,knots,
-            [&](const_position_reference dx,
-               const_position_reference a,
-               const_position_reference b) {
-                        return kernel_mq(dx,c0);
-                    });
-                    */
+    
 
-
-   auto A22_outlet = create_h2_operator<Ncheb>(outlet_knots,knots,
+   auto A22_outlet = create_matrix_operator(outlet_knots,knots,
             [&](const_position_reference dx,
                const_position_reference a,
                const_position_reference b) {
@@ -185,7 +299,7 @@ double solve_stokes_fMAPS(KnotsType &knots, unsigned int max_iter_linear,unsigne
                         return psol_v2(dx,c0);
                     });
 
-    auto A22_side = create_h2_operator<Ncheb>(side_knots,knots,
+    auto A22_side = create_matrix_operator(side_knots,knots,
             [&](const_position_reference dx,
                const_position_reference a,
                const_position_reference b) {
@@ -462,74 +576,10 @@ double solve_stokes_fMAPS(KnotsType &knots, unsigned int max_iter_linear,unsigne
                const_particle_reference b) {
             return psol_p2(dx,c0);
             });
-            */
+      */
 
 
-      /*
-    auto psol_du1dx_op = create_h2_operator<Ncheb>(knots,knots,
-            n,
-            [&](const_position_reference dx,
-               const_position_reference a,
-               const_position_reference b) {
-            return psol_du1dx(dx,c0);
-            });
-
-    auto psol_du2dx_op = create_h2_operator<Ncheb>(knots,knots,
-            n,
-            [&](const_position_reference dx,
-               const_position_reference a,
-               const_position_reference b) {
-            return psol_du2dx(dx,c0);
-            });
-
-    auto psol_du1dy_op = create_h2_operator<Ncheb>(knots,knots,
-            n,
-            [&](const_position_reference dx,
-               const_position_reference a,
-               const_position_reference b) {
-            return psol_du1dy(dx,c0);
-            });
-
-    auto psol_du2dy_op = create_h2_operator<Ncheb>(knots,knots,
-            n,
-            [&](const_position_reference dx,
-               const_position_reference a,
-               const_position_reference b) {
-            return psol_du2dy(dx,c0);
-            });
-
-    auto psol_dv1dx_op = create_h2_operator<Ncheb>(knots,knots,
-            n,
-            [&](const_position_reference dx,
-               const_position_reference a,
-               const_position_reference b) {
-            return psol_dv1dx(dx,c0);
-            });
-
-    auto psol_dv2dx_op = create_h2_operator<Ncheb>(knots,knots,
-            n,
-            [&](const_position_reference dx,
-               const_position_reference a,
-               const_position_reference b) {
-            return psol_dv2dx(dx,c0);
-            });
-
-    auto psol_dv1dy_op = create_h2_operator<Ncheb>(knots,knots,
-            n,
-            [&](const_position_reference dx,
-               const_position_reference a,
-               const_position_reference b) {
-            return psol_dv1dy(dx,c0);
-            });
-
-    auto psol_dv2dy_op = create_h2_operator<Ncheb>(knots,knots,
-            n,
-            [&](const_position_reference dx,
-               const_position_reference a,
-               const_position_reference b) {
-            return psol_dv2dy(dx,c0);
-            });
-            */
+    
 
 
     map_type(get<velocity_u>(knots).data(),N) = 
