@@ -2,8 +2,8 @@
 #include "setup_knots.h"
 
 
-//#define FMAPS
-#define MAPS
+#define FMAPS
+//#define MAPS
 //#define COMPACT 
 
 #ifdef FMAPS
@@ -21,7 +21,7 @@
 
 
 int main(int argc, char **argv) {
-    unsigned int nout,max_iter_linear,restart_linear,nx,nc0,ncheb;
+    unsigned int nout,max_iter_linear,restart_linear,nx,nc0;
     int fibre_number,seed;
     double fibre_radius,particle_rate,react_rate,D,fibre_resolution;
     double dt_aim,h0_factor,k,gamma,rf,c0_min,c0_max;
@@ -44,7 +44,6 @@ int main(int argc, char **argv) {
         ("c0_min", po::value<double>(&c0_min)->default_value(0.1), "kernel constant")
         ("c0_max", po::value<double>(&c0_max)->default_value(0.2), "kernel constant")
         ("nx", po::value<unsigned int>(&nx)->default_value(20), "nx")
-        ("ncheb", po::value<unsigned int>(&ncheb)->default_value(20), "ncheb")
         ("nc0", po::value<unsigned int>(&nc0)->default_value(1), "number of c0 samples")
         ("fibre_resolution", po::value<double>(&fibre_resolution)->default_value(0.75), "knot resolution around fibre")
         ("seed", po::value<int>(&seed)->default_value(10), "seed")
@@ -149,7 +148,10 @@ int main(int argc, char **argv) {
 #ifdef COMPACT
       const double relative_error = solve_stokes_Compact(knots,max_iter_linear,restart_linear,solver_in,c0);
 #endif
-      //solve_stokes_fMAPS(knots,max_iter_linear,restart_linear,solver_in,c0,ncheb);
+#ifdef FMAPS
+      const unsigned int Ncheb = 4;
+      const double relative_error = solve_stokes_fMAPS<Ncheb>(knots,max_iter_linear,restart_linear,solver_in,c0);
+#endif
       //solve_stokes_LMAPS(knots,max_iter_linear,restart_linear,solver_in,c0);
       //
       
@@ -273,48 +275,42 @@ int main(int argc, char **argv) {
            });
 #endif
 #ifdef FMAPS
-      auto psol_u1_op = create_chebyshev_operator(comsol,knots,
-              ncheb,
+      auto psol_u1_op = create_h2_operator<Ncheb>(comsol,knots,
             [&](const_position_reference dx,
                const_position_reference a,
                const_position_reference b) {
             return psol_u1(dx,c0);
             });
 
-      auto psol_v1_op = create_chebyshev_operator(comsol,knots,
-              ncheb,
+      auto psol_v1_op = create_h2_operator<Ncheb>(comsol,knots,
             [&](const_position_reference dx,
                const_position_reference a,
                const_position_reference b) {
             return psol_v1(dx,c0);
             });
 
-      auto psol_p1_op = create_chebyshev_operator(comsol,knots,
-              ncheb,
+      auto psol_p1_op = create_h2_operator<Ncheb>(comsol,knots,
             [&](const_position_reference dx,
                const_position_reference a,
                const_position_reference b) {
             return psol_p1(dx,c0);
             });
 
-      auto psol_u2_op = create_chebyshev_operator(comsol,knots,
-              ncheb,
+      auto psol_u2_op = create_h2_operator<Ncheb>(comsol,knots,
             [&](const_position_reference dx,
                const_position_reference a,
                const_position_reference b) {
             return psol_u2(dx,c0);
             });
 
-      auto psol_v2_op = create_chebyshev_operator(comsol,knots,
-              ncheb,
+      auto psol_v2_op = create_h2_operator<Ncheb>(comsol,knots,
             [&](const_position_reference dx,
                const_position_reference a,
                const_position_reference b) {
             return psol_v2(dx,c0);
             });
 
-      auto psol_p2_op = create_chebyshev_operator(comsol,knots,
-              ncheb,
+      auto psol_p2_op = create_h2_operator<Ncheb>(comsol,knots,
             [&](const_position_reference dx,
                const_position_reference a,
                const_position_reference b) {

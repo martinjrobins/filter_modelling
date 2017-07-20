@@ -68,7 +68,6 @@ set(filter_libs ${filter_libs} ${CGAL_LIBRARIES} ${GMP_LIBRARIES})
 set( CMAKE_EXPORT_COMPILE_COMMANDS 1 )
 
 set(source_files
-    solve_stokes_fMAPS.cpp
     solve_stokes_MAPS.cpp
     filter.cpp
     setup_knots.cpp
