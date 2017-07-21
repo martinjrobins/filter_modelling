@@ -13,6 +13,7 @@ double solve_stokes_fMAPS(KnotsType &knots, unsigned int max_iter_linear,unsigne
     typedef typename KnotsType::const_reference const_knot_reference;
     typedef typename position::value_type const & const_position_reference;
     typedef typename position::value_type const & const_position_reference;
+    typedef typename KnotsType::const_reference const_particle_reference;
 
     KnotsType interior_knots;
     KnotsType inlet_boundary_knots;
@@ -205,8 +206,8 @@ double solve_stokes_fMAPS(KnotsType &knots, unsigned int max_iter_linear,unsigne
    
     auto A11_outlet = create_matrix_operator(outlet_knots,knots,
             [&](const_position_reference dx,
-               const_position_reference a,
-               const_position_reference b) {
+               const_particle_reference a,
+               const_particle_reference b) {
                         return psol_p1(dx,c0);
                     });
 
@@ -219,8 +220,8 @@ double solve_stokes_fMAPS(KnotsType &knots, unsigned int max_iter_linear,unsigne
 
     auto A11_side = create_matrix_operator(side_knots,knots,
             [&](const_position_reference dx,
-               const_position_reference a,
-               const_position_reference b) {
+               const_particle_reference a,
+               const_particle_reference b) {
                         return psol_u1(dx,c0);
                     });
 
@@ -230,8 +231,8 @@ double solve_stokes_fMAPS(KnotsType &knots, unsigned int max_iter_linear,unsigne
 
     auto A12_outlet = create_matrix_operator(outlet_knots,knots,
             [&](const_position_reference dx,
-               const_position_reference a,
-               const_position_reference b) {
+               const_particle_reference a,
+               const_particle_reference b) {
                         return psol_p2(dx,c0);
                     });
 
@@ -245,8 +246,8 @@ double solve_stokes_fMAPS(KnotsType &knots, unsigned int max_iter_linear,unsigne
 
     auto A12_side = create_matrix_operator(side_knots,knots,
             [&](const_position_reference dx,
-               const_position_reference a,
-               const_position_reference b) {
+               const_particle_reference a,
+               const_particle_reference b) {
                         return psol_u2(dx,c0);
                     });
 
@@ -258,8 +259,8 @@ double solve_stokes_fMAPS(KnotsType &knots, unsigned int max_iter_linear,unsigne
 
     auto A21_outlet = create_matrix_operator(outlet_knots,knots,
             [&](const_position_reference dx,
-               const_position_reference a,
-               const_position_reference b) {
+               const_particle_reference a,
+               const_particle_reference b) {
                         return psol_u1(dx,c0);
                     });
 
@@ -272,8 +273,8 @@ double solve_stokes_fMAPS(KnotsType &knots, unsigned int max_iter_linear,unsigne
 
     auto A21_side = create_matrix_operator(side_knots,knots,
             [&](const_position_reference dx,
-               const_position_reference a,
-               const_position_reference b) {
+               const_particle_reference a,
+               const_particle_reference b) {
                         return psol_dv1dx(dx,c0);
                     });
 
@@ -287,8 +288,8 @@ double solve_stokes_fMAPS(KnotsType &knots, unsigned int max_iter_linear,unsigne
 
    auto A22_outlet = create_matrix_operator(outlet_knots,knots,
             [&](const_position_reference dx,
-               const_position_reference a,
-               const_position_reference b) {
+               const_particle_reference a,
+               const_particle_reference b) {
                         return psol_u2(dx,c0);
                     });
 
@@ -301,8 +302,8 @@ double solve_stokes_fMAPS(KnotsType &knots, unsigned int max_iter_linear,unsigne
 
     auto A22_side = create_matrix_operator(side_knots,knots,
             [&](const_position_reference dx,
-               const_position_reference a,
-               const_position_reference b) {
+               const_particle_reference a,
+               const_particle_reference b) {
                         return psol_dv2dx(dx,c0);
                     });
 
@@ -318,7 +319,6 @@ double solve_stokes_fMAPS(KnotsType &knots, unsigned int max_iter_linear,unsigne
             A21_side,A22_side
             );
 
-    typedef typename KnotsType::const_reference const_particle_reference;
 
     /*
     //----B1: u = 0 at inlet and b, p = 0 at outlet, dudx = 0 at sides
@@ -441,8 +441,8 @@ double solve_stokes_fMAPS(KnotsType &knots, unsigned int max_iter_linear,unsigne
 
     vector_type source(2*N);
     vector_type alphas(2*N);
-    matrix_type A_eigen(2*N,2*N);
-    A.assemble(A_eigen);
+    //matrix_type A_eigen(2*N,2*N);
+    //A.assemble(A_eigen);
     //std::cout << "A_eigen size = ("<<A_eigen.rows()<<","<<A_eigen.cols()<<")"<<std::endl;
 
 
@@ -460,17 +460,18 @@ double solve_stokes_fMAPS(KnotsType &knots, unsigned int max_iter_linear,unsigne
     
     std::cout << "solve w fMAPS ..."<<std::endl;
     /*
-    Eigen::DGMRES<decltype(A)> gmres;
+    Eigen::MINRES<decltype(A_eigen)> gmres;
     */
-    Eigen::DGMRES<decltype(A),
-                    Eigen::IdentityPreconditioner> gmres;
-    gmres.set_restart(2001);
-    gmres.setMaxIterations(2000);
+    Eigen::GMRES<decltype(A),Eigen::IdentityPreconditioner> gmres;
+    gmres.set_restart(2*N+1);
+    gmres.setMaxIterations(2*N);
     gmres.compute(A);
     alphas = gmres.solve(source);
     //alphas = A_eigen.householderQr().solve(source);
-    double relative_error = (A_eigen*alphas - source).norm() / source.norm();
-    std::cout << "GMRES:    #iterations: " << gmres.iterations() << ", estimated error: " << gmres.error() << " gmres error: "<<(A*alphas - source).norm() / source.norm()<<" actual error: "<<(A_eigen*alphas - source).norm() / source.norm()<<std::endl;
+    double relative_error = (A*alphas - source).norm() / source.norm();
+    //double true_error = (A_eigen*alphas - source).norm() / source.norm();
+    double true_error = 0;
+    std::cout << "GMRES:    #iterations: " << gmres.iterations() << ", estimated error: " << gmres.error() << " gmres error: "<<relative_error<<" actual error: "<<true_error<<std::endl;
 
     
     std::cout << "done solve..."<<std::endl;

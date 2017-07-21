@@ -129,7 +129,7 @@ int main(int argc, char **argv) {
       //
       // SETUP KNOTS
       //
-      setup_knots(knots, fibres, fibre_radius, fibre_resolution, nx, domain_min, domain_max, c0, k,periodic,10);
+      setup_knots(knots, fibres, fibre_radius, fibre_resolution, nx, domain_min, domain_max, c0, k,periodic,8*8);
 
       //
       // CALCULATE C

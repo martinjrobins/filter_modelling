@@ -9,7 +9,7 @@ int main(int argc, char **argv) {
 
     unsigned int nout,max_iter_linear,restart_linear,nx;
     int fibre_number,seed,fibre_arrangement;
-    double fibre_resolution,fibre_radius,particle_rate,particle_radius,react_rate,D;
+    double fibre_resolution,fibre_radius,particle_rate,particle_radius,react_rate,D,L;
     double dt_aim,k,gamma,rf,c0;
     unsigned int solver_in;
     bool periodic;
@@ -31,12 +31,13 @@ int main(int argc, char **argv) {
         ("c0", po::value<double>(&c0)->default_value(0.0835), "kernel constant")
         ("nx", po::value<unsigned int>(&nx)->default_value(10), "nx")
         ("fibre_resolution", po::value<double>(&fibre_resolution)->default_value(0.2), "number of knots around each fibre")
-        ("fibre_arrangement", po::value<int>(&fibre_arrangement)->default_value(0), "(0=regular, 1=hexigonal)")
+        ("fibre_arrangement", po::value<int>(&fibre_arrangement)->default_value(0), "(0=regular, 1=hexigonal 2=random)")
         ("fibre_radius", po::value<double>(&fibre_radius)->default_value(0.3), "radius of fibres")
         ("particle_radius", po::value<double>(&particle_radius)->default_value(0.3/100.0), "radius of fibres")
         ("seed", po::value<int>(&seed)->default_value(10), "seed")
         ("base_dir", po::value<std::string>(&base_dir)->default_value("default"), "base filename for output")
         ("fibre_number", po::value<int>(&fibre_number)->default_value(5), "number of fibres")
+        ("domain_size", po::value<double>(&L)->default_value(5), "domain size")
         ("dt", po::value<double>(&dt_aim)->default_value(0.001), "timestep")
     ;
 
@@ -61,7 +62,6 @@ int main(int argc, char **argv) {
       const bool reflective = false;
       const double mu = 1.0;
       const double flow_rate = 1.0;
-      const double L = fibre_number*1.0;
       const double Tf = 2.0*L;
       const double delta = L/nx;
       const double boundary_layer = delta/5;
@@ -71,25 +71,48 @@ int main(int argc, char **argv) {
       const double dt_adapt = (1.0/100.0)*PI/sqrt(2*k);
       const double2 domain_min(0,-1);
       const double2 domain_max(L,L+1);
-      const double2 ns_buffer(static_cast<int>(reflective)*L/3,2*particle_radius);
+      const double2 ns_buffer_fibres(L/3,2*particle_radius);
+      const double2 ns_buffer_particles(static_cast<int>(reflective)*L/3,2*particle_radius);
 
       std::default_random_engine generator(seed);
 
 
       // fibres
       {
+        fibres.init_neighbour_search(domain_min-ns_buffer_fibres,domain_max+ns_buffer_fibres,bool2(false));
+
+        std::uniform_real_distribution<double> xrange(domain_min[0],domain_max[0]);
+        std::uniform_real_distribution<double> yrange(domain_min[1]+1+fibre_radius,domain_max[1]-1-fibre_radius);
         typename ParticlesType::value_type p;
-        if (fibre_arrangement == 1) {
+        if (fibre_arrangement == 2) {
             for (int jj=0; jj<fibre_number; ++jj) {
-              for (int ii=0; ii<(jj%2==0?fibre_number:fibre_number-1); ++ii) {
+                bool free_position = false;
+                while (free_position == false) {
+                    get<position>(p) = double2(xrange(generator),yrange(generator));
+                    free_position = true;
+                    /*
+                    for (auto tpl: euclidean_search(fibres.get_query(),
+                                get<position>(p),
+                                2*fibre_radius+2*particle_radius)) {
+                                */
+                    for (auto f: fibres) {
+                        if ((get<position>(p)-get<position>(f)).norm() < 2*fibre_radius+2*particle_radius) {
+                            free_position = false;
+                            break;
+                        }
+                    }
+                }
+                fibres.push_back(p);
+
+            }
+        } else if (fibre_arrangement == 1) {
+            for (int jj=0; jj<fibre_number; ++jj) {
+              for (int ii=0; ii<((jj%2==1)?fibre_number+1:fibre_number); ++ii) {
                 const double dx = L/fibre_number;
                 double2 origin = double2(
-                  (ii+0.5)*dx,
+                  ((jj%2==1)?ii:ii+0.5)*dx,
                   (jj+0.5)*dx
                 );
-                if (jj%2==1) {
-                    origin[0] += 0.5*dx;
-                }
                 get<position>(p) = origin;
                 fibres.push_back(p);
               }
@@ -108,10 +131,11 @@ int main(int argc, char **argv) {
             }
         }
 
-        fibres.init_neighbour_search(domain_min-ns_buffer,domain_max+ns_buffer,bool2(false));
-        particles.init_neighbour_search(domain_min-ns_buffer,domain_max+ns_buffer,bool2(!reflective,false));
+        particles.init_neighbour_search(domain_min-ns_buffer_particles,domain_max+ns_buffer_particles,bool2(!reflective,false));
 
         std::cout << "added "<<fibres.size()<<" fibres"<<std::endl;
+
+        vtkWriteGrid("init_knots_fibres",0,fibres.get_grid(true));
       }
 
       //
@@ -265,6 +289,7 @@ int main(int argc, char **argv) {
           if (ii % timesteps_per_out == 0) {
               std::cout << "timestep "<<ii<<" of "<<timesteps<<" (time_vel_eval = "<<time_vel_eval<<" time_vel_rest = "<<time_vel_rest<<std::endl;
               vtkWriteGrid((base_dir + "particles").c_str(),ii,particles.get_grid(true));
+              vtkWriteGrid((base_dir + "fibres").c_str(),ii,particles.get_grid(true));
               vtkWriteGrid((base_dir + "dead_particles").c_str(),ii,dead_particles.get_grid(true));
           }
 
@@ -276,11 +301,13 @@ int main(int argc, char **argv) {
               ParticlesType::reference p = particles[i];
               for (const auto& i: euclidean_search(fibres.get_query(),
                           get<position>(p),fibre_radius+particle_radius)) {
-                  //ParticlesType::reference f = std::get<0>(i);
+                  ParticlesType::reference f = std::get<0>(i);
                   const double2& dx = std::get<1>(i);
                   if (uni(get<Aboria::random>(p)) < react_rate) {
+                      get<angle>(p) = std::atan2(-dx[1],-dx[0]);
                       dead_particles.push_back(p);
                       get<alive>(p) = false;
+                      ++get<count>(f);
                   } else {
                       get<position>(p) += ((fibre_radius+particle_radius)/dx.norm()-1)*dx;
                   }

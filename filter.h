@@ -89,11 +89,13 @@ ABORIA_VARIABLE(dvelocity_v,double,"error velocity v");
 ABORIA_VARIABLE(dpressure,double,"error comsol pressure");
 ABORIA_VARIABLE(alpha1,double,"alpha 1");
 ABORIA_VARIABLE(alpha2,double,"alpha 2");
+ABORIA_VARIABLE(count,int,"count");
+ABORIA_VARIABLE(angle,double,"angle");
 ABORIA_VARIABLE(kernel_constant,double,"kernel constant")
 
 typedef Particles<std::tuple<alpha1,alpha2,boundary,target,inlet,outlet,interior,velocity_u,velocity_v,velocity_dudx,velocity_dudy,velocity_dvdx,velocity_dvdy,pressure,kernel_constant>,2,std::vector,nanoflann_adaptor> KnotsType;
 typedef Particles<std::tuple<dvelocity_u,dvelocity_v,dpressure,velocity_u,velocity_v,pressure,kernel_constant>,2> ComsolType;
-typedef Particles<std::tuple<velocity_u,velocity_v,kernel_constant>,2> ParticlesType;
+typedef Particles<std::tuple<velocity_u,velocity_v,kernel_constant,angle,count>,2> ParticlesType;
 typedef position_d<2> position;
 
 
