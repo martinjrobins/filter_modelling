@@ -289,7 +289,7 @@ int main(int argc, char **argv) {
           if (ii % timesteps_per_out == 0) {
               std::cout << "timestep "<<ii<<" of "<<timesteps<<" (time_vel_eval = "<<time_vel_eval<<" time_vel_rest = "<<time_vel_rest<<std::endl;
               vtkWriteGrid((base_dir + "particles").c_str(),ii,particles.get_grid(true));
-              vtkWriteGrid((base_dir + "fibres").c_str(),ii,particles.get_grid(true));
+              vtkWriteGrid((base_dir + "fibres").c_str(),ii,fibres.get_grid(true));
               vtkWriteGrid((base_dir + "dead_particles").c_str(),ii,dead_particles.get_grid(true));
           }
 
