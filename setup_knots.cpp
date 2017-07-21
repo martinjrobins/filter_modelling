@@ -302,6 +302,7 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
                 if (!outside) knots.push_back(p);
             }
             if (jj==0) {
+                get<position>(p) = origin + radius*double2(1,0);
                 if (get<position>(p)[0] >= domain_min[0] 
                         && get<position>(p)[0] <= domain_max[0]) {
                     cdt.insert_constraint(va,v1);
