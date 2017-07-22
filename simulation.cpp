@@ -79,7 +79,6 @@ int main(int argc, char **argv) {
 
       // fibres
       {
-        fibres.init_neighbour_search(domain_min-ns_buffer_fibres,domain_max+ns_buffer_fibres,bool2(false));
 
         std::uniform_real_distribution<double> xrange(domain_min[0],domain_max[0]);
         std::uniform_real_distribution<double> yrange(domain_min[1]+1+fibre_radius,domain_max[1]-1-fibre_radius);
@@ -132,6 +131,8 @@ int main(int argc, char **argv) {
         }
 
         particles.init_neighbour_search(domain_min-ns_buffer_particles,domain_max+ns_buffer_particles,bool2(!reflective,false));
+
+        fibres.init_neighbour_search(domain_min-ns_buffer_fibres,domain_max+ns_buffer_fibres,bool2(false));
 
         std::cout << "added "<<fibres.size()<<" fibres"<<std::endl;
 
