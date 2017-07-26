@@ -303,8 +303,10 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
             }
             if (jj==0) {
                 get<position>(p) = origin + radius*double2(1,0);
-                if (get<position>(p)[0] > domain_max[0] && !outside) {
-                    cuts_max.push_back(std::make_pair(va,va->point()[1]));
+                if (get<position>(p)[0] > domain_max[0]) {
+                    if (!outside) {
+                        cuts_max.push_back(std::make_pair(va,va->point()[1]));
+                    }
                 } else {
                     cdt.insert_constraint(va,v1);
                 }
@@ -402,12 +404,12 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
                             && get<position>(p)[1] > cuts_max[fibre_index_max].second) {
                             if (!in_fibre_max) {
                                 in_fibre_max = true;
-                                cdt.insert_constraint(va2,cuts_max[fibre_index_max].first);
+                                cdt.insert_constraint(cuts_max[fibre_index_max].first,va2);
                                 ++fibre_index_max;
                             } else {
                                 in_fibre_max = false;
                                 vb2 = cdt.insert(Point(get<position>(p)[0],get<position>(p)[1]));
-                                cdt.insert_constraint(cuts_max[fibre_index_max].first,vb2);
+                                cdt.insert_constraint(vb2,cuts_max[fibre_index_max].first);
                                 va2 = vb2;
                                 ++fibre_index_max;
                             }
