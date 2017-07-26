@@ -93,7 +93,8 @@ void eval_solution(KnotsType& knots, ComsolType& comsol,
         rms_error_v += std::pow(error_v,2);
         rms_error_p += std::pow(error_p,2);
     }
-    vtkWriteGrid("fmm_eval",N,knots.get_grid(true));
+    vtkWriteGrid("fmm_eval_knots",N,knots.get_grid(true));
+    vtkWriteGrid("fmm_eval_comsol",N,comsol.get_grid(true));
     rms_error_u = std::sqrt(rms_error_u/comsol.size());
     rms_error_v = std::sqrt(rms_error_v/comsol.size());
     rms_error_p = std::sqrt(rms_error_p/comsol.size());

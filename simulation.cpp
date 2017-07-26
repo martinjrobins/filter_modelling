@@ -246,7 +246,6 @@ int main(int argc, char **argv) {
       Normal N;
       Uniform U;
 
-#undef NDEBUG
       std::cout << "starting timesteps!"<<std::endl;
       const int timesteps_per_out = timesteps/nout;
       auto t0 = Clock::now();
