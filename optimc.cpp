@@ -2,9 +2,9 @@
 #include "setup_knots.h"
 
 
-#define FMAPS
+//#define FMAPS
 //#define MAPS
-//#define COMPACT 
+#define COMPACT 
 
 #ifdef FMAPS
 #include "solve_stokes_fMAPS.h"

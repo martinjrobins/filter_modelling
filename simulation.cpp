@@ -9,10 +9,11 @@ int main(int argc, char **argv) {
 
     unsigned int nout,max_iter_linear,restart_linear,nx;
     int fibre_number,seed,fibre_arrangement;
+
     double fibre_resolution,fibre_radius,particle_rate,particle_radius,react_rate,D,L;
-    double dt_aim,k,gamma,rf,c0;
+    double dt_aim,k,gamma,rf,c0,particles_charge,fibres_charge;
     unsigned int solver_in;
-    bool periodic;
+    bool periodic,electrostatics_fibre;
     std::string base_dir;
 
     po::options_description desc("Allowed options");
@@ -34,6 +35,9 @@ int main(int argc, char **argv) {
         ("fibre_arrangement", po::value<int>(&fibre_arrangement)->default_value(0), "(0=regular, 1=hexigonal 2=random)")
         ("fibre_radius", po::value<double>(&fibre_radius)->default_value(0.3), "radius of fibres")
         ("particle_radius", po::value<double>(&particle_radius)->default_value(0.3/100.0), "radius of fibres")
+        ("electrostatics_fibre", po::value<bool>(&electrostatics_fibre)->default_value(false), "particles are electrostaticly attracted to the fibres")
+        ("particles_charge", po::value<double>(&particles_charge)->default_value(1.0), "charge on particles")
+        ("fibres_charge", po::value<double>(&fibres_charge)->default_value(1.0), "charge on fibres")
         ("seed", po::value<int>(&seed)->default_value(10), "seed")
         ("base_dir", po::value<std::string>(&base_dir)->default_value("default"), "base filename for output")
         ("fibre_number", po::value<int>(&fibre_number)->default_value(5), "number of fibres")
@@ -67,6 +71,7 @@ int main(int argc, char **argv) {
       const double boundary_layer = delta/5;
       const double s = 1.1*delta;
       const int timesteps = Tf/dt_aim;
+      const double fibre_radius2 = std::pow(fibre_radius,2);
       const double dt = Tf/timesteps;
       const double dt_adapt = (1.0/100.0)*PI/sqrt(2*k);
       const double2 domain_min(0,-1);
@@ -240,6 +245,8 @@ int main(int argc, char **argv) {
       auto dpf = create_dx(a,bf);
       auto dpk = create_dx(a,j);
       AccumulateWithinDistance<std::plus<double2> > sumv(fibre_radius);
+      Accumulate<std::plus<double2> > sumv_all;
+      //AccumulateFastMultipoleMethod<std::plus<double2> > sumv_fmm;
       AccumulateWithinDistance<std::bit_or<bool> > any(fibre_radius+particle_radius);
       any.set_init(false);
       VectorSymbolic<double,2> vector;
@@ -284,7 +291,22 @@ int main(int argc, char **argv) {
           time_vel_eval += (t1 - t0).count();
           t0 = Clock::now();
 
-          r[a] += std::sqrt(2.0*D*dt)*vector(N[a],N[a]) + dt*vector(vu[a],vv[a]);
+          /*
+          if (electrostatics_particles) {
+              make fmm here, sum into velocity
+          }
+          */
+          if (electrostatics_fibre) {
+            r[a] += std::sqrt(2.0*D*dt)*vector(N[a],N[a]) 
+                  + dt*vector(vu[a],vv[a]) 
+                  + dt*fibres_charge*sumv_all(bf,dpf/pow(dot(dpf,dpf)+fibre_radius2,1.5));
+          } else {
+            r[a] += std::sqrt(2.0*D*dt)*vector(N[a],N[a]) 
+                  + dt*vector(vu[a],vv[a]);
+          }
+          
+
+
 
           if (ii % timesteps_per_out == 0) {
               std::cout << "timestep "<<ii<<" of "<<timesteps<<" (time_vel_eval = "<<time_vel_eval<<" time_vel_rest = "<<time_vel_rest<<std::endl;

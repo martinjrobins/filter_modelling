@@ -337,7 +337,7 @@ double solve_stokes_Compact(KnotsType &knots, unsigned int max_iter_linear,unsig
     v = B21*alphas.head(N) + B22*alphas.tail(N);
     pr = B31*alphas.head(N) + B32*alphas.tail(N);
 
-    vtkWriteGrid("MAPS",0,knots.get_grid(true));
+    vtkWriteGrid("COMPACT",0,knots.get_grid(true));
 
     std::cout << "done solving stokes"<<std::endl;
 
