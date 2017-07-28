@@ -206,16 +206,16 @@ int main(int argc, char **argv) {
 
       std::cout << "making fmm_queries" <<std::endl;
       auto psol_u1_fmm = make_fmm_with_source(knots,
-                                    make_black_box_expansion<2,8>(psol_u1_kernel),
+                                    make_black_box_expansion<2,9>(psol_u1_kernel),
                                     get<alpha1>(knots));
       auto psol_u2_fmm = make_fmm_with_source(knots,
-                                    make_black_box_expansion<2,8>(psol_u2_kernel),
+                                    make_black_box_expansion<2,9>(psol_u2_kernel),
                                     get<alpha2>(knots));
       auto psol_v1_fmm = make_fmm_with_source(knots,
-                                    make_black_box_expansion<2,8>(psol_v1_kernel),
+                                    make_black_box_expansion<2,9>(psol_v1_kernel),
                                     get<alpha1>(knots));
       auto psol_v2_fmm = make_fmm_with_source(knots,
-                                    make_black_box_expansion<2,8>(psol_v2_kernel),
+                                    make_black_box_expansion<2,9>(psol_v2_kernel),
                                     get<alpha2>(knots));
 
       std::cout << "done calculating expansions" <<std::endl;
