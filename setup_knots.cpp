@@ -525,15 +525,15 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
         knots.push_back(p);
     }
 
-    knots.init_neighbour_search(domain_min-ns_buffer,domain_max+ns_buffer,bool2(periodic,false),nbucket);
+    knots.init_neighbour_search(domain_min-ns_buffer,domain_max+ns_buffer,vbool2(periodic,false),nbucket);
     
     std::cout << "added "<<knots.size()<<" knots with c0 = " <<c0<< std::endl;
 
 
     std::cout << "finshed adapting. Writing to vtk file init_knots"<<std::endl;
 
-    vtkWriteGrid("init_knots",1,knots.get_grid(true));
-    vtkWriteGrid("init_knots_fibres",1,fibres.get_grid(true));
+    //vtkWriteGrid("init_knots",1,knots.get_grid(true));
+    //vtkWriteGrid("init_knots_fibres",1,fibres.get_grid(true));
 
     std::cout << "finshed writing to file."<<std::endl;
 }
@@ -572,6 +572,6 @@ void calculate_c(KnotsType &knots, double c0, const double nx, vdouble2 domain_m
     //c[i] = delta;
     c[i] = c0;
 
-    vtkWriteGrid("init_knots",2,knots.get_grid(true));
+    //vtkWriteGrid("init_knots",2,knots.get_grid(true));
     std::cout << "done calculate c."<<std::endl;
 }

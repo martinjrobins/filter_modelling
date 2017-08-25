@@ -118,7 +118,7 @@ double solve_stokes_MAPS(KnotsType &knots, unsigned int max_iter_linear,unsigned
     alphas = A_eigen.householderQr().solve(source);
     //alphas = A_eigen.colPivHouseholderQr().solve(source);
     double relative_error = (A_eigen*alphas - source).norm() / source.norm();
-    cout << "The relative error is:\n" << relative_error << endl;
+    std::cout << "The relative error is:\n" << relative_error << std::endl;
     
     //alphas.setZero(2*N);
     
@@ -254,7 +254,7 @@ double solve_stokes_MAPS(KnotsType &knots, unsigned int max_iter_linear,unsigned
 
 
 
-    vtkWriteGrid("MAPS",0,knots.get_grid(true));
+    //vtkWriteGrid("MAPS",0,knots.get_grid(true));
 
     std::cout << "done solving stokes"<<std::endl;
     return relative_error;

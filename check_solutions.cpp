@@ -44,9 +44,9 @@ int main() {
     for (int i = 0; i < N; ++i) {
         for (int j = 0; j < N; ++j) {
             const size_t index = i*N + j;
-            get<position>(knots)[index] = double2(i*dx, j*dx);
+            get<position>(knots)[index] = vdouble2(i*dx, j*dx);
             if ((i==N/2) && (j==N/2)) {
-                get<position>(basis)[0] = double2(i*dx,j*dx);
+                get<position>(basis)[0] = vdouble2(i*dx,j*dx);
                 get<kernel_constant>(basis)[0] = c0;
             }
 
@@ -54,7 +54,7 @@ int main() {
     }
 
     for (reference knot: knots) {
-        const double2 dx = get<position>(basis)[0] - get<position>(knot);
+        const vdouble2 dx = get<position>(basis)[0] - get<position>(knot);
         get<u1>(knot) = psol_u1(dx,c0);
         get<u2>(knot) = psol_u2(dx,c0);
         get<v1>(knot) = psol_v1(dx,c0);
@@ -112,6 +112,6 @@ int main() {
 
 
 
-    vtkWriteGrid("check_solutions",0,knots.get_grid(true));
+    //vtkWriteGrid("check_solutions",0,knots.get_grid(true));
 
 }

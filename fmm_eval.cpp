@@ -1,5 +1,6 @@
 #include "filter.h"
 #include "setup_knots.h"
+#include <fstream>
 
 
 //#define FMAPS
@@ -69,7 +70,7 @@ void eval_solution(KnotsType& knots, ComsolType& comsol,
         double u,v,p;
         u = v = p = 0;
         for (KnotsType::reference j: knots) {
-            const double2 dx = get<position>(j)-get<position>(i);
+            const vdouble2 dx = get<position>(j)-get<position>(i);
             u += u1k(dx,get<position>(i),get<position>(j))*get<alpha1>(j);
             u += u2k(dx,get<position>(i),get<position>(j))*get<alpha2>(j);
             v += v1k(dx,get<position>(i),get<position>(j))*get<alpha1>(j);
@@ -93,8 +94,8 @@ void eval_solution(KnotsType& knots, ComsolType& comsol,
         rms_error_v += std::pow(error_v,2);
         rms_error_p += std::pow(error_p,2);
     }
-    vtkWriteGrid("fmm_eval_knots",N,knots.get_grid(true));
-    vtkWriteGrid("fmm_eval_comsol",N,comsol.get_grid(true));
+    //vtkWriteGrid("fmm_eval_knots",N,knots.get_grid(true));
+    //vtkWriteGrid("fmm_eval_comsol",N,comsol.get_grid(true));
     rms_error_u = std::sqrt(rms_error_u/comsol.size());
     rms_error_v = std::sqrt(rms_error_v/comsol.size());
     rms_error_p = std::sqrt(rms_error_p/comsol.size());
@@ -198,7 +199,7 @@ int main(int argc, char **argv) {
     po::notify(vm);
 
     if (vm.count("help")) {
-        cout << desc << "\n";
+        std::cout << desc << "\n";
         return 1;
     }
 
@@ -286,11 +287,11 @@ int main(int argc, char **argv) {
       const int timesteps = Tf/dt_aim;
       const double dt = Tf/timesteps;
       const double dt_adapt = (1.0/100.0)*PI/sqrt(2*k);
-      const double2 domain_min(0,-1);
-      const double2 domain_max(L,L+1);
+      const vdouble2 domain_min(0,-1);
+      const vdouble2 domain_max(L,L+1);
 
-      const double2 ns_buffer_fibres(L/3,2*particle_radius);
-      const double2 ns_buffer_particles(static_cast<int>(reflective)*L/3,2*particle_radius);
+      const vdouble2 ns_buffer_fibres(L/3,2*particle_radius);
+      const vdouble2 ns_buffer_particles(static_cast<int>(reflective)*L/3,2*particle_radius);
 
       std::default_random_engine generator(seed);
 
@@ -305,7 +306,7 @@ int main(int argc, char **argv) {
             for (int jj=0; jj<fibre_number; ++jj) {
                 bool free_position = false;
                 while (free_position == false) {
-                    get<position>(p) = double2(xrange(generator),yrange(generator));
+                    get<position>(p) = vdouble2(xrange(generator),yrange(generator));
                     free_position = true;
                     /*
                     for (auto tpl: euclidean_search(fibres.get_query(),
@@ -326,7 +327,7 @@ int main(int argc, char **argv) {
             for (int jj=0; jj<fibre_number; ++jj) {
               for (int ii=0; ii<((jj%2==1)?fibre_number+1:fibre_number); ++ii) {
                 const double dx = L/fibre_number;
-                double2 origin = double2(
+                vdouble2 origin = vdouble2(
                   ((jj%2==1)?ii:ii+0.5)*dx,
                   (jj+0.5)*dx
                 );
@@ -338,7 +339,7 @@ int main(int argc, char **argv) {
             for (int ii=0; ii<fibre_number; ++ii) {
               for (int jj=0; jj<fibre_number; ++jj) {
                 const double dx = L/fibre_number;
-                const double2 origin = double2(
+                const vdouble2 origin = vdouble2(
                   (ii+0.5)*dx,
                   (jj+0.5)*dx
                 );
@@ -348,13 +349,13 @@ int main(int argc, char **argv) {
             }
         }
 
-        particles.init_neighbour_search(domain_min-ns_buffer_particles,domain_max+ns_buffer_particles,bool2(!reflective,false));
+        particles.init_neighbour_search(domain_min-ns_buffer_particles,domain_max+ns_buffer_particles,vbool2(!reflective,false));
 
-        fibres.init_neighbour_search(domain_min-ns_buffer_fibres,domain_max+ns_buffer_fibres,bool2(false));
+        fibres.init_neighbour_search(domain_min-ns_buffer_fibres,domain_max+ns_buffer_fibres,vbool2(false));
 
         std::cout << "added "<<fibres.size()<<" fibres"<<std::endl;
 
-        vtkWriteGrid("init_knots_fibres",0,fibres.get_grid(true));
+        //vtkWriteGrid("init_knots_fibres",0,fibres.get_grid(true));
       }
 
 
@@ -400,27 +401,27 @@ int main(int argc, char **argv) {
       
 #ifdef MAPS
       auto psol_u1_kernel = 
-            [&](const double2& dx, const double2&, const double2&) {
+            [&](const vdouble2& dx, const vdouble2&, const vdouble2&) {
                 return psol_u1(dx,c0);
             };
       auto psol_u2_kernel = 
-            [&](const double2& dx, const double2&, const double2&) {
+            [&](const vdouble2& dx, const vdouble2&, const vdouble2&) {
                 return psol_u2(dx,c0);
             };
       auto psol_v1_kernel = 
-            [&](const double2& dx, const double2&, const double2&) {
+            [&](const vdouble2& dx, const vdouble2&, const vdouble2&) {
                 return psol_v1(dx,c0);
             };
       auto psol_v2_kernel = 
-            [&](const double2& dx, const double2&, const double2&) {
+            [&](const vdouble2& dx, const vdouble2&, const vdouble2&) {
                 return psol_v2(dx,c0);
             };
       auto psol_p1_kernel = 
-            [&](const double2& dx, const double2&, const double2&) {
+            [&](const vdouble2& dx, const vdouble2&, const vdouble2&) {
                 return psol_p1(dx,c0);
             };
       auto psol_p2_kernel = 
-            [&](const double2& dx, const double2&, const double2&) {
+            [&](const vdouble2& dx, const vdouble2&, const vdouble2&) {
                 return psol_p2(dx,c0);
             };
 #endif

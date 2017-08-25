@@ -1,4 +1,5 @@
 #include "filter.h"
+#include <fstream>
 void read_data_files(ComsolType &particles) {
 
     typedef typename ComsolType::position position;

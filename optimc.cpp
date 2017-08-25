@@ -1,5 +1,6 @@
 #include "filter.h"
 #include "setup_knots.h"
+#include <fstream>
 
 
 //#define FMAPS
@@ -59,7 +60,7 @@ int main(int argc, char **argv) {
     po::notify(vm);
 
     if (vm.count("help")) {
-        cout << desc << "\n";
+        std::cout << desc << "\n";
         return 1;
     }
 
@@ -121,7 +122,7 @@ int main(int argc, char **argv) {
             fibres.push_back(p);
           }
         }
-        fibres.init_neighbour_search(domain_min-ns_buffer,domain_max+ns_buffer,bool2(false));
+        fibres.init_neighbour_search(domain_min-ns_buffer,domain_max+ns_buffer,vbool2(false));
 
         std::cout << "added "<<fibres.size()<<" fibres"<<std::endl;
       }
@@ -501,7 +502,7 @@ int main(int argc, char **argv) {
       << max_error_p << ' '
       << std::endl;
 
-      vtkWriteGrid("error",0,comsol.get_grid(true));
+      //vtkWriteGrid("error",0,comsol.get_grid(true));
     }
     file.close();
 }

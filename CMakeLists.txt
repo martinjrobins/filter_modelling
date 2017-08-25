@@ -11,12 +11,12 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/Aboria/cmake"
 list(APPEND CMAKE_CXX_FLAGS "-Wno-deprecated -std=c++14")
 list(APPEND CMAKE_SHARED_LINKER_FLAGS "-Wl,--no-undefined")
 
-find_package(Boost 1.50.0 COMPONENTS program_options REQUIRED)
+find_package(Boost 1.50.0 COMPONENTS program_options serialization REQUIRED)
 set(filter_libs ${Boost_LIBRARIES})
 
-find_package(VTK REQUIRED)
-add_definitions(-DHAVE_VTK)
-set(filter_libs ${filter_libs} ${VTK_LIBRARIES} )
+#find_package(VTK REQUIRED)
+#add_definitions(-DHAVE_VTK)
+#set(filter_libs ${filter_libs} ${VTK_LIBRARIES} )
 
 option(Aboria_USE_GPERFTOOLS "Use Google Profiling tools" OFF)
 if (Aboria_USE_GPERFTOOLS)

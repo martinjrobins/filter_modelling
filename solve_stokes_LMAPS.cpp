@@ -323,7 +323,7 @@ void solve_stokes_LMAPS(KnotsType &knots, unsigned int max_iter_linear,unsigned 
                 alphas = solver.solve(source);
                 if (1) {
                     double relative_error = (matrix*alphas - source).norm() / source.norm();
-                    cout << "The relative error is:\n" << relative_error << endl;
+                    std::cout << "The relative error is:\n" << relative_error << std::endl;
                 }
 
                 // add to solution_matrix
@@ -431,7 +431,7 @@ void solve_stokes_LMAPS(KnotsType &knots, unsigned int max_iter_linear,unsigned 
         return;
     }
     double relative_error = (solution_matrix*solution- solution_source).norm() / solution_source.norm();
-    cout << "The relative error is:\n" << relative_error << endl;
+    std::cout << "The relative error is:\n" << relative_error << std::endl;
 
 
     other_matrix.setFromTriplets(other_triplets.begin(),other_triplets.end());
@@ -451,7 +451,7 @@ void solve_stokes_LMAPS(KnotsType &knots, unsigned int max_iter_linear,unsigned 
     map_type(get<pressure>(knots).data(),N) = other_vector.tail(N);
     */
 
-    vtkWriteGrid("LMAPS",0,knots.get_grid(true));
+    //vtkWriteGrid("LMAPS",0,knots.get_grid(true));
 
     std::cout << "done solving stokes"<<std::endl;
 }

@@ -27,7 +27,7 @@ double solve_stokes_Compact(KnotsType &knots, unsigned int max_iter_linear,unsig
 
     //auto A11 = create_sparse_operator(knots,knots,search_radius,
     auto A11 = create_dense_operator(knots,knots,
-            [&](const double2& dx,
+            [&](const vdouble2& dx,
                 const_reference i,
                 const_reference j) {
                 
@@ -61,7 +61,7 @@ double solve_stokes_Compact(KnotsType &knots, unsigned int max_iter_linear,unsig
            });
     //auto A12 = create_sparse_operator(knots,knots,search_radius,
     auto A12 = create_dense_operator(knots,knots,
-            [&](const double2& dx,
+            [&](const vdouble2& dx,
                 const_reference i,
                 const_reference j) {
 
@@ -96,7 +96,7 @@ double solve_stokes_Compact(KnotsType &knots, unsigned int max_iter_linear,unsig
 
     //auto A21 = create_sparse_operator(knots,knots,search_radius,
     auto A21 = create_dense_operator(knots,knots,
-            [&](const double2& dx,
+            [&](const vdouble2& dx,
                 const_reference i,
                 const_reference j) {
 
@@ -133,7 +133,7 @@ double solve_stokes_Compact(KnotsType &knots, unsigned int max_iter_linear,unsig
 
     auto A22 = create_dense_operator(knots,knots,
     //auto A22 = create_sparse_operator(knots,knots,search_radius,
-            [&](const double2& dx,
+            [&](const vdouble2& dx,
                 const_reference i,
                 const_reference j) {
                 
@@ -174,7 +174,7 @@ double solve_stokes_Compact(KnotsType &knots, unsigned int max_iter_linear,unsig
 
     auto B11 = create_dense_operator(knots,knots,
     //auto B11 = create_sparse_operator(knots,knots,search_radius,
-            [&](const double2& dx,
+            [&](const vdouble2& dx,
                 const_reference i,
                 const_reference j) {
 
@@ -191,7 +191,7 @@ double solve_stokes_Compact(KnotsType &knots, unsigned int max_iter_linear,unsig
 
     //auto B12 = create_sparse_operator(knots,knots,search_radius,
     auto B12 = create_dense_operator(knots,knots,
-            [&](const double2& dx,
+            [&](const vdouble2& dx,
                 const_reference i,
                 const_reference j) {
 
@@ -208,7 +208,7 @@ double solve_stokes_Compact(KnotsType &knots, unsigned int max_iter_linear,unsig
 
     //auto B21 = create_sparse_operator(knots,knots,search_radius,
     auto B21 = create_dense_operator(knots,knots,
-            [&](const double2& dx,
+            [&](const vdouble2& dx,
                 const_reference i,
                 const_reference j) {
                 const double invh = 2.0/(get<kernel_constant>(i)+get<kernel_constant>(j));
@@ -223,7 +223,7 @@ double solve_stokes_Compact(KnotsType &knots, unsigned int max_iter_linear,unsig
 
     //auto B22 = create_sparse_operator(knots,knots,search_radius,
     auto B22 = create_dense_operator(knots,knots,
-            [&](const double2& dx,
+            [&](const vdouble2& dx,
                 const_reference i,
                 const_reference j) {
                 const double invh = 2.0/(get<kernel_constant>(i)+get<kernel_constant>(j));
@@ -239,7 +239,7 @@ double solve_stokes_Compact(KnotsType &knots, unsigned int max_iter_linear,unsig
 
     //auto B31 = create_sparse_operator(knots,knots,search_radius,
     auto B31 = create_dense_operator(knots,knots,
-            [&](const double2& dx,
+            [&](const vdouble2& dx,
                 const_reference i,
                 const_reference j) {
                 const double invh = 2.0/(get<kernel_constant>(i)+get<kernel_constant>(j));
@@ -255,7 +255,7 @@ double solve_stokes_Compact(KnotsType &knots, unsigned int max_iter_linear,unsig
 
     //auto B32 = create_sparse_operator(knots,knots,search_radius,
     auto B32 = create_dense_operator(knots,knots,
-            [&](const double2& dx,
+            [&](const vdouble2& dx,
                 const_reference i,
                 const_reference j) {
                 const double invh = 2.0/(get<kernel_constant>(i)+get<kernel_constant>(j));
@@ -315,7 +315,7 @@ double solve_stokes_Compact(KnotsType &knots, unsigned int max_iter_linear,unsig
     */
     alphas = A_eigen.llt().solve(source);
     double relative_error = (A_eigen*alphas - source).norm() / source.norm();
-    cout << "The relative error is:\n" << relative_error << endl;
+    std::cout << "The relative error is:\n" << relative_error << std::endl;
     
     //alphas.setZero(2*N);
     
@@ -337,7 +337,7 @@ double solve_stokes_Compact(KnotsType &knots, unsigned int max_iter_linear,unsig
     v = B21*alphas.head(N) + B22*alphas.tail(N);
     pr = B31*alphas.head(N) + B32*alphas.tail(N);
 
-    vtkWriteGrid("COMPACT",0,knots.get_grid(true));
+    //vtkWriteGrid("COMPACT",0,knots.get_grid(true));
 
     std::cout << "done solving stokes"<<std::endl;
 

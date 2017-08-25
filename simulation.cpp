@@ -1,6 +1,8 @@
 #include "filter.h"
 #include "solve_stokes_MAPS.h"
 #include "setup_knots.h"
+#include <boost/archive/xml_oarchive.hpp>
+#include <fstream>
 
 #define MAPS
 
@@ -50,7 +52,7 @@ int main(int argc, char **argv) {
     po::notify(vm);
 
     if (vm.count("help")) {
-        cout << desc << "\n";
+        std::cout << desc << "\n";
         return 1;
     }
 
@@ -136,13 +138,18 @@ int main(int argc, char **argv) {
                 }
             }
 
-            particles.init_neighbour_search(domain_min-ns_buffer_particles,domain_max+ns_buffer_particles,bool2(!reflective,false));
+            particles.init_neighbour_search(domain_min-ns_buffer_particles,domain_max+ns_buffer_particles,vbool2(!reflective,false));
 
-            fibres.init_neighbour_search(domain_min-ns_buffer_fibres,domain_max+ns_buffer_fibres,bool2(false));
+            fibres.init_neighbour_search(domain_min-ns_buffer_fibres,domain_max+ns_buffer_fibres,vbool2(false));
 
             std::cout << "added "<<fibres.size()<<" fibres"<<std::endl;
 
-            vtkWriteGrid("init_knots_fibres",0,fibres.get_grid(true));
+            //vtkWriteGrid("init_knots_fibres",0,fibres.get_grid(true));
+            {
+                std::ofstream ofs("init_knots_fibres");
+                boost::archive::xml_oarchive oa(ofs);
+                oa << BOOST_SERIALIZATION_NVP(fibres);
+            }
         }
 
         //
@@ -276,7 +283,7 @@ int main(int argc, char **argv) {
 
             t0 = Clock::now();
 
-#pragma omp parallel for
+            #pragma omp parallel for
             for (int i = 0; i < particles.size(); ++i) {
                 ParticlesType::reference p = particles[i];
                 get<velocity_u>(p) = psol_u1_fmm.evaluate_at_point(get<position>(p),
@@ -316,22 +323,34 @@ int main(int argc, char **argv) {
 
             if (ii % timesteps_per_out == 0) {
                 std::cout << "timestep "<<ii<<" of "<<timesteps<<" (time_vel_eval = "<<time_vel_eval<<" time_vel_rest = "<<time_vel_rest<<std::endl;
+                {
+                    std::ostringstream ostr;
+                    ostr << std::setfill('0') << std::setw(5) << ii;
+                    std::ofstream ofs(
+                            base_dir + "simulation" + ostr.str() + ".xml");
+                    boost::archive::xml_oarchive oa(ofs);
+                    oa << BOOST_SERIALIZATION_NVP(particles);
+                    oa << BOOST_SERIALIZATION_NVP(fibres);
+                    oa << BOOST_SERIALIZATION_NVP(dead_particles);
+                }
+                /*
                 vtkWriteGrid((base_dir + "particles").c_str(),ii,particles.get_grid(true));
                 vtkWriteGrid((base_dir + "fibres").c_str(),ii,fibres.get_grid(true));
                 vtkWriteGrid((base_dir + "dead_particles").c_str(),ii,dead_particles.get_grid(true));
+                */
             }
 
             // react with fibres
             // alive_[a] = !any(bf,U[a]<react_rate);
             std::uniform_real_distribution<double> uni(0,1);
-#pragma omp parallel for
+            #pragma omp parallel for
             for (int i = 0; i < particles.size(); ++i) {
                 ParticlesType::reference p = particles[i];
                 for (const auto& i: euclidean_search(fibres.get_query(),
                             get<position>(p),fibre_radius+particle_radius)) {
                     ParticlesType::reference f = std::get<0>(i);
                     const vdouble2& dx = std::get<1>(i);
-                    if (uni(get<Aboria::random>(p)) < react_rate) {
+                    if (uni(get<Aboria::generator>(p)) < react_rate) {
                         get<angle>(p) = std::atan2(-dx[1],-dx[0]);
                         dead_particles.push_back(p);
                         get<alive>(p) = false;
@@ -347,8 +366,8 @@ int main(int argc, char **argv) {
                         get<position>(p) += 2*particle_radius-get<position>(p)[0];
                     }
                 }
-                particles.delete_particles();
             }
+            particles.delete_particles();
 
             // react with side walls
             //alive_[a] = !if_else(r[a][0] > L
