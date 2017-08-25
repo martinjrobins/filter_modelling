@@ -75,10 +75,10 @@ int main(int argc, char **argv) {
     const double fibre_radius2 = std::pow(fibre_radius,2);
     const double dt = Tf/timesteps;
     const double dt_adapt = (1.0/100.0)*PI/sqrt(2*k);
-    const double2 domain_min(0,-1);
-    const double2 domain_max(L,L+1);
-    const double2 ns_buffer_fibres(L/3,2*particle_radius);
-    const double2 ns_buffer_particles(static_cast<int>(reflective)*L/3,2*particle_radius);
+    const vdouble2 domain_min(0,-1);
+    const vdouble2 domain_max(L,L+1);
+    const vdouble2 ns_buffer_fibres(L/3,2*particle_radius);
+    const vdouble2 ns_buffer_particles(static_cast<int>(reflective)*L/3,2*particle_radius);
 
     std::default_random_engine generator(seed);
 
@@ -93,7 +93,7 @@ int main(int argc, char **argv) {
             for (int jj=0; jj<fibre_number; ++jj) {
                 bool free_position = false;
                 while (free_position == false) {
-                    get<position>(p) = double2(xrange(generator),yrange(generator));
+                    get<position>(p) = vdouble2(xrange(generator),yrange(generator));
                     free_position = true;
                     /*
                        for (auto tpl: euclidean_search(fibres.get_query(),
@@ -114,7 +114,7 @@ int main(int argc, char **argv) {
                 for (int jj=0; jj<fibre_number; ++jj) {
                     for (int ii=0; ii<((jj%2==1)?fibre_number+1:fibre_number); ++ii) {
                         const double dx = L/fibre_number;
-                        double2 origin = double2(
+                        vdouble2 origin = vdouble2(
                                 ((jj%2==1)?ii:ii+0.5)*dx,
                                 (jj+0.5)*dx
                                 );
@@ -126,7 +126,7 @@ int main(int argc, char **argv) {
                 for (int ii=0; ii<fibre_number; ++ii) {
                     for (int jj=0; jj<fibre_number; ++jj) {
                         const double dx = L/fibre_number;
-                        const double2 origin = double2(
+                        const vdouble2 origin = vdouble2(
                                 (ii+0.5)*dx,
                                 (jj+0.5)*dx
                                 );
@@ -179,27 +179,27 @@ int main(int argc, char **argv) {
 
 #ifdef MAPS
         auto psol_u1_kernel = 
-            [&](const double2& dx, const double2&, const double2&) {
+            [&](const vdouble2& dx, const vdouble2&, const vdouble2&) {
                 return psol_u1(dx,c0);
             };
         auto psol_u2_kernel = 
-            [&](const double2& dx, const double2&, const double2&) {
+            [&](const vdouble2& dx, const vdouble2&, const vdouble2&) {
                 return psol_u2(dx,c0);
             };
         auto psol_v1_kernel = 
-            [&](const double2& dx, const double2&, const double2&) {
+            [&](const vdouble2& dx, const vdouble2&, const vdouble2&) {
                 return psol_v1(dx,c0);
             };
         auto psol_v2_kernel = 
-            [&](const double2& dx, const double2&, const double2&) {
+            [&](const vdouble2& dx, const vdouble2&, const vdouble2&) {
                 return psol_v2(dx,c0);
             };
         auto psol_p1_kernel = 
-            [&](const double2& dx, const double2&, const double2&) {
+            [&](const vdouble2& dx, const vdouble2&, const vdouble2&) {
                 return psol_p1(dx,c0);
             };
         auto psol_p2_kernel = 
-            [&](const double2& dx, const double2&, const double2&) {
+            [&](const vdouble2& dx, const vdouble2&, const vdouble2&) {
                 return psol_p2(dx,c0);
             };
 
@@ -245,9 +245,9 @@ int main(int argc, char **argv) {
         auto dkf = create_dx(i,bf);
         auto dpf = create_dx(a,bf);
         auto dpk = create_dx(a,j);
-        AccumulateWithinDistance<std::plus<double2> > sumv(fibre_radius);
-        Accumulate<std::plus<double2> > sumv_all;
-        //AccumulateFastMultipoleMethod<std::plus<double2> > sumv_fmm;
+        AccumulateWithinDistance<std::plus<vdouble2> > sumv(fibre_radius);
+        Accumulate<std::plus<vdouble2> > sumv_all;
+        //AccumulateFastMultipoleMethod<std::plus<vdouble2> > sumv_fmm;
         AccumulateWithinDistance<std::bit_or<bool> > any(fibre_radius+particle_radius);
         any.set_init(false);
         VectorSymbolic<double,2> vector;
@@ -267,7 +267,7 @@ int main(int argc, char **argv) {
             const int new_n = poisson(generator);
             for (int jj=0; jj<new_n; ++jj) {
                 ParticlesType::value_type p;
-                get<position>(p) = double2(uniform(generator),domain_max[1]-particle_radius);
+                get<position>(p) = vdouble2(uniform(generator),domain_max[1]-particle_radius);
                 get<kernel_constant>(p) = c0;
                 particles.push_back(p);
             }
@@ -291,7 +291,7 @@ int main(int argc, char **argv) {
                     for (int i = 0; i < fibres.size(); ++i) {
                         ParticlesType::reference f = fibres[i];
                         for (int i = -electrostatics_sum+1; i < electrostatics_sum ; ++i) {
-                            const double2 dx(get<position>(f)[0]-get<position>(p)[0]+i*L,
+                            const vdouble2 dx(get<position>(f)[0]-get<position>(p)[0]+i*L,
                                              get<position>(f)[1]-get<position>(p)[1]);
                             const double scalar = 1.0/std::pow(dx.squaredNorm()+fibre_radius2,1.5);
                             get<velocity_u>(p) += dx[0]*scalar;
@@ -330,7 +330,7 @@ int main(int argc, char **argv) {
                 for (const auto& i: euclidean_search(fibres.get_query(),
                             get<position>(p),fibre_radius+particle_radius)) {
                     ParticlesType::reference f = std::get<0>(i);
-                    const double2& dx = std::get<1>(i);
+                    const vdouble2& dx = std::get<1>(i);
                     if (uni(get<Aboria::random>(p)) < react_rate) {
                         get<angle>(p) = std::atan2(-dx[1],-dx[0]);
                         dead_particles.push_back(p);

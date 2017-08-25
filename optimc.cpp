@@ -100,9 +100,9 @@ int main(int argc, char **argv) {
       const int timesteps = Tf/dt_aim;
       const double dt = Tf/timesteps;
       const double dt_adapt = (1.0/100.0)*PI/sqrt(2*k);
-      const double2 domain_min(0,-1);
-      const double2 domain_max(L,L+1);
-      const double2 ns_buffer(L/3,L/3);
+      const vdouble2 domain_min(0,-1);
+      const vdouble2 domain_max(L,L+1);
+      const vdouble2 ns_buffer(L/3,L/3);
 
       std::default_random_engine generator(seed);
 
@@ -113,7 +113,7 @@ int main(int argc, char **argv) {
         for (int ii=0; ii<fibre_number; ++ii) {
           for (int jj=0; jj<fibre_number; ++jj) {
             const double dx = L/fibre_number;
-            const double2 origin = double2(
+            const vdouble2 origin = vdouble2(
               (ii+0.5)*dx,
               (jj+0.5)*dx
             );
@@ -185,7 +185,7 @@ int main(int argc, char **argv) {
 
     //auto psol_u1_op = create_sparse_operator(comsol,knots,search_radius,
     auto psol_u1_op = create_dense_operator(comsol,knots,
-            [&](const double2& dx,
+            [&](const vdouble2& dx,
                 const_comsol_reference i,
                 const_knot_reference j) {
                 const double invh = 2.0/(get<kernel_constant>(i)+get<kernel_constant>(j));
@@ -200,7 +200,7 @@ int main(int argc, char **argv) {
 
     auto psol_u2_op = create_dense_operator(comsol,knots,
     //auto psol_u2_op = create_sparse_operator(comsol,knots,search_radius,
-            [&](const double2& dx,
+            [&](const vdouble2& dx,
                 const_comsol_reference i,
                 const_knot_reference j) {
                 const double invh = 2.0/(get<kernel_constant>(i)+get<kernel_constant>(j));
@@ -215,7 +215,7 @@ int main(int argc, char **argv) {
 
     auto psol_v1_op = create_dense_operator(comsol,knots,
     //auto psol_v1_op = create_sparse_operator(comsol,knots,search_radius,
-            [&](const double2& dx,
+            [&](const vdouble2& dx,
                 const_comsol_reference i,
                 const_knot_reference j) {
                 const double invh = 2.0/(get<kernel_constant>(i)+get<kernel_constant>(j));
@@ -231,7 +231,7 @@ int main(int argc, char **argv) {
 
     //auto psol_v2_op = create_sparse_operator(comsol,knots,search_radius,
     auto psol_v2_op = create_dense_operator(comsol,knots,
-            [&](const double2& dx,
+            [&](const vdouble2& dx,
                 const_comsol_reference i,
                 const_knot_reference j) {
                 const double invh = 2.0/(get<kernel_constant>(i)+get<kernel_constant>(j));
@@ -246,7 +246,7 @@ int main(int argc, char **argv) {
 
     //auto psol_p1_op = create_sparse_operator(comsol,knots,search_radius,
     auto psol_p1_op = create_dense_operator(comsol,knots,
-            [&](const double2& dx,
+            [&](const vdouble2& dx,
                 const_comsol_reference i,
                 const_knot_reference j) {
                 const double invh = 2.0/(get<kernel_constant>(i)+get<kernel_constant>(j));
@@ -261,7 +261,7 @@ int main(int argc, char **argv) {
 
     //auto psol_p2_op = create_sparse_operator(comsol,knots,search_radius,
     auto psol_p2_op = create_dense_operator(comsol,knots,
-            [&](const double2& dx,
+            [&](const vdouble2& dx,
                 const_comsol_reference i,
                 const_knot_reference j) {
                 const double invh = 2.0/(get<kernel_constant>(i)+get<kernel_constant>(j));

@@ -28,14 +28,14 @@ protected:
   double transition_dist;
   const Fibres* fibres;
   const double fibre_radius;
-  const double2 min,max;
+  const vdouble2 min,max;
 
 public:
   typedef CGAL::Delaunay_mesh_size_criteria_2<CDT> Base;
 
   My_delaunay_mesh_size_criteria_2(
-                                const double2 min,
-                                const double2 max,
+                                const vdouble2 min,
+                                const vdouble2 max,
                                 const Fibres& fibres,
                                 const double fibre_radius,
                                 const double aspect_bound = 0.125, 
@@ -59,12 +59,12 @@ public:
         double transition_dist;
         const Fibres* fibres;
         const double fibre_radius;
-        const double2 min,max;
+        const vdouble2 min,max;
     public:
         typedef typename Base::Is_bad::Point_2 Point_2;
 
-        Is_bad( const double2 min,
-                const double2 max,
+        Is_bad( const vdouble2 min,
+                const vdouble2 max,
                 const Fibres* fibres,
                 const double fibre_radius,
                 const double aspect_bound,
@@ -104,7 +104,7 @@ public:
             const Point_2& pa = fh->vertex(0)->point();
             const Point_2& pb = fh->vertex(1)->point();
             const Point_2& pc = fh->vertex(2)->point();
-            const double2 p_centre((pa[0]+pb[0]+pc[0])/3.0,(pa[1]+pb[1]+pc[1])/3.0);
+            const vdouble2 p_centre((pa[0]+pb[0]+pc[0])/3.0,(pa[1]+pb[1]+pc[1])/3.0);
 
             double
                 a = CGAL::to_double(squared_distance(pb, pc)),
@@ -145,7 +145,7 @@ public:
                 double min_dist = std::numeric_limits<double>::max();
                 
                 for (auto pref: {pa,pb,pc}) {
-                    const double2 p(pref[0],pref[1]);
+                    const vdouble2 p(pref[0],pref[1]);
                     for (typename Fibres::const_reference f: *fibres) {
                         const double dist = (get<typename Fibres::position>(f)-p).norm()-fibre_radius;
                         if (dist < min_dist) min_dist = dist;
@@ -191,7 +191,7 @@ public:
 
 typedef My_delaunay_mesh_size_criteria_2<CDT,ParticlesType> Criteria;
 
-void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_radius, const double fibre_resolution_factor, const double nx, double2 domain_min, double2 domain_max, const double c0, const double k, const bool periodic,const int nbucket) {
+void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_radius, const double fibre_resolution_factor, const double nx, vdouble2 domain_min, vdouble2 domain_max, const double c0, const double k, const bool periodic,const int nbucket) {
 
     std::cout << "setup knots..." << std::endl;
 
@@ -206,7 +206,7 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
                             - fibres.size()*PI*std::pow(fibre_radius,2))
                             /(domain_max-domain_min).prod();
     const int N = nx*nx*(domain_max[1]-domain_min[1])*volume/(domain_max[0]-domain_min[0]);
-    double2 ns_buffer(L/2,L/2);
+    vdouble2 ns_buffer(L/2,L/2);
 
     if (periodic) {
         ns_buffer[0] = 0;
@@ -227,7 +227,7 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
     for (int ii=0; ii<fibres.size(); ++ii) {
         Vertex_handle v1,va,vb;
         const double fdelta = delta*fibre_resolution;
-        const double2 origin = get<position>(fibres)[ii];
+        const vdouble2 origin = get<position>(fibres)[ii];
         list_of_seeds.push_back(Point(origin[0], origin[1]));
         for (int jj=0; jj<layers; ++jj) {
             const double radius = fibre_radius-jj*fdelta;
@@ -237,7 +237,7 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
             bool outside,started;
             started = false;
             for (int kk=0; kk<n; ++kk) {
-                get<position>(p) = origin + radius*double2(std::cos(kk*dtheta),std::sin(kk*dtheta));
+                get<position>(p) = origin + radius*vdouble2(std::cos(kk*dtheta),std::sin(kk*dtheta));
                 if (jj==0) {
                     if (get<position>(p)[0] < domain_min[0]) {
                         if (!started) {
@@ -302,7 +302,7 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
                 if (!outside) knots.push_back(p);
             }
             if (jj==0) {
-                get<position>(p) = origin + radius*double2(1,0);
+                get<position>(p) = origin + radius*vdouble2(1,0);
                 if (get<position>(p)[0] > domain_max[0]) {
                     if (!outside) {
                         cuts_max.push_back(std::make_pair(va,va->point()[1]));
@@ -344,7 +344,7 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
         for (int ii=1-layers; ii<ny+layers; ++ii) {
             for (int jj=0; jj<layers; ++jj) {
                 // boundary - left
-                get<position>(p) = double2(domain_min[0]-jj*deltay,
+                get<position>(p) = vdouble2(domain_min[0]-jj*deltay,
                         domain_min[1]+ii*deltay);
                 if (jj==0) {
                     if (ii==0) {
@@ -389,7 +389,7 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
                 if (!in_fibre_min) knots.push_back(p);
 
                 // boundary - right
-                get<position>(p) = double2(domain_max[0]+jj*deltay,
+                get<position>(p) = vdouble2(domain_max[0]+jj*deltay,
                         domain_min[1]+ii*deltay);
                 if (jj==0) {
                     if (ii==0) {
@@ -440,7 +440,7 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
     for (int ii=1; ii<nxb; ++ii) {
         for (int jj=0; jj<layers; ++jj) {
             // inlet
-            get<position>(p) = double2(domain_min[0] + ii*deltax,domain_max[1]+jj*deltax);
+            get<position>(p) = vdouble2(domain_min[0] + ii*deltax,domain_max[1]+jj*deltax);
             if (jj==0) {
                 if (ii==1) {
                     vstart_top = cdt.insert(Point(get<position>(p)[0],get<position>(p)[1]));
@@ -467,7 +467,7 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
     for (int ii=1; ii<nxb; ++ii) {
         for (int jj=0; jj<layers; ++jj) {
             // outlet
-            get<position>(p) = double2(domain_min[0] + ii*deltax,domain_min[1]-jj*deltax);
+            get<position>(p) = vdouble2(domain_min[0] + ii*deltax,domain_min[1]-jj*deltax);
             if (jj==0) {
                 if (ii==1) {
                     vstart_bottom = cdt.insert(Point(get<position>(p)[0],get<position>(p)[1]));
@@ -515,7 +515,7 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
         if (cdt.are_there_incident_constraints(v)) continue; 
         const double x = v->point().x();
         const double y = v->point().y();
-        get<position>(p) = double2(x,y);
+        get<position>(p) = vdouble2(x,y);
         get<boundary>(p) = false;
         get<inlet>(p) = false;
         get<outlet>(p) = false;
@@ -538,7 +538,7 @@ void setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_rad
     std::cout << "finshed writing to file."<<std::endl;
 }
 
-void calculate_c(KnotsType &knots, double c0, const double nx, double2 domain_min, double2 domain_max) {
+void calculate_c(KnotsType &knots, double c0, const double nx, vdouble2 domain_min, vdouble2 domain_max) {
     std::cout << "calculate c..."<<knots.size()<<std::endl;
 
     typedef typename KnotsType::position position;
