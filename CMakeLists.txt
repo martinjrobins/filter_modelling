@@ -13,6 +13,7 @@ list(APPEND CMAKE_SHARED_LINKER_FLAGS "-Wl,--no-undefined")
 
 find_package(Boost 1.50.0 COMPONENTS program_options serialization REQUIRED)
 set(filter_libs ${Boost_LIBRARIES})
+add_definitions(-D_GLIBCXX_USE_CXX11_ABI=0)
 
 #find_package(VTK REQUIRED)
 #add_definitions(-DHAVE_VTK)

@@ -20,6 +20,10 @@
 # Set OMP_NUM_THREADS to the same value as -c
 # with a fallback in case it isn't set.
 # SLURM_CPUS_PER_TASK is set to the value of -c, but only if -c is explicitly set
+
+module load gcc/5.4.0
+module load vtk
+
 if [ -n "$SLURM_CPUS_PER_TASK" ]; then
     omp_threads=$SLURM_CPUS_PER_TASK
 else
