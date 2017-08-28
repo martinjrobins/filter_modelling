@@ -343,7 +343,7 @@ int main(int argc, char **argv) {
             // react with fibres
             // alive_[a] = !any(bf,U[a]<react_rate);
             std::uniform_real_distribution<double> uni(0,1);
-            #pragma omp parallel for
+            //#pragma omp parallel for
             for (int i = 0; i < particles.size(); ++i) {
                 ParticlesType::reference p = particles[i];
                 for (const auto& i: euclidean_search(fibres.get_query(),
