@@ -207,6 +207,8 @@ for hexagon_file,regular_file,random_files,i in zip(hexagon_simulation_files,reg
                                  np.concatenate([random.count,tmp.count]))
     plot_compare(hexagon,regular,random,'compare%05d.png'%(i))
 
+
+
 for simtype in ['hexagon','regular']+random_sims:
     particles_files = sorted(glob.glob('./%s_particles*.vtu'%simtype))
     fibres_files = sorted(glob.glob('./%s_fibres*.vtu'%simtype))
@@ -222,10 +224,10 @@ for simtype in ['hexagon','regular']+random_sims:
         plot_main(particles,fibres,dparticles,'%s_main_just_lhs%05d.png'%(simtype,i),True)
 
 for simtype in ['hexagon','regular']+random_sims:
-    sim_files = sorted(glob.glob('./%s_simulation*.vtu'%simtype))
+    sim_files = sorted(glob.glob('./%s_simulation*.xml'%simtype))
     for sim_file,i in zip(sim_files,range(len(sim_files))):
         print sim_file
-        particles,fibres,dparticles = get_simulation_data(particles_file)
+        particles,fibres,dparticles = get_simulation_data(sim_file)
         plot_main(particles,fibres,dparticles,'%s_main%05d.png'%(simtype,i))
         plot_main(particles,fibres,dparticles,'%s_main_just_lhs%05d.png'%(simtype,i),True)
 
