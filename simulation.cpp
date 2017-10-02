@@ -300,7 +300,7 @@ int main(int argc, char **argv) {
                         for (int i = -electrostatics_sum+1; i < electrostatics_sum ; ++i) {
                             const vdouble2 dx(get<position>(f)[0]-get<position>(p)[0]+i*L,
                                              get<position>(f)[1]-get<position>(p)[1]);
-                            const double scalar = 1.0/std::pow(dx.squaredNorm()+fibre_radius2,1.5);
+                            const double scalar = fibres_charge/std::pow(dx.squaredNorm()+fibre_radius2,1.5);
                             get<velocity_u>(p) += dx[0]*scalar;
                             get<velocity_v>(p) += dx[1]*scalar;
                         }
