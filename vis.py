@@ -1,3 +1,5 @@
+import matplotlib as mpl
+mpl.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from scipy.interpolate import griddata
@@ -82,8 +84,8 @@ def plot_main(particles,fibres,dparticles,filename,just_lhs=False):
     vis_ax.axis('off')
 
     vis_ax.scatter(particles.x,particles.y,7,'k',lw = 0)
-    vis_ax.scatter(fibres.x,fibres.y,300,fibres.count,lw = 0)
-    vis_ax.scatter(dparticles.x,dparticles.y,7,'r',lw = 0)
+    vis_ax.scatter(fibres.x,fibres.y,300+70*(10-fibres.y),fibres.count,lw = 0)
+    #vis_ax.scatter(dparticles.x,dparticles.y,7,'r',lw = 0)
     vis_ax.arrow(0.1, -1.5, 0, 1, head_width=0.1, head_length=0.2, fc='k', ec='k')
     vis_ax.arrow(0.1, -1.5, 1, 0, head_width=0.1, head_length=0.2, fc='k', ec='k')
     vis_ax.text(-0.3,-0.6,'y')
@@ -183,33 +185,34 @@ for tpl in itertools.izip(*random_simulation_files_tmp):
 
 
 
-for hexagon_file,regular_file,random_file,i in zip(hexagon_dead_particles_files,regular_dead_particles_files,random_dead_particles_files,range(len(hexagon_dead_particles_files))):
-    print hexagon_file
-    hexagon = get_particle_data(hexagon_file)
-    print regular_file
-    regular = get_particle_data(regular_file)
-    print random_file
-    random = get_particle_data(random_file)
-    plot_compare(hexagon,regular,random,'compare%05d.png'%(i))
+#for hexagon_file,regular_file,random_file,i in zip(hexagon_dead_particles_files,regular_dead_particles_files,random_dead_particles_files,range(len(hexagon_dead_particles_files))):
+#    print hexagon_file
+#    hexagon = get_particle_data(hexagon_file)
+#    print regular_file
+#    regular = get_particle_data(regular_file)
+#    print random_file
+#    random = get_particle_data(random_file)
+#    plot_compare(hexagon,regular,random,'compare%05d.png'%(i))
+#
+#for hexagon_file,regular_file,random_files,i in zip(hexagon_simulation_files,regular_simulation_files,random_simulation_files,range(len(hexagon_simulation_files))):
+#    print hexagon_file
+#    hexagon, = get_simulation_data(hexagon_file,['dead_particles'])
+#    print regular_file
+#    regular, = get_simulation_data(regular_file,['dead_particles'])
+#    print random_files
+#    random = ParticlesData(np.zeros(0),np.zeros(0),np.zeros(0),np.zeros(0))
+#    for random_file in random_files:
+#        tmp, = get_simulation_data(random_file,['dead_particles'])
+#        random = ParticlesData(np.concatenate([random.x,tmp.x]),
+#                                 np.concatenate([random.y,tmp.y]),
+#                                 np.concatenate([random.angle,tmp.angle]),
+#                                 np.concatenate([random.count,tmp.count]))
+#    plot_compare(hexagon,regular,random,'compare%05d.png'%(i))
 
-for hexagon_file,regular_file,random_files,i in zip(hexagon_simulation_files,regular_simulation_files,random_simulation_files,range(len(hexagon_simulation_files))):
-    print hexagon_file
-    hexagon, = get_simulation_data(hexagon_file,['dead_particles'])
-    print regular_file
-    regular, = get_simulation_data(regular_file,['dead_particles'])
-    print random_files
-    random = ParticlesData(np.zeros(0),np.zeros(0),np.zeros(0),np.zeros(0))
-    for random_file in random_files:
-        tmp, = get_simulation_data(random_file,['dead_particles'])
-        random = ParticlesData(np.concatenate([random.x,tmp.x]),
-                                 np.concatenate([random.y,tmp.y]),
-                                 np.concatenate([random.angle,tmp.angle]),
-                                 np.concatenate([random.count,tmp.count]))
-    plot_compare(hexagon,regular,random,'compare%05d.png'%(i))
 
 
-
-for simtype in ['hexagon','regular']+random_sims:
+#for simtype in ['hexagon','regular']+random_sims:
+for simtype in ['regular']:
     particles_files = sorted(glob.glob('./%s_particles*.vtu'%simtype))
     fibres_files = sorted(glob.glob('./%s_fibres*.vtu'%simtype))
     dead_particles_files = sorted(glob.glob('./%s_dead_particles*.vtu'%simtype))
