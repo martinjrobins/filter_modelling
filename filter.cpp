@@ -42,8 +42,7 @@ void read_data_files(ComsolType &particles) {
 
         typename ComsolType::value_type p;
         get<position>(p) = pos;
-        get<dvelocity_u>(p) = velocity[0];
-        get<dvelocity_v>(p) = velocity[1];
+        get<dvelocity>(p) = velocity;
         get<dpressure>(p) = pressure;
         if (i++ % 10 == 0) {
             particles.push_back(p);

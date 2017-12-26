@@ -15,9 +15,9 @@ find_package(Boost 1.50.0 COMPONENTS program_options serialization REQUIRED)
 set(filter_libs ${Boost_LIBRARIES})
 add_definitions(-D_GLIBCXX_USE_CXX11_ABI=0)
 
-#find_package(VTK REQUIRED)
-#add_definitions(-DHAVE_VTK)
-#set(filter_libs ${filter_libs} ${VTK_LIBRARIES} )
+find_package(VTK REQUIRED)
+add_definitions(-DHAVE_VTK)
+set(filter_libs ${filter_libs} ${VTK_LIBRARIES} )
 
 option(Aboria_USE_GPERFTOOLS "Use Google Profiling tools" OFF)
 if (Aboria_USE_GPERFTOOLS)
@@ -69,11 +69,11 @@ set(filter_libs ${filter_libs} ${CGAL_LIBRARIES} ${GMP_LIBRARIES})
 set( CMAKE_EXPORT_COMPILE_COMMANDS 1 )
 
 set(source_files
-    solve_stokes_MAPS.cpp
+    solve_stokes_BEM.cpp
     filter.cpp
     setup_knots.cpp
-    solve_stokes_LMAPS.cpp
-    solve_stokes_Compact.cpp
+    #solve_stokes_LMAPS.cpp
+    #solve_stokes_Compact.cpp
     )
 
 set(filter_include_dirs "Aboria/src" "Aboria/third-party")
@@ -93,5 +93,5 @@ target_link_libraries(simulation filter_modelling )
 add_executable(optimc optimc.cpp )
 target_link_libraries(optimc filter_modelling )
 
-add_executable(fmm_eval fmm_eval.cpp )
-target_link_libraries(fmm_eval filter_modelling )
+#add_executable(fmm_eval fmm_eval.cpp )
+#target_link_libraries(fmm_eval filter_modelling )

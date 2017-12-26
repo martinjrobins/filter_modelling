@@ -32,8 +32,7 @@ int main(int argc, char **argv) {
         ("react_rate", po::value<double>(&react_rate)->default_value(1.0), "particle reaction rate")
 
         ("c0", po::value<double>(&c0)->default_value(0.0835), "kernel constant")
-        ("nx", po::value<unsigned int>(&nx)->default_value(10), "nx")
-        ("fibre_resolution", po::value<double>(&fibre_resolution)->default_value(0.2), "number of knots around each fibre")
+        ("nx", po::value<unsigned int>(&nx)->default_value(10), "number of knots around each fibre")
         ("fibre_arrangement", po::value<int>(&fibre_arrangement)->default_value(0), "(0=regular, 1=hexigonal 2=random)")
         ("fibre_radius", po::value<double>(&fibre_radius)->default_value(0.3), "radius of fibres")
         ("particle_radius", po::value<double>(&particle_radius)->default_value(0.3/100.0), "radius of fibres")
@@ -58,6 +57,7 @@ int main(int argc, char **argv) {
 
 
     KnotsType knots;
+    ElementsType elements;
     ParticlesType particles;
     ParticlesType dead_particles;
     ParticlesType fibres;
@@ -70,9 +70,6 @@ int main(int argc, char **argv) {
     const double mu = 1.0;
     const double flow_rate = 1.0;
     const double Tf = 2.0*L;
-    const double delta = L/nx;
-    const double boundary_layer = delta/5;
-    const double s = 1.1*delta;
     const int timesteps = Tf/dt_aim;
     const double fibre_radius2 = std::pow(fibre_radius,2);
     const double dt = Tf/timesteps;
@@ -155,12 +152,14 @@ int main(int argc, char **argv) {
         //
         // SETUP KNOTS
         //
-        setup_knots(knots, fibres, fibre_radius, fibre_resolution, nx, domain_min, domain_max, c0, k,periodic,10);
+        auto cdt = setup_knots(knots, fibres, fibre_radius, fibre_resolution, nx, domain_min, domain_max, k,periodic,10);
 
         //
-        // CALCULATE C
+        // SETUP ELEMENTS 
         //
-        calculate_c(knots,c0,nx,domain_min,domain_max);
+        setup_elements(elements, fibres, domain_min, domain_max, nx, fibre_radius);
+ 
+
 
         max_iter_linear = knots.size()*4;
         restart_linear = max_iter_linear+1;
@@ -168,98 +167,14 @@ int main(int argc, char **argv) {
         //
         // SOLVE STOKES
         //
-#ifdef MAPS
-        const double relative_error = solve_stokes_MAPS(knots,max_iter_linear,restart_linear,solver_in,c0);
-#endif
-#ifdef COMPACT
-        const double relative_error = solve_stokes_Compact(knots,max_iter_linear,restart_linear,solver_in,c0);
-#endif
-        //solve_stokes_fMAPS(knots,max_iter_linear,restart_linear,solver_in,c0,ncheb);
-        //solve_stokes_LMAPS(knots,max_iter_linear,restart_linear,solver_in,c0);
-        //
+        const double alpha = (elements.get_max()-elements.get_min()).prod()/(4.0*pi);
+        const int nlambda = 2;
+        const int nmu = 2;
+        const double relative_error = solve_stokes_BEM(knots, elements, alpha, nlambda, nmu);
+ 
 
-        const size_t Nk = knots.size();
-
-        typedef typename position::value_type const & const_position_reference;
-        typedef typename KnotsType::const_reference const_knot_reference;
-        typedef typename KnotsType::reference knot_reference;
-
-#ifdef MAPS
-        auto psol_u1_kernel = 
-            [&](const vdouble2& dx, const vdouble2&, const vdouble2&) {
-                return psol_u1(dx,c0);
-            };
-        auto psol_u2_kernel = 
-            [&](const vdouble2& dx, const vdouble2&, const vdouble2&) {
-                return psol_u2(dx,c0);
-            };
-        auto psol_v1_kernel = 
-            [&](const vdouble2& dx, const vdouble2&, const vdouble2&) {
-                return psol_v1(dx,c0);
-            };
-        auto psol_v2_kernel = 
-            [&](const vdouble2& dx, const vdouble2&, const vdouble2&) {
-                return psol_v2(dx,c0);
-            };
-        auto psol_p1_kernel = 
-            [&](const vdouble2& dx, const vdouble2&, const vdouble2&) {
-                return psol_p1(dx,c0);
-            };
-        auto psol_p2_kernel = 
-            [&](const vdouble2& dx, const vdouble2&, const vdouble2&) {
-                return psol_p2(dx,c0);
-            };
-
-#endif
-
-        std::cout << "making fmm_queries" <<std::endl;
-        auto psol_u1_fmm = make_fmm_with_source(knots,
-                make_black_box_expansion<2,9>(psol_u1_kernel),
-                get<alpha1>(knots));
-        auto psol_u2_fmm = make_fmm_with_source(knots,
-                make_black_box_expansion<2,9>(psol_u2_kernel),
-                get<alpha2>(knots));
-        auto psol_v1_fmm = make_fmm_with_source(knots,
-                make_black_box_expansion<2,9>(psol_v1_kernel),
-                get<alpha1>(knots));
-        auto psol_v2_fmm = make_fmm_with_source(knots,
-                make_black_box_expansion<2,9>(psol_v2_kernel),
-                get<alpha2>(knots));
-
-        std::cout << "done calculating expansions" <<std::endl;
-
-        Symbol<boundary> is_b;
-        Symbol<inlet> is_in;
-        Symbol<outlet> is_out;
-        Symbol<interior> is_i;
-        Symbol<position> r;
-        Symbol<alive> alive_;
-        Symbol<kernel_constant> c;
-
-        Symbol<velocity_u> vu;
-        Symbol<velocity_v> vv;
-        Symbol<pressure> pr;
-        Symbol<alpha1> al1;
-        Symbol<alpha2> al2;
-
-        Label<0,KnotsType> i(knots);
-        Label<1,KnotsType> j(knots);
-        Label<0,ParticlesType> a(particles);
-        Label<1,ParticlesType> b(particles);
-        Label<0,ParticlesType> af(fibres);
-        Label<1,ParticlesType> bf(fibres);
-        auto dx = create_dx(i,j);
-        auto dkf = create_dx(i,bf);
-        auto dpf = create_dx(a,bf);
-        auto dpk = create_dx(a,j);
-        AccumulateWithinDistance<std::plus<vdouble2> > sumv(fibre_radius);
-        Accumulate<std::plus<vdouble2> > sumv_all;
-        //AccumulateFastMultipoleMethod<std::plus<vdouble2> > sumv_fmm;
-        AccumulateWithinDistance<std::bit_or<bool> > any(fibre_radius+particle_radius);
-        any.set_init(false);
-        VectorSymbolic<double,2> vector;
-        Normal N;
-        Uniform U;
+        auto A = create_dense_operator(particles,elements,
+                make_greens_kernel(alpha,nlambda,nmu));
 
         std::cout << "starting timesteps!"<<std::endl;
         const int timesteps_per_out = timesteps/nout;
@@ -279,34 +194,12 @@ int main(int argc, char **argv) {
                 particles.push_back(p);
             }
 
-            // evaluate velocity field
 
             t0 = Clock::now();
 
-            #pragma omp parallel for
-            for (int i = 0; i < particles.size(); ++i) {
-                ParticlesType::reference p = particles[i];
-                get<velocity_u>(p) = psol_u1_fmm.evaluate_at_point(get<position>(p),
-                        get<alpha1>(knots)) 
-                    + psol_u2_fmm.evaluate_at_point(get<position>(p),
-                            get<alpha2>(knots));
-                get<velocity_v>(p) = psol_v1_fmm.evaluate_at_point(get<position>(p),
-                        get<alpha1>(knots)) 
-                    + psol_v2_fmm.evaluate_at_point(get<position>(p),
-                            get<alpha2>(knots));
-                if (electrostatics_fibre) {
-                    for (int i = 0; i < fibres.size(); ++i) {
-                        ParticlesType::reference f = fibres[i];
-                        for (int i = -electrostatics_sum+1; i < electrostatics_sum ; ++i) {
-                            const vdouble2 dx(get<position>(f)[0]-get<position>(p)[0]+i*L,
-                                             get<position>(f)[1]-get<position>(p)[1]);
-                            const double scalar = fibres_charge/std::pow(dx.squaredNorm()+fibre_radius2,1.5);
-                            get<velocity_u>(p) += dx[0]*scalar;
-                            get<velocity_v>(p) += dx[1]*scalar;
-                        }
-                    }
-                }
-            }
+            // evaluate velocity field
+            A.evaluate(get<velocity>(particles),get<traction>(elements));
+            
             t1 = Clock::now();
             time_vel_eval += (t1 - t0).count();
             t0 = Clock::now();
@@ -316,9 +209,25 @@ int main(int argc, char **argv) {
                make fmm here, sum into velocity
                }
                */
-            r[a] += std::sqrt(2.0*D*dt)*vector(N[a],N[a]) + dt*vector(vu[a],vv[a]);
-
-
+            #pragma omp parallel for
+            for (int i = 0; i < particles.size(); ++i) {
+                if (electrostatics_fibre) {
+                    for (int i = 0; i < fibres.size(); ++i) {
+                        ParticlesType::reference f = fibres[i];
+                        for (int i = -electrostatics_sum+1; i < electrostatics_sum ; ++i) {
+                            const vdouble2 dx(get<position>(f)[0]-get<position>(p)[0]+i*L,
+                                             get<position>(f)[1]-get<position>(p)[1]);
+                            const double scalar = fibres_charge/std::pow(dx.squaredNorm()+fibre_radius2,1.5);
+                            get<velocity>(p) += dx*scalar;
+                        }
+                    }
+                }
+                std::normal_real_distribution<double> normal;
+                const vdouble2 N(normal(get<random>(particles)[i]),
+                                 normal(get<random>(particles)[i]));
+                get<position>(particles) += std::sqrt(2.0*D*dt)*N 
+                                         + dt*get<velocity>(particles);
+            }
 
 
             if (ii % timesteps_per_out == 0) {
@@ -368,30 +277,6 @@ int main(int argc, char **argv) {
                 }
             }
             particles.delete_particles();
-
-            // react with side walls
-            //alive_[a] = !if_else(r[a][0] > L
-            //        ,U[a]<react_rate
-            //        ,if_else(r[a][0] < 0
-            //            ,U[a]<react_rate
-            //            ,false
-            //            )
-            //        );
-
-            // reflect off fibres (if still alive)
-            //r[a] += sumv(bf,(fibre_radius/norm(dpf)-1)*dpf);
-
-            // reflect off side walls (if still alive)
-            //r[a] = vector(
-            //        if_else(r[a][0] > L
-            //            ,2*L-r[a][0]
-            //            ,if_else(r[a][0] < 0
-            //                ,-r[a][0]
-            //                ,r[a][0]
-            //                )
-            //            )
-            //        ,r[a][1]
-            //        );
 
             t1 = Clock::now();
             time_vel_rest += (t1 - t0).count();

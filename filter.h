@@ -72,30 +72,33 @@ void solve(Kernel &&kernel, VectorType &&result, VectorType &&source, size_t max
 
 }
 
+typedef Eigen::Matrix<double,2,1> eigen_v;
 ABORIA_VARIABLE(inlet,uint8_t,"is_inlet_knot")
 ABORIA_VARIABLE(outlet,uint8_t,"is_outlet_knot")
 ABORIA_VARIABLE(boundary,uint8_t,"is_boundary_knot")
 ABORIA_VARIABLE(target,uint8_t,"is_target_knot")
 ABORIA_VARIABLE(interior,uint8_t,"is_interior_knot")
-ABORIA_VARIABLE(velocity_u,double,"velocity_u");
-ABORIA_VARIABLE(velocity_v,double,"velocity_v");
+ABORIA_VARIABLE(velocity,vdouble2,"velocity");
 ABORIA_VARIABLE(velocity_dudx,double,"velocity_dudx");
 ABORIA_VARIABLE(velocity_dudy,double,"velocity_dudy");
 ABORIA_VARIABLE(velocity_dvdx,double,"velocity_dvdx");
 ABORIA_VARIABLE(velocity_dvdy,double,"velocity_dvdy");
 ABORIA_VARIABLE(pressure,double,"pressure");
-ABORIA_VARIABLE(dvelocity_u,double,"error_velocity_u");
-ABORIA_VARIABLE(dvelocity_v,double,"error_velocity_v");
+ABORIA_VARIABLE(dvelocity,vdouble2,"error_velocity_u");
 ABORIA_VARIABLE(dpressure,double,"error_comsol_pressure");
 ABORIA_VARIABLE(alpha1,double,"alpha_1");
 ABORIA_VARIABLE(alpha2,double,"alpha_2");
 ABORIA_VARIABLE(count,int,"count");
 ABORIA_VARIABLE(angle,double,"angle");
 ABORIA_VARIABLE(kernel_constant,double,"kernel_constant")
+ABORIA_VARIABLE(point_a,vdouble2,"start point of element")
+ABORIA_VARIABLE(point_b,vdouble2,"end point of element")
+ABORIA_VARIABLE(traction,vdouble2,"traction of element")
 
-typedef Particles<std::tuple<alpha1,alpha2,boundary,target,inlet,outlet,interior,velocity_u,velocity_v,velocity_dudx,velocity_dudy,velocity_dvdx,velocity_dvdy,pressure,kernel_constant>,2,std::vector,nanoflann_adaptor> KnotsType;
-typedef Particles<std::tuple<dvelocity_u,dvelocity_v,dpressure,velocity_u,velocity_v,pressure,kernel_constant>,2> ComsolType;
-typedef Particles<std::tuple<velocity_u,velocity_v,kernel_constant,angle,count>,2> ParticlesType;
+typedef Particles<std::tuple<alpha1,alpha2,boundary,target,inlet,outlet,interior,velocity,velocity_dudx,velocity_dudy,velocity_dvdx,velocity_dvdy,pressure,kernel_constant>,2,std::vector,nanoflann_adaptor> KnotsType;
+typedef Particles<std::tuple<dvelocity,dpressure,velocity,pressure,kernel_constant>,2> ComsolType;
+typedef Particles<std::tuple<velocity,kernel_constant,angle,count>,2> ParticlesType;
+typedef Particles<std::tuple<point_a,point_b,traction>,2> ElementsType;
 typedef position_d<2> position;
 
 

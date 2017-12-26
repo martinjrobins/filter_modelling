@@ -176,7 +176,7 @@ public:
 
 typedef My_delaunay_mesh_size_criteria_2<CDT,ParticlesType> Criteria;
 
-CDT setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_radius, const double fibre_resolution_factor, const double nx, vdouble2 domain_min, vdouble2 domain_max, const double c0, const double k, const bool periodic,const int nbucket) {
+CDT setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_radius, const double fibre_resolution_factor, const double nx, vdouble2 domain_min, vdouble2 domain_max, const double k, const bool periodic,const int nbucket) {
     CDT cdt;
 
     std::cout << "setup knots..." << std::endl;
@@ -211,92 +211,76 @@ CDT setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_radi
     std::vector<std::pair<Vertex_handle,double>> cuts_min,cuts_max;
     for (int ii=0; ii<fibres.size(); ++ii) {
         Vertex_handle v1,va,vb;
-        const double fdelta = delta*fibre_resolution;
         const vdouble2 origin = get<position>(fibres)[ii];
+        const double dtheta = 2*PI/nx;
         list_of_seeds.push_back(Point(origin[0], origin[1]));
-        for (int jj=0; jj<layers; ++jj) {
-            const double radius = fibre_radius-jj*fdelta;
-            const double dtheta_aim = fdelta/radius;
-            const int n = std::ceil(2*PI/dtheta_aim);
-            const double dtheta = 2*PI/n;
-            bool outside,started;
-            started = false;
-            for (int kk=0; kk<n; ++kk) {
-                get<position>(p) = origin + radius*vdouble2(std::cos(kk*dtheta),std::sin(kk*dtheta));
-                if (jj==0) {
-                    if (get<position>(p)[0] < domain_min[0]) {
-                        if (!started) {
-                            outside = true;
-                        } else if (!outside) {
-                            outside = true;
-                            cuts_min.push_back(std::make_pair(va,va->point()[1]));
-                        }
-                    } else if (get<position>(p)[0] > domain_max[0]) {
-                        if (!started) {
-                            outside = true;
-                        } else if (!outside) {
-                            outside = true;
-                            cuts_max.push_back(std::make_pair(va,va->point()[1]));
-                        }
-                    } else if (started && outside) {
-                        outside = false;
-                        vb = cdt.insert(Point(get<position>(p)[0],get<position>(p)[1]));
-                        va = vb;
-                        if (get<position>(p)[0] < 0.5*(domain_max[0]+domain_min[0])) {
-                            cuts_min.push_back(std::make_pair(va,get<position>(p)[1]));
-                        } else {
-                            cuts_max.push_back(std::make_pair(va,get<position>(p)[1]));
-                        }
-                    } else if (started && !outside) {
-                        outside = false;
-                        vb = cdt.insert(Point(get<position>(p)[0],get<position>(p)[1]));
-                        cdt.insert_constraint(va,vb);
-                        va = vb;
+        bool outside,started;
+        started = false;
+        for (int kk=0; kk<nx; ++kk) {
+            get<position>(p) = origin + fibre_radius*vdouble2(std::cos(kk*dtheta),std::sin(kk*dtheta));
+            if (get<position>(p)[0] < domain_min[0]) {
+                if (!started) {
+                    outside = true;
+                } else if (!outside) {
+                    outside = true;
+                    cuts_min.push_back(std::make_pair(va,va->point()[1]));
+                }
+            } else if (get<position>(p)[0] > domain_max[0]) {
+                if (!started) {
+                    outside = true;
+                } else if (!outside) {
+                    outside = true;
+                    cuts_max.push_back(std::make_pair(va,va->point()[1]));
+                }
+            } else if (started && outside) {
+                outside = false;
+                vb = cdt.insert(Point(get<position>(p)[0],get<position>(p)[1]));
+                va = vb;
+                if (get<position>(p)[0] < 0.5*(domain_max[0]+domain_min[0])) {
+                    cuts_min.push_back(std::make_pair(va,get<position>(p)[1]));
+                } else {
+                    cuts_max.push_back(std::make_pair(va,get<position>(p)[1]));
+                }
+            } else if (started && !outside) {
+                outside = false;
+                vb = cdt.insert(Point(get<position>(p)[0],get<position>(p)[1]));
+                cdt.insert_constraint(va,vb);
+                va = vb;
+            } else {
+                if (kk==0) {
+                    v1 = cdt.insert(Point(get<position>(p)[0],get<position>(p)[1]));
+                    va = v1;
+                    outside = false;
+                    started = true;
+                } else {
+                    v1 = cdt.insert(Point(get<position>(p)[0],get<position>(p)[1]));
+                    va = v1;
+                    outside = false;
+                    started = true;
+                    if (get<position>(p)[0] < 0.5*(domain_max[0]+domain_min[0])) {
+                        cuts_min.push_back(std::make_pair(va,get<position>(p)[1]));
                     } else {
-                        if (kk==0) {
-                            v1 = cdt.insert(Point(get<position>(p)[0],get<position>(p)[1]));
-                            va = v1;
-                            outside = false;
-                            started = true;
-                        } else {
-                            v1 = cdt.insert(Point(get<position>(p)[0],get<position>(p)[1]));
-                            va = v1;
-                            outside = false;
-                            started = true;
-                            if (get<position>(p)[0] < 0.5*(domain_max[0]+domain_min[0])) {
-                                cuts_min.push_back(std::make_pair(va,get<position>(p)[1]));
-                            } else {
-                                cuts_max.push_back(std::make_pair(va,get<position>(p)[1]));
-                            }
-                        }
-
+                        cuts_max.push_back(std::make_pair(va,get<position>(p)[1]));
                     }
                 }
 
-                
-                if (jj==0) {
-                    get<target>(p) = true;
-                } else {
-                    get<target>(p) = false;
-                }
-                get<boundary>(p) = true;
-                get<inlet>(p) = false;
-                get<outlet>(p) = false;
-                get<interior>(p) = false;
-                get<kernel_constant>(p) = c0;
-                if (!outside) knots.push_back(p);
-            }
-            if (jj==0) {
-                get<position>(p) = origin + radius*vdouble2(1,0);
-                if (get<position>(p)[0] > domain_max[0]) {
-                    if (!outside) {
-                        cuts_max.push_back(std::make_pair(va,va->point()[1]));
-                    }
-                } else {
-                    cdt.insert_constraint(va,v1);
-                }
             }
 
+
+            get<target>(p) = true;
+            get<boundary>(p) = true;
+            get<inlet>(p) = false;
+            get<outlet>(p) = false;
+            get<interior>(p) = false;
+            if (!outside) knots.push_back(p);
+        }
+        get<position>(p) = origin + fibre_radius*vdouble2(1,0);
+        if (get<position>(p)[0] > domain_max[0]) {
+            if (!outside) {
+                cuts_max.push_back(std::make_pair(va,va->point()[1]));
+            }
+        } else {
+            cdt.insert_constraint(va,v1);
         }
     }
 
@@ -370,7 +354,6 @@ CDT setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_radi
                 get<inlet>(p) = false;
                 get<interior>(p) = false;
                 get<outlet>(p) = false;
-                get<kernel_constant>(p) = c0;
                 if (!in_fibre_min) knots.push_back(p);
 
                 // boundary - right
@@ -414,7 +397,6 @@ CDT setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_radi
                 get<inlet>(p) = false;
                 get<interior>(p) = false;
                 get<outlet>(p) = false;
-                get<kernel_constant>(p) = c0;
                 if (!in_fibre_max) knots.push_back(p);
             }
         }
@@ -444,7 +426,6 @@ CDT setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_radi
             get<inlet>(p) = true;
             get<outlet>(p) = false;
             get<interior>(p) = false;
-            get<kernel_constant>(p) = c0;
             knots.push_back(p);
         }
     }
@@ -471,7 +452,6 @@ CDT setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_radi
             get<inlet>(p) = false;
             get<outlet>(p) = true;
             get<interior>(p) = false;
-            get<kernel_constant>(p) = c0;
             knots.push_back(p);
         }
     }
@@ -506,13 +486,12 @@ CDT setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_radi
         get<outlet>(p) = false;
         get<target>(p) = true;
         get<interior>(p) = true;
-        get<kernel_constant>(p) = c0;
         knots.push_back(p);
     }
 
     knots.init_neighbour_search(domain_min-ns_buffer,domain_max+ns_buffer,vbool2(periodic,false),nbucket);
     
-    std::cout << "added "<<knots.size()<<" knots with c0 = " <<c0<< std::endl;
+    std::cout << "added "<<knots.size()<<" knots"<< std::endl;
 
 
     std::cout << "finshed adapting. Writing to vtk file init_knots"<<std::endl;

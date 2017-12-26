@@ -19,4 +19,5 @@ typedef CGAL::Constrained_Delaunay_triangulation_2<K, Tds> CDT;
 
 
 void calculate_c(KnotsType &knots, double c0, const double nx, vdouble2 domain_min, vdouble2 domain_max);
-CDT setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_radius, const double ibre_resolution_factor, const double nx, vdouble2 domain_min, vdouble2 domain_max, const double c0, const double k, const bool periodic, const int nbucket);
+CDT setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_radius, const double ibre_resolution_factor, const double nx, vdouble2 domain_min, vdouble2 domain_max, const double k, const bool periodic, const int nbucket);
+ 

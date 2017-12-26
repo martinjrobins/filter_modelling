@@ -19,44 +19,21 @@
 //#include "solve_stokes_LMAPS.h"
 
 
-template <unsigned int N, typename U1K, typename U2K, 
-                          typename V1K, typename V2K, 
-                          typename P1K, typename P2K>
-void eval_solution(KnotsType& knots, ComsolType& comsol, 
-                   U1K& u1k, U2K& u2k,V1K& v1k, V2K& v2k,P1K& p1k, P2K& p2k,
-                   double& rms_error_u, double& rms_error_v, double& rms_error_p,
-                   double& rms_diff_u, double& rms_diff_v, double& rms_diff_p,
+template <unsigned int N, typename Kernel>
+void eval_solution(ElementsType& elements, ComsolType& comsol, Kernel& kernel, 
+                   double& rms_error_u, double& rms_error_v, 
+                   double& rms_diff_u, double& rms_diff_v, 
                    double& time_setup, double& time_eval, double& time_direct_eval) {
     const unsigned int D = KnotsType::dimension; 
     auto t0 = Clock::now();
-    auto psol_u1_fmm = make_fmm_with_source(knots,make_black_box_expansion<D,N>(u1k),
-                                            get<alpha1>(knots));
-    auto psol_u2_fmm = make_fmm_with_source(knots,make_black_box_expansion<D,N>(u2k),
-                                            get<alpha2>(knots));
-    auto psol_v1_fmm = make_fmm_with_source(knots,make_black_box_expansion<D,N>(v1k),
-                                            get<alpha1>(knots));
-    auto psol_v2_fmm = make_fmm_with_source(knots,make_black_box_expansion<D,N>(v2k),
-                                            get<alpha2>(knots));
-    auto psol_p1_fmm = make_fmm_with_source(knots,make_black_box_expansion<D,N>(p1k),
-                                            get<alpha1>(knots));
-    auto psol_p2_fmm = make_fmm_with_source(knots,make_black_box_expansion<D,N>(p2k),
-                                            get<alpha2>(knots));
+    auto psol_fmm = make_fmm_with_source(knots,make_black_box_expansion<D,N>(kernel),
+                                            get<traction>(elements));
     auto t1 = Clock::now();
     time_setup = (t1 - t0).count();
     t0 = Clock::now();
     for (ComsolType::reference p: comsol) {
-        get<velocity_u>(p) = psol_u1_fmm.evaluate_at_point(get<position>(p),
-                get<alpha1>(knots)) 
-            + psol_u2_fmm.evaluate_at_point(get<position>(p),
-                    get<alpha2>(knots));
-        get<velocity_v>(p) = psol_v1_fmm.evaluate_at_point(get<position>(p),
-                get<alpha1>(knots)) 
-            + psol_v2_fmm.evaluate_at_point(get<position>(p),
-                    get<alpha2>(knots));
-        get<pressure>(p) =   psol_p1_fmm.evaluate_at_point(get<position>(p),
-                get<alpha1>(knots)) 
-            + psol_p2_fmm.evaluate_at_point(get<position>(p),
-                    get<alpha2>(knots));
+        get<velocity>(p) = psol_fmm.evaluate_at_point(get<position>(p),
+                get<traction>(knots)) 
     }
     t1 = Clock::now();
     time_eval = (t1 - t0).count();
@@ -71,7 +48,8 @@ void eval_solution(KnotsType& knots, ComsolType& comsol,
         u = v = p = 0;
         for (KnotsType::reference j: knots) {
             const vdouble2 dx = get<position>(j)-get<position>(i);
-            u += u1k(dx,get<position>(i),get<position>(j))*get<alpha1>(j);
+            const vdouble2 v = kernel(dx,get<position>(i),get<position>(j))*get<alpha1>(j);
+            u += u1k(dx,
             u += u2k(dx,get<position>(i),get<position>(j))*get<alpha2>(j);
             v += v1k(dx,get<position>(i),get<position>(j))*get<alpha1>(j);
             v += v2k(dx,get<position>(i),get<position>(j))*get<alpha2>(j);
@@ -365,9 +343,10 @@ int main(int argc, char **argv) {
       setup_knots(knots, fibres, fibre_radius, fibre_resolution, nx, domain_min, domain_max, c0, k,periodic,nbucket);
 
       //
-      // CALCULATE C
+      // SETUP ELEMENTS 
       //
-      calculate_c(knots,c0,nx,domain_min,domain_max);
+      setup_elements(elements, fibres, fibre_resolution, domain_min, domain_max);
+
 
       max_iter_linear = knots.size()*4;
       restart_linear = max_iter_linear+1;
@@ -375,16 +354,9 @@ int main(int argc, char **argv) {
       //
       // SOLVE STOKES
       //
-#ifdef MAPS
-      const double relative_error = solve_stokes_MAPS(knots,max_iter_linear,restart_linear,solver_in,c0);
-#endif
-#ifdef COMPACT
-      const double relative_error = solve_stokes_Compact(knots,max_iter_linear,restart_linear,solver_in,c0);
-#endif
-      //solve_stokes_fMAPS(knots,max_iter_linear,restart_linear,solver_in,c0,ncheb);
-      //solve_stokes_LMAPS(knots,max_iter_linear,restart_linear,solver_in,c0);
-      //
-      
+      const double relative_error = solve_stokes_BEM(knots, elements, max_iter_linear,restart_linear,solver_in, c0, cdt);
+
+
       const size_t Nk = knots.size();
       const size_t Nc = comsol.size();
 
@@ -394,44 +366,13 @@ int main(int argc, char **argv) {
       typedef typename ComsolType::const_reference const_comsol_reference;
       typedef typename ComsolType::reference comsol_reference;
 
-      for (comsol_reference i: comsol) {
-          get<kernel_constant>(i) = c0;
-      }
-
       
-#ifdef MAPS
-      auto psol_u1_kernel = 
-            [&](const vdouble2& dx, const vdouble2&, const vdouble2&) {
-                return psol_u1(dx,c0);
-            };
-      auto psol_u2_kernel = 
-            [&](const vdouble2& dx, const vdouble2&, const vdouble2&) {
-                return psol_u2(dx,c0);
-            };
-      auto psol_v1_kernel = 
-            [&](const vdouble2& dx, const vdouble2&, const vdouble2&) {
-                return psol_v1(dx,c0);
-            };
-      auto psol_v2_kernel = 
-            [&](const vdouble2& dx, const vdouble2&, const vdouble2&) {
-                return psol_v2(dx,c0);
-            };
-      auto psol_p1_kernel = 
-            [&](const vdouble2& dx, const vdouble2&, const vdouble2&) {
-                return psol_p1(dx,c0);
-            };
-      auto psol_p2_kernel = 
-            [&](const vdouble2& dx, const vdouble2&, const vdouble2&) {
-                return psol_p2(dx,c0);
-            };
-#endif
 
 
       std::cout << "calculating solution at comsol points...." << std::endl;
       double rms_error_u[6], rms_error_v[6], rms_error_p[6]; 
       double rms_diff_u[6], rms_diff_v[6], rms_diff_p[6]; 
       double time_eval[6], time_setup[6], time_direct_eval[6];
-      /*
       eval_solution<5>(knots, comsol, 
                     psol_u1_kernel, psol_u2_kernel,
                     psol_v1_kernel, psol_v2_kernel,
@@ -453,7 +394,6 @@ int main(int argc, char **argv) {
                     rms_error_u[2], rms_error_v[2], rms_error_p[2], 
                     rms_diff_u[2], rms_diff_v[2], rms_diff_p[2], 
                     time_setup[2], time_eval[2], time_direct_eval[2]);
-                    */
       eval_solution<8>(knots, comsol, 
                     psol_u1_kernel, psol_u2_kernel,
                     psol_v1_kernel, psol_v2_kernel,
@@ -476,10 +416,6 @@ int main(int argc, char **argv) {
                     rms_diff_u[5], rms_diff_v[5], rms_diff_p[5], 
                     time_setup[5], time_eval[5], time_direct_eval[5]);
 
-
-
-
-      
 
       file << std::setw(15) << nbucket 
            << std::setw(15) << rms_diff_u[0]
