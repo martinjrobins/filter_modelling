@@ -7,6 +7,8 @@ void setup_elements(ElementsType& elements, ParticlesType& fibres, vdouble2 doma
     const double dtheta = 2*PI/nx;
     elements.resize(fibres.size()*nx);
 
+    std::cout << "setup elements: domain_min = "<<domain_min<<" domain_max = "<<domain_max<<" fibre_radius = "<<fibre_radius<<" nx = "<<nx << std::endl;
+
     for (int ii=0; ii<fibres.size(); ++ii) {
         const vdouble2 origin = get<position>(fibres)[ii];
         bool outside,started;
@@ -22,12 +24,13 @@ void setup_elements(ElementsType& elements, ParticlesType& fibres, vdouble2 doma
                     get<position>(p)[i] += domain_max[i] - domain_min[i];
                     get<point_a>(p)[i] += domain_max[i] - domain_min[i];
                     get<point_b>(p)[i] += domain_max[i] - domain_min[i];
-                } else if ((get<position>(p)[i] >= domain_min[i])) {
+                } else if ((get<position>(p)[i] >= domain_max[i])) {
                     get<position>(p)[i] -= domain_max[i] - domain_min[i];
                     get<point_a>(p)[i] -= domain_max[i] - domain_min[i];
                     get<point_b>(p)[i] -= domain_max[i] - domain_min[i];
                 }
             }
+            //std::cout << "element "<<ii*nx+kk<<" has p = "<<get<position>(p)<<" p1 = "<<get<point_a>(p)<<" and p2 = "<<get<point_b>(p) << std::endl;
         }
     }
 
@@ -88,18 +91,19 @@ double solve_stokes_BEM(KnotsType &knots, ElementsType& elements, const double a
         get<traction>(elements)[ii][1] = alphas[2*ii+1];
     }
 
+    vtkWriteGrid("BEMelements",0,elements.get_grid(true));
+
     std::cout << "assemble knot matrix..."<<std::endl;
-    matrix_type A_knot(2*N,2*N);
+    matrix_type A_knot(2*knots.size(),2*N);
     Aknots.assemble(A_knot);
-    vector_type vel = A_knot*alphas;
+    vector_type vel = -(A_knot*alphas)/(4.0*PI*mu);
 
     for (int ii=0; ii<knots.size(); ++ii) {
         get<velocity>(knots)[ii][0] = vel[2*ii];
-        get<velocity>(knots)[ii][1] = vel[2*ii+1];
+        get<velocity>(knots)[ii][1] = -flow_rate + vel[2*ii+1];
     }
 
     vtkWriteGrid("BEMknots",0,knots.get_grid(true));
-    vtkWriteGrid("BEMelements",0,elements.get_grid(true));
 
     std::cout << "done solving stokes"<<std::endl;
     return relative_error;

@@ -18,7 +18,7 @@ int main(int argc, char **argv) {
     double dt_aim,h0_factor,k,gamma,rf;
     unsigned int solver_in;
     bool periodic;
-    std::string filename;
+    std::string filename = "optim_default.out";
 
     po::options_description desc("Allowed options");
     desc.add_options()
@@ -40,7 +40,7 @@ int main(int argc, char **argv) {
         ("fibre_number", po::value<int>(&fibre_number)->default_value(5), "number of fibres")
         ("fibre_radius", po::value<double>(&fibre_radius)->default_value(0.3), "radius of fibres")
         ("dt", po::value<double>(&dt_aim)->default_value(0.001), "timestep")
-        ("filename", po::value<std::string>(&filename)->default_value("optim.out"), "filename")
+        //("filename", po::value<std::string>(&filename)->default_value("optim.out"), "filename")
     ;
 
 
@@ -60,8 +60,7 @@ int main(int argc, char **argv) {
     std::ofstream file;
     file.open(filename.c_str());
     file   << std::setw(15) << "n"
-           << std::setw(15) << "rms_error_u"
-           << std::setw(15) << "rms_error_v"
+           << std::setw(15) << "rms_error"
            << std::setw(15) << "max_error"
            << std::setw(15) << "solve_error"
            << std::endl;
@@ -151,33 +150,32 @@ int main(int argc, char **argv) {
 
       std::cout << "calculating solution at comsol points...." << std::endl;
       A.get_first_kernel().evaluate(get<velocity>(comsol),get<traction>(elements));
+      for(auto p:comsol) {
+          get<velocity>(p) *
+      }
       std::cout << "done calculating solution at comsol points."<< std::endl;
 
-      vdouble2 rms_error_v = 
-            std::accumulate(std::begin(comsol),std::end(comsol),vdouble2(0),
-                [](vdouble2 accum, const_comsol_reference p) {
-                    return accum + get<velocity>(p)-get<dvelocity>(p).squaredNorm();
-                });
-      rms_error_v[0] = std::sqrt(rms_error_v[0]);
-      rms_error_v[1] = std::sqrt(rms_error_v[1]);
+      double rms_error_v = 
+            std::sqrt(std::accumulate(std::begin(comsol),std::end(comsol),0.0,
+                [](double accum, const_comsol_reference p) {
+                    return accum + (get<velocity>(p)-get<dvelocity>(p)).squaredNorm();
+                }));
 
       const double max_error_v = 
             std::accumulate(std::begin(comsol),std::end(comsol),0.0,
                 [](double accum, const_comsol_reference p) {
-                    return std::max(accum,(get<velocity>(p)-get<dvelocity>(p)).inf_norm());
+                    return std::max(accum,std::max((get<velocity>(p)-get<dvelocity>(p))[0],(get<velocity>(p)-get<dvelocity>(p))[1]));
                 });
 
 
       file << std::setw(15) << n
-           << std::setw(15) << rms_error_v[0]
-           << std::setw(15) << rms_error_v[1]
+           << std::setw(15) << rms_error_v
            << std::setw(15) << max_error_v
            << std::setw(15) << relative_error
            << std::endl;
 
       std::cout << "rms errors = "
-      << rms_error_v[0] << ' '
-      << rms_error_v[1] << ' '
+      << rms_error_v << ' '
       << std::endl;
 
       std::cout << "max errors = "

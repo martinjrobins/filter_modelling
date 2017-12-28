@@ -1,10 +1,9 @@
 #include "filter.h"
-#include "solve_stokes_MAPS.h"
+#include "solve_stokes_BEM.h"
 #include "setup_knots.h"
 #include <boost/archive/xml_oarchive.hpp>
 #include <fstream>
 
-#define MAPS
 
 
 int main(int argc, char **argv) {
@@ -79,7 +78,7 @@ int main(int argc, char **argv) {
     const vdouble2 ns_buffer_fibres(L/3,2*particle_radius);
     const vdouble2 ns_buffer_particles(static_cast<int>(reflective)*L/3,2*particle_radius);
 
-    std::default_random_engine generator(seed);
+    std::default_random_engine rnd_generator(seed);
 
 
     // fibres
@@ -92,7 +91,7 @@ int main(int argc, char **argv) {
             for (int jj=0; jj<fibre_number; ++jj) {
                 bool free_position = false;
                 while (free_position == false) {
-                    get<position>(p) = vdouble2(xrange(generator),yrange(generator));
+                    get<position>(p) = vdouble2(xrange(rnd_generator),yrange(rnd_generator));
                     free_position = true;
                     /*
                        for (auto tpl: euclidean_search(fibres.get_query(),
@@ -167,14 +166,17 @@ int main(int argc, char **argv) {
         //
         // SOLVE STOKES
         //
-        const double alpha = (elements.get_max()-elements.get_min()).prod()/(4.0*pi);
+        const double alpha = (elements.get_max()-elements.get_min()).prod()/(4.0*PI);
+        const double h = (get<point_b>(elements)[0] - get<point_a>(elements)[0]).norm();
         const int nlambda = 2;
         const int nmu = 2;
         const double relative_error = solve_stokes_BEM(knots, elements, alpha, nlambda, nmu);
  
 
         auto A = create_dense_operator(particles,elements,
-                make_greens_kernel(alpha,nlambda,nmu));
+                        make_greens_kernel(alpha,nlambda,nmu,h,
+                                   elements.get_min(),elements.get_max()));
+     
 
         std::cout << "starting timesteps!"<<std::endl;
         const int timesteps_per_out = timesteps/nout;
@@ -186,10 +188,10 @@ int main(int argc, char **argv) {
             // add new particles
             std::poisson_distribution<int> poisson(particle_rate*dt);
             std::uniform_real_distribution<double> uniform(2*particle_radius,L-2*particle_radius);
-            const int new_n = poisson(generator);
+            const int new_n = poisson(rnd_generator);
             for (int jj=0; jj<new_n; ++jj) {
                 ParticlesType::value_type p;
-                get<position>(p) = vdouble2(uniform(generator),domain_max[1]-particle_radius);
+                get<position>(p) = vdouble2(uniform(rnd_generator),domain_max[1]-particle_radius);
                 get<kernel_constant>(p) = c0;
                 particles.push_back(p);
             }
@@ -198,7 +200,7 @@ int main(int argc, char **argv) {
             t0 = Clock::now();
 
             // evaluate velocity field
-            A.evaluate(get<velocity>(particles),get<traction>(elements));
+            A.get_first_kernel().evaluate(get<velocity>(particles),get<traction>(elements));
             
             t1 = Clock::now();
             time_vel_eval += (t1 - t0).count();
@@ -211,22 +213,27 @@ int main(int argc, char **argv) {
                */
             #pragma omp parallel for
             for (int i = 0; i < particles.size(); ++i) {
+                ParticlesType::reference p = particles[i];
                 if (electrostatics_fibre) {
                     for (int i = 0; i < fibres.size(); ++i) {
                         ParticlesType::reference f = fibres[i];
                         for (int i = -electrostatics_sum+1; i < electrostatics_sum ; ++i) {
-                            const vdouble2 dx(get<position>(f)[0]-get<position>(p)[0]+i*L,
-                                             get<position>(f)[1]-get<position>(p)[1]);
+                            const eigen_vector dx(
+                                    get<position>(f)[0]-get<position>(p)[0]+i*L,
+                                    get<position>(f)[1]-get<position>(p)[1]);
                             const double scalar = fibres_charge/std::pow(dx.squaredNorm()+fibre_radius2,1.5);
                             get<velocity>(p) += dx*scalar;
                         }
                     }
                 }
-                std::normal_real_distribution<double> normal;
-                const vdouble2 N(normal(get<random>(particles)[i]),
-                                 normal(get<random>(particles)[i]));
-                get<position>(particles) += std::sqrt(2.0*D*dt)*N 
-                                         + dt*get<velocity>(particles);
+                std::normal_distribution<double> normal;
+                const vdouble2 N(normal(get<generator>(particles)[i]),
+                                 normal(get<generator>(particles)[i]));
+
+                get<position>(p) += std::sqrt(2.0*D*dt)*N;
+                for (int i = 0; i < D; ++i) {
+                    get<position>(p)[i] += dt*get<velocity>(p)[i];
+                }
             }
 
 
@@ -276,7 +283,7 @@ int main(int argc, char **argv) {
                     }
                 }
             }
-            particles.delete_particles();
+            particles.update_positions();
 
             t1 = Clock::now();
             time_vel_rest += (t1 - t0).count();

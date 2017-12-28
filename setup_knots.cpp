@@ -500,6 +500,8 @@ CDT setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_radi
     //vtkWriteGrid("init_knots_fibres",1,fibres.get_grid(true));
 
     std::cout << "finshed writing to file."<<std::endl;
+
+    return cdt;
 }
 
 void calculate_c(KnotsType &knots, double c0, const double nx, vdouble2 domain_min, vdouble2 domain_max) {

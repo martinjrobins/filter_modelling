@@ -11,9 +11,9 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/Aboria/cmake"
 list(APPEND CMAKE_CXX_FLAGS "-Wno-deprecated -std=c++14")
 list(APPEND CMAKE_SHARED_LINKER_FLAGS "-Wl,--no-undefined")
 
-find_package(Boost 1.50.0 COMPONENTS program_options serialization REQUIRED)
+find_package(Boost 1.66.0 COMPONENTS program_options serialization REQUIRED)
 set(filter_libs ${Boost_LIBRARIES})
-add_definitions(-D_GLIBCXX_USE_CXX11_ABI=0)
+#add_definitions(-D_GLIBCXX_USE_CXX11_ABI=0)
 
 find_package(VTK REQUIRED)
 add_definitions(-DHAVE_VTK)
@@ -88,10 +88,10 @@ add_executable(check_solutions check_solutions.cpp )
 target_link_libraries(check_solutions ${filter_libs})
 
 add_executable(simulation simulation.cpp )
-target_link_libraries(simulation filter_modelling )
+target_link_libraries(simulation filter_modelling ${filter_libs})
 
 add_executable(optimc optimc.cpp )
-target_link_libraries(optimc filter_modelling )
+target_link_libraries(optimc filter_modelling ${filter_libs})
 
 #add_executable(fmm_eval fmm_eval.cpp )
 #target_link_libraries(fmm_eval filter_modelling )

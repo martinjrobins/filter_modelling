@@ -17,7 +17,7 @@ void read_data_files(ComsolType &particles) {
 
     int i=0;
     while ( pressure_file.good() ) {
-        vdouble2 pos,velocity;
+        eigen_vector pos,velocity;
         double pressure,dummy;
         std::getline(pressure_file, line);
         std::istringstream buffer(line);
