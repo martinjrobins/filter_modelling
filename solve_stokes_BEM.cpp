@@ -39,18 +39,19 @@ void setup_elements(ElementsType& elements, ParticlesType& fibres, vdouble2 doma
         }
     }
 
-    /*
     const double dx_aim = (get<position>(elements)[0]-get<position>(elements)[1]).norm();
     const int n_inlet = std::ceil(L/dx_aim);
     const double dx = L/n_inlet;
     elements.resize(fibres.size()*nx + n_inlet);
 
     for (int i = 0; i < n_inlet; ++i) {
+        /*
         ElementsType::reference p = elements[fibres.size()*nx + 2*i];
         get<position>(p) = vdouble2((i+0.5)*dx,domain_min[1]);
         get<point_a>(p) = vdouble2((i)*dx,domain_min[1]);
         get<point_b>(p) = vdouble2((i+1)*dx,domain_min[1]);
         get<boundary>(p) = true;
+        */
 
         ElementsType::reference p2 = elements[fibres.size()*nx + i];
         get<position>(p2) = vdouble2((i+0.5)*dx,domain_max[1]);
@@ -59,7 +60,6 @@ void setup_elements(ElementsType& elements, ParticlesType& fibres, vdouble2 doma
         get<boundary>(p2) = true;
         
     }
-    */
 
     elements.init_neighbour_search(domain_min-ns_buffer,domain_max+ns_buffer,vbool2(true,false));
 }
@@ -82,8 +82,8 @@ double solve_stokes_BEM(KnotsType &knots, ElementsType& elements, const double a
 
     auto A = create_dense_operator(elements,elements,
             make_greens_kernel_2d1p(alpha,nlambda,nmu,h,min,max,true));
-
-    auto boundary_layer_kernel = make_boundary_layer_kernel_2d1p(mu,min,max);
+    auto Abl = create_dense_operator(elements,elements,
+            make_boundary_layer_kernel_2d1p(mu,min,max,true));
 
     std::cout << "setup equations..."<<std::endl;
 
@@ -95,31 +95,27 @@ double solve_stokes_BEM(KnotsType &knots, ElementsType& elements, const double a
 
     vector_type source(2*N);
     vector_type alphas(2*N);
+    vector_type vel(N);
     matrix_type A_eigen(2*N,2*N);
 
     std::cout << "assemble matrix..."<<std::endl;
     //c[i] = c0;
     A.assemble(A_eigen);
 
+    vel = vector_type::Ones(N)*(-flow_rate);
+    source = Abl*vel;
+
     for (int ii=0; ii<N; ++ii) {
         if (get<boundary>(elements)[ii]) { 
-            /*
-            typedef Eigen::Matrix<double,2,1> mat2x1;
-            mat2x1 D = mat2x1::Zero();
-            for (int jj = 0; jj < N; ++jj) {
-                if (get<boundary>(elements)[jj]) { 
-                    D += boundary_layer_kernel(elements[ii],elements[jj]);
-                }
-            }
-            std::cout << "ii = "<<ii<<" D = "<< D << std::endl;
-            source(2*ii) = -flow_rate*(0 + D(0)); 
-            source(2*ii+1) = -flow_rate*(2*PI*mu + D(1)); 
-            */
-            source(2*ii) = 0;
-            source(2*ii+1) = -flow_rate*2*PI*mu;
+            std::cout << "boundary D = "<<source.segment<2>(2*ii) << std::endl;
+            source(2*ii) += 0;
+            source(2*ii+1) += -flow_rate*2*PI*mu;
+            std::cout << "boundary D = "<<source.segment<2>(2*ii) << std::endl;
         } else {
-            source(2*ii) = 0;
-            source(2*ii+1) = -flow_rate*4*PI*mu;
+            std::cout << "non boundary D = "<<source.segment<2>(2*ii) << std::endl;
+            source(2*ii) += 0;
+            source(2*ii+1) += 0;
+            std::cout << "non boundary D = "<<source.segment<2>(2*ii) << std::endl;
         }
     }
 
@@ -138,21 +134,23 @@ double solve_stokes_BEM(KnotsType &knots, ElementsType& elements, const double a
 
     vtkWriteGrid("BEMelements",0,elements.get_grid(true));
 
-    /*
     std::cout << "assemble knot matrix..."<<std::endl;
     matrix_type A_knot(2*knots.size(),2*N);
-    auto Aknots = create_dense_operator(knots,elements,
-            make_greens_kernel(alpha,nlambda,nmu,h,min,max,false));
-    Aknots.assemble(A_knot);
-    vector_type vel = -(A_knot*alphas)/(4.0*PI*mu);
+    auto tmp1 = make_greens_kernel(alpha,nlambda,nmu,h,min,max,false);
+    auto tmp2 = make_boundary_layer_kernel_2d1p(mu,min,max,false);
+    auto Aknots = create_dense_operator(knots,elements,tmp1);
+            //make_greens_kernel(alpha,nlambda,nmu,h,min,max,false));
+    auto Aknotsbl = create_dense_operator(knots,elements,tmp2);
+            //make_boundary_layer_kernel_2d1p(mu,min,max,false));
+
+    vector_type svel = (Aknots*alphas - Aknotsbl*vel)/(4.0*PI*mu);
 
     for (int ii=0; ii<knots.size(); ++ii) {
-        get<velocity>(knots)[ii][0] = vel[2*ii];
-        get<velocity>(knots)[ii][1] = -flow_rate + vel[2*ii+1];
+        get<velocity>(knots)[ii][0] = svel[2*ii];
+        get<velocity>(knots)[ii][1] = svel[2*ii+1];
     }
 
     vtkWriteGrid("BEMknots",0,knots.get_grid(true));
-    */
 
     std::cout << "done solving stokes"<<std::endl;
     return relative_error;

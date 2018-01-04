@@ -34,7 +34,7 @@ int main(int argc, char **argv) {
         ("react_rate", po::value<double>(&react_rate)->default_value(0.5), "particle reaction rate")
         ("n_min", po::value<unsigned int>(&nmin)->default_value(2), "min n")
         ("n_max", po::value<unsigned int>(&nmax)->default_value(3), "max n")
-        ("nx", po::value<unsigned int>(&nx)->default_value(20), "nx")
+        ("nx", po::value<unsigned int>(&nx)->default_value(10), "nx")
         ("fibre_resolution", po::value<double>(&fibre_resolution)->default_value(0.75), "knot resolution around fibre")
         ("seed", po::value<int>(&seed)->default_value(10), "seed")
         ("fibre_number", po::value<int>(&fibre_number)->default_value(5), "number of fibres")
@@ -108,7 +108,7 @@ int main(int argc, char **argv) {
       //
       // SETUP KNOTS
       //
-      //setup_knots(knots, fibres, fibre_radius, fibre_resolution, nx, domain_min, domain_max, k,periodic,8*8);
+      setup_knots(knots, fibres, fibre_radius, fibre_resolution, nx, domain_min, domain_max, k,false,8*8);
 
         //
         // SETUP ELEMENTS 
@@ -142,15 +142,14 @@ int main(int argc, char **argv) {
       std::cout << "alpha = "<<alpha << std::endl;
       auto Akernel = make_greens_kernel_2d1p(alpha,nlambda,nmu,h,
                                    domain_min,domain_max,false);
-      auto A = create_dense_operator(comsol,elements,
-                Akernel);
+      auto A = create_dense_operator(comsol,elements,Akernel);
      
 
       std::cout << "calculating solution at comsol points...." << std::endl;
       A.get_first_kernel().evaluate(get<velocity>(comsol),get<traction>(elements));
       for(auto p:comsol) {
           get<velocity>(p) *= -1.0/(4.0*PI*mu);
-          get<velocity>(p)[1] -= flow_rate;
+          //get<velocity>(p)[1] -= flow_rate;
       }
       std::cout << "done calculating solution at comsol points."<< std::endl;
 
