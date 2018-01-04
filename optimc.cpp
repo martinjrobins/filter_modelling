@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
         ("linear_solver", po::value<unsigned int>(&solver_in)->default_value(2), "linear solver")
         ("nout", po::value<unsigned int>(&nout)->default_value(100), "number of output points")
         ("k", po::value<double>(&k)->default_value(1.00), "spring constant")
-        ("periodic", po::value<bool>(&periodic)->default_value(false), "periodic in x")
+        ("periodic", po::value<bool>(&periodic)->default_value(true), "periodic in x")
         ("D", po::value<double>(&D)->default_value(0.01), "diffusion constant")
         ("particle_rate", po::value<double>(&particle_rate)->default_value(1000.0), "particle rate")
         ("react_rate", po::value<double>(&react_rate)->default_value(0.5), "particle reaction rate")
@@ -76,10 +76,6 @@ int main(int argc, char **argv) {
       const double flow_rate = 1.0;
       const double Tf = 2.0;
       const double L = fibre_number*1.0;
-      const double delta = L/nx;
-      const double boundary_layer = delta/5;
-      const double s = 1.1*delta;
-      const double h0 = h0_factor*delta;
       const int timesteps = Tf/dt_aim;
       const double dt = Tf/timesteps;
       const double dt_adapt = (1.0/100.0)*PI/sqrt(2*k);
@@ -112,7 +108,7 @@ int main(int argc, char **argv) {
       //
       // SETUP KNOTS
       //
-      setup_knots(knots, fibres, fibre_radius, fibre_resolution, nx, domain_min, domain_max, k,periodic,8*8);
+      //setup_knots(knots, fibres, fibre_radius, fibre_resolution, nx, domain_min, domain_max, k,periodic,8*8);
 
         //
         // SETUP ELEMENTS 
@@ -143,15 +139,18 @@ int main(int argc, char **argv) {
       typedef typename ComsolType::reference comsol_reference;
 
 
+      std::cout << "alpha = "<<alpha << std::endl;
+      auto Akernel = make_greens_kernel_2d1p(alpha,nlambda,nmu,h,
+                                   domain_min,domain_max,false);
       auto A = create_dense_operator(comsol,elements,
-                make_greens_kernel(alpha,nlambda,nmu,h,
-                                   elements.get_min(),elements.get_max()));
+                Akernel);
      
 
       std::cout << "calculating solution at comsol points...." << std::endl;
       A.get_first_kernel().evaluate(get<velocity>(comsol),get<traction>(elements));
       for(auto p:comsol) {
-          get<velocity>(p) *
+          get<velocity>(p) *= -1.0/(4.0*PI*mu);
+          get<velocity>(p)[1] -= flow_rate;
       }
       std::cout << "done calculating solution at comsol points."<< std::endl;
 
@@ -182,7 +181,7 @@ int main(int argc, char **argv) {
       << max_error_v << ' '
       << std::endl;
 
-      //vtkWriteGrid("error",0,comsol.get_grid(true));
+      vtkWriteGrid("error",0,comsol.get_grid(true));
     }
     file.close();
 }

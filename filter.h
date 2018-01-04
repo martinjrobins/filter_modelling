@@ -98,7 +98,7 @@ ABORIA_VARIABLE(traction,eigen_vector,"traction of element")
 typedef Particles<std::tuple<alpha1,alpha2,boundary,target,inlet,outlet,interior,velocity,velocity_dudx,velocity_dudy,velocity_dvdx,velocity_dvdy,pressure,kernel_constant>,2,std::vector,nanoflann_adaptor> KnotsType;
 typedef Particles<std::tuple<dvelocity,dpressure,velocity,pressure,kernel_constant>,2> ComsolType;
 typedef Particles<std::tuple<velocity,kernel_constant,angle,count>,2> ParticlesType;
-typedef Particles<std::tuple<point_a,point_b,traction>,2> ElementsType;
+typedef Particles<std::tuple<point_a,point_b,traction,boundary>,2> ElementsType;
 typedef position_d<2> position;
 
 

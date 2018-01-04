@@ -11,7 +11,7 @@ void setup_elements(ElementsType& elements, ParticlesType& fibres, vdouble2 doma
 double solve_stokes_BEM(KnotsType &knots, ElementsType& elements, const double alpha, const int nlambda, const int nmu);
  
  
-auto make_greens_kernel(const double alpha, const int nlambda, const int nmu, const double h, const vdouble2 domain_min, const vdouble2 domain_max) {
+auto make_greens_kernel(const double alpha, const int nlambda, const int nmu, const double h, const vdouble2 domain_min, const vdouble2 domain_max, const bool self) {
     typedef Eigen::Matrix<double,2,2> mat2x2;
 
 
@@ -69,28 +69,28 @@ auto make_greens_kernel(const double alpha, const int nlambda, const int nmu, co
         mat2x2 result;
         const vdouble2 d = dx_b - dx_a;
 
-        auto fE1 = [&](const double t) { 
+        auto fE1 = [=](const double t) { 
             const vdouble2 x = d*t + dx_a;
             const double r2 = x.squaredNorm();
             const double E1 = boost::math::expint(1,r2*inv4alpha);
             return E1;
         };
 
-        auto f00 = [&](const double t) { 
+        auto f00 = [=](const double t) { 
             const vdouble2 x = d*t + dx_a;
             const double r2 = x.squaredNorm();
             const double exp = std::exp(-r2*inv4alpha);
             return (x[0]*x[0]/r2 - 1)*exp;
         };
 
-        auto f11 = [&](const double t) { 
+        auto f11 = [=](const double t) { 
             const vdouble2 x = d*t + dx_a;
             const double r2 = x.squaredNorm();
             const double exp = std::exp(-r2*inv4alpha);
             return (x[1]*x[1]/r2 - 1)*exp;
         };
 
-        auto f01 = [&](const double t) { 
+        auto f01 = [=](const double t) { 
             const vdouble2 x = d*t + dx_a;
             const double r2 = x.squaredNorm();
             const double exp = std::exp(-r2*inv4alpha);
@@ -98,34 +98,49 @@ auto make_greens_kernel(const double alpha, const int nlambda, const int nmu, co
         };
 
 
-        const double E1 = boost::math::quadrature::gauss<double, 7>::
-                                integrate(fE1, 0.0, 1.0);
+        if (dx_b.squaredNorm() > 0.2*0.2*box_size[0]*box_size[0]) {
+            const double E1 = boost::math::quadrature::gauss<double, 1>::
+                integrate(fE1, 0.0, 1.0);
 
-        result(0,0) = 0.5*E1 + boost::math::quadrature::gauss<double, 7>::
-                                integrate(f00, 0.0, 1.0);
-        result(0,1) =          boost::math::quadrature::gauss<double, 7>::
-                                integrate(f01, 0.0, 1.0);
-        result(1,0) = result(0,1);
-        result(1,1) = 0.5*E1 + boost::math::quadrature::gauss<double, 7>::
-                                integrate(f11, 0.0, 1.0);
-        result *= d.norm();
+            result(0,0) = 0.5*E1 + boost::math::quadrature::gauss<double, 1>::
+                integrate(f00, 0.0, 1.0);
+            result(0,1) =          boost::math::quadrature::gauss<double, 1>::
+                integrate(f01, 0.0, 1.0);
+            result(1,0) = result(0,1);
+            result(1,1) = 0.5*E1 + boost::math::quadrature::gauss<double, 1>::
+                integrate(f11, 0.0, 1.0);
+            result *= d.norm();
+
+        } else {
+            const double E1 = boost::math::quadrature::gauss<double, 7>::
+                integrate(fE1, 0.0, 1.0);
+
+            result(0,0) = 0.5*E1 + boost::math::quadrature::gauss<double, 7>::
+                integrate(f00, 0.0, 1.0);
+            result(0,1) =          boost::math::quadrature::gauss<double, 7>::
+                integrate(f01, 0.0, 1.0);
+            result(1,0) = result(0,1);
+            result(1,1) = 0.5*E1 + boost::math::quadrature::gauss<double, 7>::
+                integrate(f11, 0.0, 1.0);
+            result *= d.norm();
+        }
         return result;
     };
 
 
-    auto Aeval = [=](const vdouble2& dx, auto a, auto b) {
+    auto Aeval = [=](auto a, auto b) {
 
-        //std::cout << "Aeval: dx = "<<dx<<" a = "<<get<position>(a)<<" b = "<<get<position>(b)<< " b1 = "<<get<point_a>(b)<<" b2 = "<<get<point_b>(b)<<std::endl;
+        //std::cout << "Aeval:  a = "<<get<position>(a)<<" b = "<<get<position>(b)<< " b1 = "<<get<point_a>(b)<<" b2 = "<<get<point_b>(b)<<std::endl;
         mat2x2 result = mat2x2::Zero();
 
-        const vdouble2 dx_a = dx + (get<point_a>(b)-get<position>(b));
-        const vdouble2 dx_b = dx + (get<point_b>(b)-get<position>(b));
+        const vdouble2 dx_a = get<point_a>(b)-get<position>(a);
+        const vdouble2 dx_b = get<point_b>(b)-get<position>(a);
         //std::cout << "Aeval: dx_a = "<<dx_a<<"  dx_b = "<<dx_b<< std::endl;
 
         for (int lambda1 = -nlambda; lambda1 <= nlambda; ++lambda1) {
             for (int lambda2 = -nlambda; lambda2 <= nlambda; ++lambda2) {
                 const vdouble2 L = box_size*vdouble2(lambda1,lambda2);
-                if (lambda1 == 0 && lambda2 == 0 && get<id>(a) == get<id>(b)) {
+                if (self && lambda1 == 0 && lambda2 == 0 && get<id>(a) == get<id>(b)) {
                     result += integrate_real_space0(dx_a,dx_b);
                 } else {
                     result += integrate_real_space(dx_a-L,dx_b-L);
@@ -136,9 +151,9 @@ auto make_greens_kernel(const double alpha, const int nlambda, const int nmu, co
 
         for (int mu1 = -nmu; mu1 <= nmu; ++mu1) {
             for (int mu2 = -nmu; mu2 <= nmu; ++mu2) {
-                if (mu1 == 0 && mu2 == 0) continue;
+                if (mu2 == 0 && mu1 == 0) continue;
                 const vdouble2 K = (2*PI/tau)*vdouble2(box_size[1]*mu1,
-                                                       box_size[0]*mu2); 
+                        box_size[0]*mu2); 
                 result += integrate_wave_space(K,dx_a,dx_b);
                 //std::cout << "result for K = "<<K<<" = "<<result << std::endl;
             }
@@ -148,5 +163,195 @@ auto make_greens_kernel(const double alpha, const int nlambda, const int nmu, co
     };
     
     return Aeval;
+}
+
+auto make_greens_kernel_2d1p(const double alpha, const int nlambda, const int nmu, const double h, const vdouble2 domain_min, const vdouble2 domain_max, const bool self) {
+    typedef Eigen::Matrix<double,2,2> mat2x2;
+
+    const vdouble2 box_size = domain_max-domain_min;
+    const double k = 2*PI/box_size[0];
+
+    // x = x - Llamba
+    auto integrate_real_space = [=](
+            const vdouble2& dx_a, 
+            const vdouble2& dx_b,
+            const bool self) {
+
+        mat2x2 result;
+        const vdouble2 d = dx_b - dx_a;
+
+        auto A = [=](const vdouble2& x) {
+            return 0.5*std::log(2*(std::cosh(k*x[1]) - std::cos(k*x[0])));
+        };
+
+        auto Ay = [=](const vdouble2& x) {
+            return -0.5*k*std::sinh(k*x[1])/(std::cos(k*x[0])-std::cosh(k*x[1]));
+        };
+
+         auto Ax = [=](const vdouble2& x) {
+            return -0.5*k*std::sin(k*x[0])/(std::cos(k*x[0])-std::cosh(k*x[1]));
+        };
+
+        auto fSxx = [=](const double t) { 
+            const vdouble2 x = d*t + dx_a;
+            return A(x) + k*x[1]*Ay(x) - 1.0;
+        };
+
+        auto fSxy = [=](const double t) { 
+            const vdouble2 x = d*t + dx_a;
+            return -k*x[1]*Ax(x);
+        };
+
+        auto fSyy = [=](const double t) { 
+            const vdouble2 x = d*t + dx_a;
+            return A(x) - k*x[1]*Ay(x);
+        };
+
+
+        auto fSxx_minus_ST = [=](const double t) { 
+            const vdouble2 x = d*t + dx_a;
+            const double r2 = x.squaredNorm();
+            return A(x) + k*x[1]*Ay(x) - 1.0
+                 - (std::log(std::sqrt(r2)) - x[0]*x[0]/r2);
+        };
+
+        auto fSxy_minus_ST = [=](const double t) { 
+            const vdouble2 x = d*t + dx_a;
+            const double r2 = x.squaredNorm();
+            return -k*x[1]*Ax(x)
+                 - (0.0                     - x[0]*x[1]/r2);
+        };
+
+
+        auto fSyy_minus_ST = [=](const double t) { 
+            const vdouble2 x = d*t + dx_a;
+            const double r2 = x.squaredNorm();
+            return A(x) - k*x[1]*Ay(x)
+                 - (std::log(std::sqrt(r2)) - x[1]*x[1]/r2);
+        };
+
+
+        const double h = d.norm();
+
+        if (self) {
+            const vdouble2 dn = d/h;
+            const double C = std::log(h) - 0.693147180559945;
+            result(0,0) = h*boost::math::quadrature::gauss<double, 8>::
+                integrate(fSxx_minus_ST, 0.0, 1.0)
+                + (
+                   -2*dn[0]*dn[0] - dn[1]*dn[1] + C
+                  );
+            result(0,1) = h*boost::math::quadrature::gauss<double, 8>::
+                integrate(fSxy_minus_ST, 0.0, 1.0)
+                + (
+                   -dn[0]*dn[1]
+                  );
+            result(1,0) = result(0,1);
+            result(0,0) = h*boost::math::quadrature::gauss<double, 8>::
+                integrate(fSyy_minus_ST, 0.0, 1.0)
+                + (
+                   -dn[0]*dn[0] - 2*dn[1]*dn[1] + C
+                  );
+        } else {
+
+            result(0,0) = h*boost::math::quadrature::gauss<double, 8>::
+                integrate(fSxx, 0.0, 1.0);
+            result(0,1) = h*boost::math::quadrature::gauss<double, 8>::
+                integrate(fSxy, 0.0, 1.0);
+            result(1,0) = result(0,1);
+            result(0,0) = h*boost::math::quadrature::gauss<double, 8>::
+                integrate(fSyy, 0.0, 1.0);
+        }
+
+        return result;
+    };
+
+
+    auto Aeval = [=](auto a, auto b) {
+
+        //std::cout << "Aeval:  a = "<<get<position>(a)<<" b = "<<get<position>(b)<< " b1 = "<<get<point_a>(b)<<" b2 = "<<get<point_b>(b)<<std::endl;
+        mat2x2 result = mat2x2::Zero();
+
+        const vdouble2 dx_a = get<point_a>(b)-get<position>(a);
+        const vdouble2 dx_b = get<point_b>(b)-get<position>(a);
+
+        //result = integrate_real_space(dx_a,dx_b,get<id>(a)==get<id>(b));
+        result = integrate_real_space(dx_a,dx_b, dx_a[0]<0 != dx_b[0]<0);
+        //std::cout << "Aeval: dx_a = "<<dx_a<<"  dx_b = "<<dx_b<< std::endl;
+
+        //std::cout << "result = "<<result << std::endl;
+        return result;
+    };
+    
+    return Aeval;
+}
+
+auto make_boundary_layer_kernel_2d1p(const double mu, const vdouble2 domain_min, const vdouble2 domain_max) {
+
+    typedef Eigen::Matrix<double,2,1> mat2x1;
+    const vdouble2 box_size = domain_max-domain_min;
+    const double k = 2*PI/box_size[0];
+
+    // x = x - Llamba
+    auto integrate_real_space = [=](
+            const vdouble2& dx_a, 
+            const vdouble2& dx_b,
+            const bool self) {
+
+        const vdouble2 d = dx_b - dx_a;
+
+        auto fAy = [=](const double t) { 
+            const vdouble2 x = d*t + dx_a;
+            return -0.5*k*std::sinh(k*x[1])/(std::cos(k*x[0])-std::cosh(k*x[1]));
+        };
+
+        auto fAx = [=](const double t) { 
+            const vdouble2 x = d*t + dx_a;
+            return -0.5*k*std::sin(k*x[1])/(std::cos(k*x[0])-std::cosh(k*x[1]));
+        };
+
+        auto fAy_minus_ST = [=](const double t) { 
+            const vdouble2 x = d*t + dx_a;
+            const double r2 = x.squaredNorm();
+            return -0.5*k*std::sinh(k*x[1])/(std::cos(k*x[0])-std::cosh(k*x[1]))
+                    - 2*x[1]*x[1]*x[1]/std::pow(r2,2);
+        };
+
+        auto fAx_minus_ST = [=](const double t) { 
+            const vdouble2 x = d*t + dx_a;
+            const double r2 = x.squaredNorm();
+            return -0.5*k*std::sin(k*x[1])/(std::cos(k*x[0])-std::cosh(k*x[1]))
+                    - 2*x[1]*x[0]*x[1]/std::pow(r2,2);
+        };
+
+
+        const double Ay = boost::math::quadrature::gauss<double, 8>::
+            integrate(fAy, 0.0, 1.0);
+        const double Ax = boost::math::quadrature::gauss<double, 8>::
+            integrate(fAx, 0.0, 1.0);
+        
+        mat2x1 result;
+        result(0) = 2*mu*Ax;
+        result(1) = 2*mu*Ay;
+        result *= d.norm();
+        return result;
+    };
+
+    auto Aeval = [=](auto a, auto b) {
+
+        //std::cout << "Aeval:  a = "<<get<position>(a)<<" b = "<<get<position>(b)<< " b1 = "<<get<point_a>(b)<<" b2 = "<<get<point_b>(b)<<std::endl;
+
+        const vdouble2 dx_a = get<point_a>(b)-get<position>(a);
+        const vdouble2 dx_b = get<point_b>(b)-get<position>(a);
+
+
+        return integrate_real_space(dx_a,dx_b,get<id>(a) == get<id>(b));
+        //std::cout << "Aeval: dx_a = "<<dx_a<<"  dx_b = "<<dx_b<< std::endl;
+
+        //std::cout << "result = "<<result << std::endl;
+    };
+
+    return Aeval;
+
 }
 

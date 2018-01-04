@@ -5,9 +5,13 @@ void setup_elements(ElementsType& elements, ParticlesType& fibres, vdouble2 doma
     const double L = domain_max[0] - domain_min[0];
     const double Ly = domain_max[1] - domain_min[1];
     const double dtheta = 2*PI/nx;
+
     elements.resize(fibres.size()*nx);
+    vdouble2 ns_buffer(0,L/10.0);
 
     std::cout << "setup elements: domain_min = "<<domain_min<<" domain_max = "<<domain_max<<" fibre_radius = "<<fibre_radius<<" nx = "<<nx << std::endl;
+
+    
 
     for (int ii=0; ii<fibres.size(); ++ii) {
         const vdouble2 origin = get<position>(fibres)[ii];
@@ -18,6 +22,7 @@ void setup_elements(ElementsType& elements, ParticlesType& fibres, vdouble2 doma
             get<position>(p) = origin + fibre_radius*vdouble2(std::cos(kk*dtheta),std::sin(kk*dtheta));
             get<point_a>(p) = origin + fibre_radius*vdouble2(std::cos((kk-0.5)*dtheta),std::sin((kk-0.5)*dtheta));
             get<point_b>(p) = origin + fibre_radius*vdouble2(std::cos((kk+0.5)*dtheta),std::sin((kk+0.5)*dtheta));
+            get<boundary>(p) = false;
                 
             for (int i = 0; i < 2; ++i) {
                 if (get<position>(p)[i] < domain_min[i]) {
@@ -34,12 +39,34 @@ void setup_elements(ElementsType& elements, ParticlesType& fibres, vdouble2 doma
         }
     }
 
-    elements.init_neighbour_search(domain_min,domain_max,vbool2(true));
+    /*
+    const double dx_aim = (get<position>(elements)[0]-get<position>(elements)[1]).norm();
+    const int n_inlet = std::ceil(L/dx_aim);
+    const double dx = L/n_inlet;
+    elements.resize(fibres.size()*nx + n_inlet);
+
+    for (int i = 0; i < n_inlet; ++i) {
+        ElementsType::reference p = elements[fibres.size()*nx + 2*i];
+        get<position>(p) = vdouble2((i+0.5)*dx,domain_min[1]);
+        get<point_a>(p) = vdouble2((i)*dx,domain_min[1]);
+        get<point_b>(p) = vdouble2((i+1)*dx,domain_min[1]);
+        get<boundary>(p) = true;
+
+        ElementsType::reference p2 = elements[fibres.size()*nx + i];
+        get<position>(p2) = vdouble2((i+0.5)*dx,domain_max[1]);
+        get<point_a>(p2) = vdouble2((i)*dx,domain_max[1]);
+        get<point_b>(p2) = vdouble2((i+1)*dx,domain_max[1]);
+        get<boundary>(p2) = true;
+        
+    }
+    */
+
+    elements.init_neighbour_search(domain_min-ns_buffer,domain_max+ns_buffer,vbool2(true,false));
 }
 
 
 double solve_stokes_BEM(KnotsType &knots, ElementsType& elements, const double alpha, const int nlambda, const int nmu) {
-    std::cout << "solving stokes with BEM..."<<knots.size()<<std::endl;
+    std::cout << "solving stokes with BEM..."<<elements.size()<<std::endl;
 
     const double flow_rate = 1.0;
     const double mu = 1.0;
@@ -52,10 +79,11 @@ double solve_stokes_BEM(KnotsType &knots, ElementsType& elements, const double a
     const vdouble2 max = elements.get_max();
     const double h = (get<point_b>(elements)[0] - get<point_a>(elements)[0]).norm();
 
-    auto Aeval = make_greens_kernel(alpha,nlambda,nmu,h,min,max);
 
-    auto A = create_dense_operator(elements,elements,Aeval);
-    auto Aknots = create_dense_operator(knots,elements,Aeval);
+    auto A = create_dense_operator(elements,elements,
+            make_greens_kernel_2d1p(alpha,nlambda,nmu,h,min,max,true));
+
+    auto boundary_layer_kernel = make_boundary_layer_kernel_2d1p(mu,min,max);
 
     std::cout << "setup equations..."<<std::endl;
 
@@ -74,8 +102,25 @@ double solve_stokes_BEM(KnotsType &knots, ElementsType& elements, const double a
     A.assemble(A_eigen);
 
     for (int ii=0; ii<N; ++ii) {
-        source(2*ii) = 0;
-        source(2*ii+1) = -4*PI*mu*flow_rate;
+        if (get<boundary>(elements)[ii]) { 
+            /*
+            typedef Eigen::Matrix<double,2,1> mat2x1;
+            mat2x1 D = mat2x1::Zero();
+            for (int jj = 0; jj < N; ++jj) {
+                if (get<boundary>(elements)[jj]) { 
+                    D += boundary_layer_kernel(elements[ii],elements[jj]);
+                }
+            }
+            std::cout << "ii = "<<ii<<" D = "<< D << std::endl;
+            source(2*ii) = -flow_rate*(0 + D(0)); 
+            source(2*ii+1) = -flow_rate*(2*PI*mu + D(1)); 
+            */
+            source(2*ii) = 0;
+            source(2*ii+1) = -flow_rate*2*PI*mu;
+        } else {
+            source(2*ii) = 0;
+            source(2*ii+1) = -flow_rate*4*PI*mu;
+        }
     }
 
     std::cout << "solve w BEM ..."<<std::endl;
@@ -93,8 +138,11 @@ double solve_stokes_BEM(KnotsType &knots, ElementsType& elements, const double a
 
     vtkWriteGrid("BEMelements",0,elements.get_grid(true));
 
+    /*
     std::cout << "assemble knot matrix..."<<std::endl;
     matrix_type A_knot(2*knots.size(),2*N);
+    auto Aknots = create_dense_operator(knots,elements,
+            make_greens_kernel(alpha,nlambda,nmu,h,min,max,false));
     Aknots.assemble(A_knot);
     vector_type vel = -(A_knot*alphas)/(4.0*PI*mu);
 
@@ -104,6 +152,7 @@ double solve_stokes_BEM(KnotsType &knots, ElementsType& elements, const double a
     }
 
     vtkWriteGrid("BEMknots",0,knots.get_grid(true));
+    */
 
     std::cout << "done solving stokes"<<std::endl;
     return relative_error;

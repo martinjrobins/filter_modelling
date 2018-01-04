@@ -27,7 +27,7 @@ int main(int argc, char **argv) {
         ("k", po::value<double>(&k)->default_value(1.00), "spring constant")
         ("D", po::value<double>(&D)->default_value(0.01), "diffusion constant")
         ("particle_rate", po::value<double>(&particle_rate)->default_value(500.0), "particle rate")
-        ("periodic", po::value<bool>(&periodic)->default_value(false), "periodic in x")
+        ("periodic", po::value<bool>(&periodic)->default_value(true), "periodic in x")
         ("react_rate", po::value<double>(&react_rate)->default_value(1.0), "particle reaction rate")
 
         ("c0", po::value<double>(&c0)->default_value(0.0835), "kernel constant")
@@ -151,7 +151,7 @@ int main(int argc, char **argv) {
         //
         // SETUP KNOTS
         //
-        auto cdt = setup_knots(knots, fibres, fibre_radius, fibre_resolution, nx, domain_min, domain_max, k,periodic,10);
+        //setup_knots(knots, fibres, fibre_radius, fibre_resolution, nx, domain_min, domain_max, k,periodic,10);
 
         //
         // SETUP ELEMENTS 
@@ -173,9 +173,9 @@ int main(int argc, char **argv) {
         const double relative_error = solve_stokes_BEM(knots, elements, alpha, nlambda, nmu);
  
 
-        auto A = create_dense_operator(particles,elements,
-                        make_greens_kernel(alpha,nlambda,nmu,h,
-                                   elements.get_min(),elements.get_max()));
+        auto kernel = make_greens_kernel(alpha,nlambda,nmu,h,
+                                   elements.get_min(),elements.get_max(),false);
+        auto A = create_dense_operator(particles,elements,kernel);
      
 
         std::cout << "starting timesteps!"<<std::endl;
@@ -201,6 +201,12 @@ int main(int argc, char **argv) {
 
             // evaluate velocity field
             A.get_first_kernel().evaluate(get<velocity>(particles),get<traction>(elements));
+
+            #pragma omp parallel for
+            for (int i = 0; i < particles.size(); ++i) {
+                get<velocity>(particles)[i] *= -1.0/(4.0*PI*mu);
+                get<velocity>(particles)[i][1] -= flow_rate;
+            }
             
             t1 = Clock::now();
             time_vel_eval += (t1 - t0).count();
@@ -249,11 +255,9 @@ int main(int argc, char **argv) {
                     oa << BOOST_SERIALIZATION_NVP(fibres);
                     oa << BOOST_SERIALIZATION_NVP(dead_particles);
                 }
-                /*
                 vtkWriteGrid((base_dir + "particles").c_str(),ii,particles.get_grid(true));
                 vtkWriteGrid((base_dir + "fibres").c_str(),ii,fibres.get_grid(true));
                 vtkWriteGrid((base_dir + "dead_particles").c_str(),ii,dead_particles.get_grid(true));
-                */
             }
 
             // react with fibres
