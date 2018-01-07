@@ -57,6 +57,7 @@ int main(int argc, char **argv) {
 
     KnotsType knots;
     ElementsType elements;
+    ElementsType boundary;
     ParticlesType particles;
     ParticlesType dead_particles;
     ParticlesType fibres;
@@ -156,7 +157,7 @@ int main(int argc, char **argv) {
         //
         // SETUP ELEMENTS 
         //
-        setup_elements(elements, fibres, domain_min, domain_max, nx, fibre_radius);
+        setup_elements(elements, boundary, fibres, domain_min, domain_max, nx, fibre_radius);
  
 
 
@@ -170,10 +171,10 @@ int main(int argc, char **argv) {
         const double h = (get<point_b>(elements)[0] - get<point_a>(elements)[0]).norm();
         const int nlambda = 2;
         const int nmu = 2;
-        const double relative_error = solve_stokes_BEM(knots, elements, alpha, nlambda, nmu);
+        const double relative_error = solve_stokes_BEM(knots, elements, boundary,  alpha, nlambda, nmu);
  
 
-        auto kernel = make_greens_kernel(alpha,nlambda,nmu,h,
+        auto kernel = make_greens_kernel_2d1p(alpha,nlambda,nmu,h,
                                    elements.get_min(),elements.get_max(),false);
         auto A = create_dense_operator(particles,elements,kernel);
      
@@ -204,7 +205,7 @@ int main(int argc, char **argv) {
 
             #pragma omp parallel for
             for (int i = 0; i < particles.size(); ++i) {
-                get<velocity>(particles)[i] *= -1.0/(4.0*PI*mu);
+                get<velocity>(particles)[i] *= 1.0/(4.0*PI*mu);
                 get<velocity>(particles)[i][1] -= flow_rate;
             }
             

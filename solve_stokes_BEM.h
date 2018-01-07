@@ -6,9 +6,9 @@
 #include <boost/math/quadrature/gauss.hpp>
 
 
-void setup_elements(ElementsType& elements, ParticlesType& fibres, vdouble2 domain_min, vdouble2 domain_max, const unsigned int nx, const double fibre_radius );
+void setup_elements(ElementsType& elements, ElementsType& boundary, ParticlesType& fibres, vdouble2 domain_min, vdouble2 domain_max, const unsigned int nx, const double fibre_radius );
  
-double solve_stokes_BEM(KnotsType &knots, ElementsType& elements, const double alpha, const int nlambda, const int nmu);
+double solve_stokes_BEM(KnotsType &knots, ElementsType& elements, ElementsType& boundary, const double alpha, const int nlambda, const int nmu);
  
  
 auto make_greens_kernel(const double alpha, const int nlambda, const int nmu, const double h, const vdouble2 domain_min, const vdouble2 domain_max, const bool self) {
@@ -230,6 +230,25 @@ auto make_greens_kernel_2d1p(const double alpha, const int nlambda, const int nm
                  - (std::log(std::sqrt(r2)) - x[1]*x[1]/r2);
         };
 
+        auto fSxxST = [=](const double t) { 
+            const vdouble2 x = d*t + dx_a;
+            const double r2 = x.squaredNorm();
+            return (std::log(std::sqrt(r2)) - x[0]*x[0]/r2);
+        };
+
+        auto fSxyST = [=](const double t) { 
+            const vdouble2 x = d*t + dx_a;
+            const double r2 = x.squaredNorm();
+            return  (0.0                     - x[0]*x[1]/r2);
+        };
+
+
+        auto fSyyST = [=](const double t) { 
+            const vdouble2 x = d*t + dx_a;
+            const double r2 = x.squaredNorm();
+            return (std::log(std::sqrt(r2)) - x[1]*x[1]/r2);
+        };
+
 
         const double h = d.norm();
 
@@ -263,6 +282,24 @@ auto make_greens_kernel_2d1p(const double alpha, const int nlambda, const int nm
             result(1,0) = result(0,1);
             result(1,1) = h*boost::math::quadrature::gauss<double, 8>::
                 integrate(fSyy, 0.0, 1.0);
+
+            /*
+            if (std::abs(0.5*(dx_a[0]+dx_b[0])) < 0.01) {
+
+                mat2x2 result2;
+                result2(0,0) = h*boost::math::quadrature::gauss<double, 8>::
+                    integrate(fSxxST, 0.0, 1.0);
+                result2(0,1) = h*boost::math::quadrature::gauss<double, 8>::
+                    integrate(fSxyST, 0.0, 1.0);
+                result2(1,0) = result2(0,1);
+                result2(1,1) = h*boost::math::quadrature::gauss<double, 8>::
+                    integrate(fSyyST, 0.0, 1.0);
+
+                std::cout << " dx_a = "<<dx_a<<"  dx_b = "<<dx_b<< std::endl;
+                std::cout << "result = "<<result << std::endl;
+                std::cout << "result2 = "<<result2 << std::endl;
+            }
+            */
         }
 
         return result;
@@ -279,10 +316,7 @@ auto make_greens_kernel_2d1p(const double alpha, const int nlambda, const int nm
 
         result = integrate_real_space(dx_a,dx_b,self && get<id>(a)==get<id>(b));
         //result = integrate_real_space(dx_a,dx_b, dx_a[0]<0 != dx_b[0]<0);
-        if (self && get<id>(a)==get<id>(b)) {
-            std::cout << "Aeval: dx_a = "<<dx_a<<"  dx_b = "<<dx_b<< std::endl;
-            std::cout << "result = "<<result << std::endl;
-        }
+        
         return result;
     };
     
@@ -363,15 +397,15 @@ auto make_boundary_layer_kernel_2d1p(const double mu, const vdouble2 domain_min,
 
         if (self) {
             const vdouble2 dn = d/h;
-            result(0) = 2*mu*h*boost::math::quadrature::gauss<double, 8>::
+            result(0) = 2*mu*h*k*boost::math::quadrature::gauss<double, 8>::
                 integrate(Tyxy_minus_ST, 0.0, 1.0); 
-            result(1) = 2*mu*h*boost::math::quadrature::gauss<double, 8>::
+            result(1) = 2*mu*h*k*boost::math::quadrature::gauss<double, 8>::
                 integrate(Tyyy_minus_ST, 0.0, 1.0); 
         } else {
             const vdouble2 dn = d/h;
-            result(0) = 2*mu*h*boost::math::quadrature::gauss<double, 8>::
+            result(0) = 2*mu*h*k*boost::math::quadrature::gauss<double, 8>::
                 integrate(Tyxy, 0.0, 1.0); 
-            result(1) = 2*mu*h*boost::math::quadrature::gauss<double, 8>::
+            result(1) = 2*mu*h*k*boost::math::quadrature::gauss<double, 8>::
                 integrate(Tyyy, 0.0, 1.0); 
         }
         

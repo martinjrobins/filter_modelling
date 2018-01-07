@@ -8,6 +8,7 @@
 //#define COMPACT 
 
 #include "solve_stokes_BEM.h"
+#include "solve_laplace_BEM.h"
 
 
 
@@ -69,6 +70,7 @@ int main(int argc, char **argv) {
 
       KnotsType knots;
       ElementsType elements;
+      ElementsType boundary;
       ParticlesType particles;
       ParticlesType fibres;
 
@@ -108,12 +110,12 @@ int main(int argc, char **argv) {
       //
       // SETUP KNOTS
       //
-      setup_knots(knots, fibres, fibre_radius, fibre_resolution, nx, domain_min, domain_max, k,false,8*8);
+      setup_knots(knots, fibres, fibre_radius*1.01, fibre_resolution, nx, domain_min, domain_max, k,false,8*8);
 
         //
         // SETUP ELEMENTS 
         //
-        setup_elements(elements, fibres, domain_min, domain_max, nx, fibre_radius);
+        setup_elements(elements, boundary, fibres, domain_min, domain_max, nx, fibre_radius);
 
 
         max_iter_linear = knots.size()*4;
@@ -126,7 +128,9 @@ int main(int argc, char **argv) {
         const double h = (get<point_b>(elements)[0] - get<point_a>(elements)[0]).norm();
         const int nlambda = n;
         const int nmu = n;
-        const double relative_error = solve_stokes_BEM(knots, elements, alpha, nlambda, nmu);
+        const double relative_error = solve_stokes_BEM(knots, elements, boundary, alpha, nlambda, nmu);
+        solve_laplace_BEM(knots, elements);
+ 
  
 
       const size_t Nk = knots.size();

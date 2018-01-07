@@ -2,7 +2,8 @@ from sympy import *
 
 #2D1P greens function
 
-kx,ky,mu = symbols('kx ky mu')
+x,y,kx,ky,mu = symbols('x y kx ky mu')
+r = sqrt(x**2+y**2)
 
 A = 0.5*log(2*(cosh(ky)-cos(kx)))
 Ax = simplify(diff(A,kx))
@@ -22,8 +23,10 @@ print "Axy = "
 pprint(Axy)
 
 Sxx = simplify(A + ky*Ay - 1)
+SxxST = simplify(log(r) - x*x/r**2)
 Sxy = simplify(-ky*Ax)
 Syy = simplify(A - ky*Ay)
+SyyST = simplify(log(r) - x*x/r**2)
 Tyxy = 2*mu*simplify(Ax - (ky*Axy+Ax))
 Tyyy = 2*mu*simplify(ky*Axx + Ay)
 

@@ -70,6 +70,7 @@ set( CMAKE_EXPORT_COMPILE_COMMANDS 1 )
 
 set(source_files
     solve_stokes_BEM.cpp
+    solve_laplace_BEM.cpp
     filter.cpp
     setup_knots.cpp
     #solve_stokes_LMAPS.cpp

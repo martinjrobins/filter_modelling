@@ -72,7 +72,7 @@ void solve(Kernel &&kernel, VectorType &&result, VectorType &&source, size_t max
 
 }
 
-typedef Eigen::Matrix<double,2,1> eigen_vector;
+typedef Eigen::Vector2d eigen_vector;
 ABORIA_VARIABLE(inlet,uint8_t,"is_inlet_knot")
 ABORIA_VARIABLE(outlet,uint8_t,"is_outlet_knot")
 ABORIA_VARIABLE(boundary,uint8_t,"is_boundary_knot")
@@ -94,11 +94,14 @@ ABORIA_VARIABLE(kernel_constant,double,"kernel_constant")
 ABORIA_VARIABLE(point_a,vdouble2,"start point of element")
 ABORIA_VARIABLE(point_b,vdouble2,"end point of element")
 ABORIA_VARIABLE(traction,eigen_vector,"traction of element")
+ABORIA_VARIABLE(knotpot,double,"knot potential")
+ABORIA_VARIABLE(gradP,double,"gradient_of_potential")
+ABORIA_VARIABLE(normal,eigen_vector,"normal")
 
-typedef Particles<std::tuple<alpha1,alpha2,boundary,target,inlet,outlet,interior,velocity,velocity_dudx,velocity_dudy,velocity_dvdx,velocity_dvdy,pressure,kernel_constant>,2,std::vector,nanoflann_adaptor> KnotsType;
-typedef Particles<std::tuple<dvelocity,dpressure,velocity,pressure,kernel_constant>,2> ComsolType;
+typedef Particles<std::tuple<boundary,alpha1,alpha2,boundary,target,inlet,outlet,interior,velocity,velocity_dudx,velocity_dudy,velocity_dvdx,velocity_dvdy,pressure,kernel_constant,knotpot>,2,std::vector,nanoflann_adaptor> KnotsType;
+typedef Particles<std::tuple<boundary,dvelocity,dpressure,velocity,pressure,kernel_constant>,2> ComsolType;
 typedef Particles<std::tuple<velocity,kernel_constant,angle,count>,2> ParticlesType;
-typedef Particles<std::tuple<point_a,point_b,traction,boundary>,2> ElementsType;
+typedef Particles<std::tuple<point_a,point_b,traction,boundary,normal,gradP>,2> ElementsType;
 typedef position_d<2> position;
 
 
