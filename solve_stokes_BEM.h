@@ -170,6 +170,7 @@ auto make_greens_kernel_2d1p(const double alpha, const int nlambda, const int nm
 
     const vdouble2 box_size = domain_max-domain_min;
     const double k = 2*PI/box_size[0];
+    std::cout << "make greens kernel 2d1p k = "<<k << std::endl;
 
     // x = x - Llamba
     auto integrate_real_space = [=](
@@ -308,13 +309,15 @@ auto make_greens_kernel_2d1p(const double alpha, const int nlambda, const int nm
 
     auto Aeval = [=](auto a, auto b) {
 
-        //std::cout << "Aeval:  a = "<<get<position>(a)<<" b = "<<get<position>(b)<< " b1 = "<<get<point_a>(b)<<" b2 = "<<get<point_b>(b)<<std::endl;
         mat2x2 result = mat2x2::Zero();
 
         const vdouble2 dx_a = get<point_a>(b)-get<position>(a);
         const vdouble2 dx_b = get<point_b>(b)-get<position>(a);
 
         result = integrate_real_space(dx_a,dx_b,self && get<id>(a)==get<id>(b));
+
+        //std::cout << "Aeval:  a = "<<get<position>(a)<<" b = "<<get<position>(b)<< " b1 = "<<get<point_a>(b)<<" b2 = "<<get<point_b>(b)<<std::endl;
+        //std::cout << "result = "<< result << std::endl;
         //result = integrate_real_space(dx_a,dx_b, dx_a[0]<0 != dx_b[0]<0);
         
         return result;

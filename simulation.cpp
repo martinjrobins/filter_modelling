@@ -159,8 +159,6 @@ int main(int argc, char **argv) {
         // SETUP ELEMENTS 
         //
         setup_elements(elements, boundary, fibres, domain_min, domain_max, nx, fibre_radius);
- 
-
 
         max_iter_linear = knots.size()*4;
         restart_linear = max_iter_linear+1;
@@ -176,11 +174,11 @@ int main(int argc, char **argv) {
         solve_laplace_BEM(knots, elements, fibres_charge);
  
 
-        auto stokesSLP = create_dense_operator(particles,elements,
-               make_greens_kernel_2d1p(alpha,nlambda,nmu,h,
-                                   domain_min,domain_max,false));
-        auto laplaceGradSLP= create_dense_operator(particles,elements,
-            make_laplace_gradSLP_2d1p(domain_min,domain_max,false));
+        auto stokesSLPkernel = make_greens_kernel_2d1p(alpha,nlambda,nmu,h,
+                                   domain_min,domain_max,false);
+        auto stokesSLP = create_dense_operator(particles,elements,stokesSLPkernel);
+        auto laplaceGradSLPkernel = make_laplace_gradSLP_2d1p(domain_min,domain_max,false);
+        auto laplaceGradSLP= create_dense_operator(particles,elements,laplaceGradSLPkernel);
      
 
         std::cout << "starting timesteps!"<<std::endl;
@@ -211,7 +209,9 @@ int main(int argc, char **argv) {
 
             // evaluate velocity field
             stokesSLP.get_first_kernel().evaluate(get<stokes_velocity>(particles),get<traction>(elements));
-            laplaceGradSLP.get_first_kernel().evaluate(get<electro_velocity>(particles),get<gradP>(elements));
+            if (electrostatics_fibre) {
+                laplaceGradSLP.get_first_kernel().evaluate(get<electro_velocity>(particles),get<gradP>(elements));
+            }
 
 
             #pragma omp parallel for
@@ -220,8 +220,6 @@ int main(int argc, char **argv) {
                 get<stokes_velocity>(particles)[i][1] -= flow_rate;
                 get<velocity>(particles)[i] = get<stokes_velocity>(particles)[i]
                                             + get<electro_velocity>(particles)[i];
-                std::cout << "stokes velocity = "<<get<stokes_velocity>(particles)[i] <<
-                             "electro velocity = "<< get<electro_velocity>(particles)[i] << std::endl;
             }
             
             t1 = Clock::now();
