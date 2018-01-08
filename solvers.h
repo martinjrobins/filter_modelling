@@ -747,8 +747,8 @@ double solve_laplace_BEM(KnotsType &knots, ElementsType& elements, const double 
     const double h = (get<point_b>(elements)[0] - get<point_a>(elements)[0]).norm();
 
 
-    auto Aslp = create_dense_operator(elements,elements,
-            make_laplace_SLP_2d1p(min,max,true));
+    auto kernel = make_laplace_SLP_2d1p(min,max,true);
+    auto Aslp = create_dense_operator(elements,elements,kernel);
 
     std::cout << "setup equations..."<<std::endl;
 
@@ -784,10 +784,10 @@ double solve_laplace_BEM(KnotsType &knots, ElementsType& elements, const double 
     vtkWriteGrid("BEMelements",0,elements.get_grid(true));
 
     std::cout << "assemble knot matrix..."<<std::endl;
-    auto AknotsSLP = create_dense_operator(knots,elements,
-            make_laplace_SLP_2d1p(min,max,false));
-    auto AknotsDLP = create_dense_operator(knots,elements,
-            make_laplace_gradSLP_2d1p(min,max,false));
+    auto kernel2 = make_laplace_SLP_2d1p(min,max,false); 
+    auto AknotsSLP = create_dense_operator(knots,elements,kernel2);
+    auto kernel3 = make_laplace_gradSLP_2d1p(min,max,false);
+    auto AknotsDLP = create_dense_operator(knots,elements,kernel3);
 
     AknotsSLP.get_first_kernel().evaluate(get<knotpot>(knots),get<gradP>(elements));
     AknotsDLP.get_first_kernel().evaluate(get<gradknotpot>(knots),get<gradP>(elements));
