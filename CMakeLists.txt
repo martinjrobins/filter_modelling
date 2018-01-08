@@ -63,7 +63,7 @@ add_definitions(-DHAVE_EIGEN)
 
 find_package(CGAL REQUIRED)
 find_package(GMP REQUIRED)
-set(filter_libs ${filter_libs} ${CGAL_LIBRARIES} ${GMP_LIBRARIES})
+set(filter_libs ${filter_libs} ${GMP_LIBRARIES})
 
 #export compiler flags for code completion engines
 set( CMAKE_EXPORT_COMPILE_COMMANDS 1 )
@@ -85,7 +85,7 @@ add_executable(simulation simulation.cpp ${source_files} )
 target_link_libraries(simulation ${filter_libs})
 
 add_executable(optimc optimc.cpp ${source_files} setup_knots.cpp)
-target_link_libraries(optimc ${filter_libs})
+target_link_libraries(optimc ${filter_libs} ${CGAL_LIBRARIES} )
 
 #add_executable(fmm_eval fmm_eval.cpp )
 #target_link_libraries(fmm_eval filter_modelling )
