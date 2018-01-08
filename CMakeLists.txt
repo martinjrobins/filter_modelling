@@ -69,10 +69,9 @@ set(filter_libs ${filter_libs} ${CGAL_LIBRARIES} ${GMP_LIBRARIES})
 set( CMAKE_EXPORT_COMPILE_COMMANDS 1 )
 
 set(source_files
-    solve_stokes_BEM.cpp
-    solve_laplace_BEM.cpp
+    #solve_stokes_BEM.cpp
+    #solve_laplace_BEM.cpp
     filter.cpp
-    setup_knots.cpp
     #solve_stokes_LMAPS.cpp
     #solve_stokes_Compact.cpp
     )
@@ -82,17 +81,11 @@ set(filter_include_dirs ${filter_include_dirs} ${CXXTEST_INCLUDES} ${EIGEN3_INCL
 
 include_directories(${filter_include_dirs})
 
-add_library(filter_modelling SHARED ${source_files})
-target_link_libraries(filter_modelling ${filter_libs})
+add_executable(simulation simulation.cpp ${source_files} )
+target_link_libraries(simulation ${filter_libs})
 
-add_executable(check_solutions check_solutions.cpp )
-target_link_libraries(check_solutions ${filter_libs})
-
-add_executable(simulation simulation.cpp )
-target_link_libraries(simulation filter_modelling ${filter_libs})
-
-add_executable(optimc optimc.cpp )
-target_link_libraries(optimc filter_modelling ${filter_libs})
+add_executable(optimc optimc.cpp ${source_files} setup_knots.cpp)
+target_link_libraries(optimc ${filter_libs})
 
 #add_executable(fmm_eval fmm_eval.cpp )
 #target_link_libraries(fmm_eval filter_modelling )

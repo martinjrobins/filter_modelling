@@ -1,7 +1,6 @@
 #include "filter.h"
-#include "solve_stokes_BEM.h"
-#include "solve_laplace_BEM.h"
-#include "setup_knots.h"
+#include "solvers.h"
+//#include "setup_knots.h"
 #include <boost/archive/xml_oarchive.hpp>
 #include <fstream>
 

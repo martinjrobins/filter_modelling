@@ -69,6 +69,7 @@ void setup_elements(ElementsType& elements, ElementsType& boundarye, ParticlesTy
 }
 
 
+
 double solve_stokes_BEM(KnotsType &knots, ElementsType& elements, ElementsType& boundarye, const double alpha, const int nlambda, const int nmu) {
     std::cout << "solving stokes with BEM..."<<elements.size()<<std::endl;
 
