@@ -1,10 +1,11 @@
 #include "solve_laplace_BEM.h"
+#include <algorithm>
 
 
-double solve_laplace_BEM(KnotsType &knots, ElementsType& elements) {
+double solve_laplace_BEM(KnotsType &knots, ElementsType& elements, const double fibre_charge) {
     std::cout << "solving stokes with BEM..."<<elements.size()<<std::endl;
 
-    const double pot = 1.0;
+    const double pot = fibre_charge;
     const double mu = 1.0;
 
     typedef typename KnotsType::position position;
@@ -18,8 +19,6 @@ double solve_laplace_BEM(KnotsType &knots, ElementsType& elements) {
 
     auto Aslp = create_dense_operator(elements,elements,
             make_laplace_SLP_2d1p(min,max,true));
-    auto Adlp = create_dense_operator(elements,elements,
-            make_laplace_DLP_2d1p(min,max,true));
 
     std::cout << "setup equations..."<<std::endl;
 
@@ -38,12 +37,7 @@ double solve_laplace_BEM(KnotsType &knots, ElementsType& elements) {
     Aslp.assemble(A_eigen);
 
     potential = vector_type::Ones(N)*pot;
-    vector_type edlp = Adlp*potential;
-    for (int i = 0; i < N; ++i) {
-        std::cout << "dlp at element: "<<edlp[i] << std::endl;
-    }
-    //source = Adlp*potential + PI*potential;
-    source = 2*PI*potential;
+    source = -2*PI*potential;
 
     std::cout << "solve w BEM ..."<<std::endl;
     alphas = A_eigen.householderQr().solve(source);
@@ -63,19 +57,19 @@ double solve_laplace_BEM(KnotsType &knots, ElementsType& elements) {
     auto AknotsSLP = create_dense_operator(knots,elements,
             make_laplace_SLP_2d1p(min,max,false));
     auto AknotsDLP = create_dense_operator(knots,elements,
-            make_laplace_DLP_2d1p(min,max,false));
+            make_laplace_gradSLP_2d1p(min,max,false));
 
+    AknotsSLP.get_first_kernel().evaluate(get<knotpot>(knots),get<gradP>(elements));
+    AknotsDLP.get_first_kernel().evaluate(get<gradknotpot>(knots),get<gradP>(elements));
+    std::transform(std::begin(get<gradknotpot>(knots)),
+                   std::end(get<gradknotpot>(knots)),
+                    std::begin(get<gradknotpot>(knots)),
+                   [](auto& i) { return i/(-2*PI); });
+    std::transform(std::begin(get<knotpot>(knots)),
+                   std::end(get<knotpot>(knots)),
+                   std::begin(get<knotpot>(knots)),
+                   [](auto& i) { return i/(-2*PI); });
     
-    vector_type slp = AknotsSLP*alphas/(2*PI);
-    vector_type dlp = AknotsDLP*potential/(-2*PI);
-    vector_type svel = (AknotsSLP*alphas-AknotsDLP*potential)/(2*PI);
-
-    for (int ii=0; ii<knots.size(); ++ii) {
-        get<knotpot>(knots)[ii] = svel[ii];
-        get<velocity_dudx>(knots)[ii] = slp[ii];
-        get<velocity_dudy>(knots)[ii] = dlp[ii];
-    }
-
     vtkWriteGrid("BEMknots",0,knots.get_grid(true));
 
     std::cout << "done solving laplace"<<std::endl;

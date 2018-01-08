@@ -129,7 +129,7 @@ int main(int argc, char **argv) {
         const int nlambda = n;
         const int nmu = n;
         const double relative_error = solve_stokes_BEM(knots, elements, boundary, alpha, nlambda, nmu);
-        solve_laplace_BEM(knots, elements);
+        solve_laplace_BEM(knots, elements, 1.0);
  
  
 

@@ -78,4 +78,20 @@ print "Tyyy = "
 pprint(Tyyy)
 
 
+#Analytical integrals for 2D laplace singularity
+dx,dy,h,t,k = symbols('d_x d_y h t k')
+
+x = dx*h*t
+y = dy*h*t
+A = 0.5*log(2*(cosh(k*y)-cos(k*x)))
+Ax = -0.5*k*sin(k*x)/(cos(k*x)-cosh(k*y))
+Ay = -0.5*k*sinh(k*y)/(cos(k*x)-cosh(k*y))
+IAx = simplify(integrate(Ax,(t,-0.5,0.5)))
+IAy = simplify(integrate(Ay,(t,-0.5,0.5)))
+
+print "IAx = "
+pprint(IAx)
+print "IAy = "
+pprint(IAy)
+
 

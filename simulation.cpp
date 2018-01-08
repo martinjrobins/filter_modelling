@@ -1,5 +1,6 @@
 #include "filter.h"
 #include "solve_stokes_BEM.h"
+#include "solve_laplace_BEM.h"
 #include "setup_knots.h"
 #include <boost/archive/xml_oarchive.hpp>
 #include <fstream>
@@ -152,7 +153,7 @@ int main(int argc, char **argv) {
         //
         // SETUP KNOTS
         //
-        //setup_knots(knots, fibres, fibre_radius, fibre_resolution, nx, domain_min, domain_max, k,periodic,10);
+        //setup_knots(knots, fibres, fibre_radius, fibre_resolution, nx, domain_min, domain_max, k,false,10);
 
         //
         // SETUP ELEMENTS 
@@ -172,11 +173,14 @@ int main(int argc, char **argv) {
         const int nlambda = 2;
         const int nmu = 2;
         const double relative_error = solve_stokes_BEM(knots, elements, boundary,  alpha, nlambda, nmu);
+        solve_laplace_BEM(knots, elements, fibres_charge);
  
 
-        auto kernel = make_greens_kernel_2d1p(alpha,nlambda,nmu,h,
-                                   elements.get_min(),elements.get_max(),false);
-        auto A = create_dense_operator(particles,elements,kernel);
+        auto stokesSLP = create_dense_operator(particles,elements,
+               make_greens_kernel_2d1p(alpha,nlambda,nmu,h,
+                                   domain_min,domain_max,false));
+        auto laplaceGradSLP= create_dense_operator(particles,elements,
+            make_laplace_gradSLP_2d1p(domain_min,domain_max,false));
      
 
         std::cout << "starting timesteps!"<<std::endl;
@@ -193,20 +197,31 @@ int main(int argc, char **argv) {
             for (int jj=0; jj<new_n; ++jj) {
                 ParticlesType::value_type p;
                 get<position>(p) = vdouble2(uniform(rnd_generator),domain_max[1]-particle_radius);
-                get<kernel_constant>(p) = c0;
                 particles.push_back(p);
             }
 
 
             t0 = Clock::now();
 
+            #pragma omp parallel for
+            for (int i = 0; i < particles.size(); ++i) {
+                get<stokes_velocity>(particles)[i] = eigen_vector::Zero();
+                get<electro_velocity>(particles)[i] = eigen_vector::Zero();
+            }
+
             // evaluate velocity field
-            A.get_first_kernel().evaluate(get<velocity>(particles),get<traction>(elements));
+            stokesSLP.get_first_kernel().evaluate(get<stokes_velocity>(particles),get<traction>(elements));
+            laplaceGradSLP.get_first_kernel().evaluate(get<electro_velocity>(particles),get<gradP>(elements));
+
 
             #pragma omp parallel for
             for (int i = 0; i < particles.size(); ++i) {
-                get<velocity>(particles)[i] *= 1.0/(4.0*PI*mu);
-                get<velocity>(particles)[i][1] -= flow_rate;
+                get<stokes_velocity>(particles)[i] *= 1.0/(4.0*PI*mu);
+                get<stokes_velocity>(particles)[i][1] -= flow_rate;
+                get<velocity>(particles)[i] = get<stokes_velocity>(particles)[i]
+                                            + get<electro_velocity>(particles)[i];
+                std::cout << "stokes velocity = "<<get<stokes_velocity>(particles)[i] <<
+                             "electro velocity = "<< get<electro_velocity>(particles)[i] << std::endl;
             }
             
             t1 = Clock::now();
@@ -221,6 +236,7 @@ int main(int argc, char **argv) {
             #pragma omp parallel for
             for (int i = 0; i < particles.size(); ++i) {
                 ParticlesType::reference p = particles[i];
+                /*
                 if (electrostatics_fibre) {
                     for (int i = 0; i < fibres.size(); ++i) {
                         ParticlesType::reference f = fibres[i];
@@ -233,6 +249,7 @@ int main(int argc, char **argv) {
                         }
                     }
                 }
+                */
                 std::normal_distribution<double> normal;
                 const vdouble2 N(normal(get<generator>(particles)[i]),
                                  normal(get<generator>(particles)[i]));

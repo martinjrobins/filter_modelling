@@ -6,11 +6,10 @@
 #include <boost/math/quadrature/gauss.hpp>
 
 
-double solve_laplace_BEM(KnotsType &knots, ElementsType& elements);
+double solve_laplace_BEM(KnotsType &knots, ElementsType& elements, const double fibre_charge);
  
 //https://books.google.co.uk/books?id=iXTLBQAAQBAJ&pg=PA207&lpg=PA207&dq=laplace+green%27s+function+singly+periodic&source=bl&ots=UwwLqXz4xb&sig=GvO-3wMVN_wkcg3tm7GmOkfcxTw&hl=en&sa=X&ved=0ahUKEwjBlJi828LYAhUIJMAKHZN6BpoQ6AEIODAC#v=onepage&q=laplace%20green's%20function%20singly%20periodic&f=false 
 auto make_laplace_SLP_2d1p(const vdouble2 domain_min, const vdouble2 domain_max, const bool self) {
-    typedef Eigen::Matrix<double,1,1> mat1x1;
 
     const vdouble2 box_size = domain_max-domain_min;
     const double k = 2*PI/box_size[0];
@@ -21,7 +20,6 @@ auto make_laplace_SLP_2d1p(const vdouble2 domain_min, const vdouble2 domain_max,
             const vdouble2& dx_b,
             const bool self) {
 
-        mat1x1 result;
         const vdouble2 d = dx_b - dx_a;
 
         auto A = [=](const vdouble2& x) {
@@ -42,14 +40,15 @@ auto make_laplace_SLP_2d1p(const vdouble2 domain_min, const vdouble2 domain_max,
 
         const double h = d.norm();
 
+        double result;
         if (self) {
             const vdouble2 dn = d/h;
             const double C = std::log(h) - 1.69314718055995;
-            result(0,0) = h*boost::math::quadrature::gauss<double, 8>::
+            result = h*boost::math::quadrature::gauss<double, 8>::
                 integrate(fSxx_minus_ST, 0.0, 1.0)
                 + h*C;
         } else {
-            result(0,0) = h*boost::math::quadrature::gauss<double, 8>::
+            result = h*boost::math::quadrature::gauss<double, 8>::
                 integrate(fSxx, 0.0, 1.0);
 
         }
@@ -61,21 +60,19 @@ auto make_laplace_SLP_2d1p(const vdouble2 domain_min, const vdouble2 domain_max,
     auto Aeval = [=](auto a, auto b) {
 
         //std::cout << "Aeval:  a = "<<get<position>(a)<<" b = "<<get<position>(b)<< " b1 = "<<get<point_a>(b)<<" b2 = "<<get<point_b>(b)<<std::endl;
-        mat1x1 result = mat1x1::Zero();
 
         const vdouble2 dx_a = get<point_a>(b)-get<position>(a);
         const vdouble2 dx_b = get<point_b>(b)-get<position>(a);
 
-        result = integrate_real_space(dx_a,dx_b,self && get<id>(a)==get<id>(b));
+        return integrate_real_space(dx_a,dx_b,self && get<id>(a)==get<id>(b));
         //result = integrate_real_space(dx_a,dx_b, dx_a[0]<0 != dx_b[0]<0);
         
-        return result;
     };
     
     return Aeval;
 }
 
-auto make_laplace_DLP_2d1p(const vdouble2 domain_min, const vdouble2 domain_max, const bool self) {
+auto make_laplace_gradSLP_2d1p(const vdouble2 domain_min, const vdouble2 domain_max, const bool self) {
 
     typedef Eigen::Vector2d mat2x1;
     const vdouble2 box_size = domain_max-domain_min;
@@ -146,17 +143,20 @@ auto make_laplace_DLP_2d1p(const vdouble2 domain_min, const vdouble2 domain_max,
     };
 
     auto Aeval = [=](auto a, auto b) {
-        mat2x1 result = mat2x1::Zero();
         //std::cout << "Aeval:  a = "<<get<position>(a)<<" b = "<<get<position>(b)<< " b1 = "<<get<point_a>(b)<<" b2 = "<<get<point_b>(b)<<std::endl;
 
         const vdouble2 dx_a = get<point_a>(b)-get<position>(a);
         const vdouble2 dx_b = get<point_b>(b)-get<position>(a);
 
 
-        result = integrate_real_space(dx_a,dx_b,self && get<id>(a) == get<id>(b));
-        //std::cout << "Aeval: boundary = "<<get<boundary>(b)<<" dx_a = "<<dx_a<<"  dx_b = "<<dx_b<< std::endl;
-        //std::cout << "result = "<<result << std::endl;
-        return result.dot(get<normal>(b));
+
+        /*
+        std::cout << "Aeval:  k*dx_a = "<<k*dx_a<<"  k*dx_b = "<<k*dx_b<< std::endl;
+        std::cout << "position a = "<<get<position>(a) << std::endl;
+        std::cout << "pointa = "<<get<point_a>(b)<<" pointb = "<<get<point_b>(b) << std::endl;
+        std::cout << "result = "<<integrate_real_space(dx_a,dx_b,self && get<id>(a) == get<id>(b))<< std::endl;
+        */
+        return integrate_real_space(dx_a,dx_b,self && get<id>(a) == get<id>(b));
     };
 
     return Aeval;

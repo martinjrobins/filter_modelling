@@ -504,6 +504,7 @@ CDT setup_knots(KnotsType &knots, ParticlesType &fibres, const double fibre_radi
     return cdt;
 }
 
+/*
 void calculate_c(KnotsType &knots, double c0, const double nx, vdouble2 domain_min, vdouble2 domain_max) {
     std::cout << "calculate c..."<<knots.size()<<std::endl;
 
@@ -541,3 +542,4 @@ void calculate_c(KnotsType &knots, double c0, const double nx, vdouble2 domain_m
     //vtkWriteGrid("init_knots",2,knots.get_grid(true));
     std::cout << "done calculate c."<<std::endl;
 }
+*/
