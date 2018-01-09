@@ -77,7 +77,7 @@ int main(int argc, char **argv) {
     const vdouble2 domain_min(0,-1);
     const vdouble2 domain_max(L,L+1);
     const vdouble2 ns_buffer_fibres(L/3,2*particle_radius);
-    const vdouble2 ns_buffer_particles(static_cast<int>(reflective)*L/3,2*particle_radius);
+    const vdouble2 ns_buffer_particles(static_cast<int>(reflective)*L/3,L/2);
 
     std::default_random_engine rnd_generator(seed);
 
@@ -252,14 +252,19 @@ int main(int argc, char **argv) {
                                  normal(get<generator>(particles)[i]));
 
                 get<position>(p) += std::sqrt(2.0*D*dt)*N;
-                for (int i = 0; i < D; ++i) {
+                for (int i = 0; i < 2; ++i) {
                     get<position>(p)[i] += dt*get<velocity>(p)[i];
                 }
+                /*
+                if (get<position>(p)[1] > domain_max[1]+ns_buffer_particles[1] || get<position>(p)[1] < domain_min[1]-ns_buffer_particles[1]) {
+                    std::cout << "error: particle at "<<get<position>(p)<<" with velocity = "<<get<velocity>(p) << std::endl;
+                }
+                */
             }
 
 
             if (ii % timesteps_per_out == 0) {
-                std::cout << "timestep "<<ii<<" of "<<timesteps<<" (time_vel_eval = "<<time_vel_eval<<" time_vel_rest = "<<time_vel_rest<<std::endl;
+                std::cout << "timestep "<<ii<<" of "<<timesteps<<" (time_vel_eval = "<<time_vel_eval<<" time_vel_rest = "<<time_vel_rest<<") "<<particles.size()<<" particles alive"<<std::endl;
                 {
                     std::ostringstream ostr;
                     ostr << std::setfill('0') << std::setw(5) << ii;

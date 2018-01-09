@@ -84,7 +84,8 @@ def plot_main(particles,fibres,dparticles,filename,just_lhs=False):
     vis_ax.axis('off')
 
     vis_ax.scatter(particles.x,particles.y,7,'k',lw = 0)
-    vis_ax.scatter(fibres.x,fibres.y,300+70*(10-fibres.y),fibres.count,lw = 0)
+    #vis_ax.scatter(fibres.x,fibres.y,300+70*(10-fibres.y),fibres.count,lw = 0)
+    vis_ax.scatter(fibres.x,fibres.y,300,fibres.count,lw = 0)
     #vis_ax.scatter(dparticles.x,dparticles.y,7,'r',lw = 0)
     vis_ax.arrow(0.1, -1.5, 0, 1, head_width=0.1, head_length=0.2, fc='k', ec='k')
     vis_ax.arrow(0.1, -1.5, 1, 0, head_width=0.1, head_length=0.2, fc='k', ec='k')
@@ -185,15 +186,15 @@ for tpl in itertools.izip(*random_simulation_files_tmp):
 
 
 
-#for hexagon_file,regular_file,random_file,i in zip(hexagon_dead_particles_files,regular_dead_particles_files,random_dead_particles_files,range(len(hexagon_dead_particles_files))):
-#    print hexagon_file
-#    hexagon = get_particle_data(hexagon_file)
-#    print regular_file
-#    regular = get_particle_data(regular_file)
-#    print random_file
-#    random = get_particle_data(random_file)
-#    plot_compare(hexagon,regular,random,'compare%05d.png'%(i))
-#
+for hexagon_file,regular_file,random_file,i in zip(hexagon_dead_particles_files,regular_dead_particles_files,random_dead_particles_files,range(len(hexagon_dead_particles_files))):
+    print hexagon_file
+    hexagon = get_particle_data(hexagon_file)
+    print regular_file
+    regular = get_particle_data(regular_file)
+    print random_file
+    random = get_particle_data(random_file)
+    plot_compare(hexagon,regular,random,'compare%05d.png'%(i))
+
 #for hexagon_file,regular_file,random_files,i in zip(hexagon_simulation_files,regular_simulation_files,random_simulation_files,range(len(hexagon_simulation_files))):
 #    print hexagon_file
 #    hexagon, = get_simulation_data(hexagon_file,['dead_particles'])
@@ -226,11 +227,11 @@ for simtype in ['regular']:
         plot_main(particles,fibres,dparticles,'%s_main%05d.png'%(simtype,i))
         plot_main(particles,fibres,dparticles,'%s_main_just_lhs%05d.png'%(simtype,i),True)
 
-for simtype in ['hexagon','regular']+random_sims:
-    sim_files = sorted(glob.glob('./%s_simulation*.xml'%simtype))
-    for sim_file,i in zip(sim_files,range(len(sim_files))):
-        print sim_file
-        particles,fibres,dparticles = get_simulation_data(sim_file)
-        plot_main(particles,fibres,dparticles,'%s_main%05d.png'%(simtype,i))
-        plot_main(particles,fibres,dparticles,'%s_main_just_lhs%05d.png'%(simtype,i),True)
+#for simtype in ['hexagon','regular']+random_sims:
+#    sim_files = sorted(glob.glob('./%s_simulation*.xml'%simtype))
+#    for sim_file,i in zip(sim_files,range(len(sim_files))):
+#        print sim_file
+#        particles,fibres,dparticles = get_simulation_data(sim_file)
+#        plot_main(particles,fibres,dparticles,'%s_main%05d.png'%(simtype,i))
+#        plot_main(particles,fibres,dparticles,'%s_main_just_lhs%05d.png'%(simtype,i),True)
 
