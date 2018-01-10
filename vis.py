@@ -172,27 +172,39 @@ def plot_compare(hexagon_dparticles,regular_dparticles,random_dparticles,filenam
 random_sims = ['%02drandom'%i for i in range(0,21)]
 hexagon_dead_particles_files = sorted(glob.glob('./hexagon_dead_particles*.vtu'))
 regular_dead_particles_files = sorted(glob.glob('./regular_dead_particles*.vtu'))
-random_dead_particles_files = sorted(glob.glob('./random_dead_particles*.vtu'))
+
 regular_simulation_files = sorted(glob.glob('./regular_simulation*.xml'))
 hexagon_simulation_files = sorted(glob.glob('./hexagon_simulation*.xml'))
 
 random_simulation_files_tmp = []
+random_dead_particles_files_tmp = []
 for i in random_sims:
     random_simulation_files_tmp.append(sorted(glob.glob('./%s_simulation*.xml'%i)))
+    random_dead_particles_files_tmp.append(sorted(glob.glob('./%s_dead_particles*.vtu'%i)))
 
 random_simulation_files = []
+random_dead_particles_files = []
 for tpl in itertools.izip(*random_simulation_files_tmp):
     random_simulation_files.append(tpl)
+for tpl in itertools.izip(*random_dead_particles_files_tmp):
+    random_dead_particles_files.append(tpl)
 
+print hexagon_dead_particles_files
+print random_dead_particles_files
 
-
-for hexagon_file,regular_file,random_file,i in zip(hexagon_dead_particles_files,regular_dead_particles_files,random_dead_particles_files,range(len(hexagon_dead_particles_files))):
+for hexagon_file,regular_file,random_files,i in zip(hexagon_dead_particles_files,regular_dead_particles_files,random_dead_particles_files,range(len(hexagon_dead_particles_files))):
     print hexagon_file
     hexagon = get_particle_data(hexagon_file)
     print regular_file
     regular = get_particle_data(regular_file)
-    print random_file
-    random = get_particle_data(random_file)
+    random = ParticlesData(np.zeros(0),np.zeros(0),np.zeros(0),np.zeros(0))
+    for random_file in random_files:
+        print random_file
+        tmp = get_particle_data(random_file)
+        random = ParticlesData(np.concatenate([random.x,tmp.x]),
+                                 np.concatenate([random.y,tmp.y]),
+                                 np.concatenate([random.angle,tmp.angle]),
+                                 np.concatenate([random.count,tmp.count]))
     plot_compare(hexagon,regular,random,'compare%05d.png'%(i))
 
 #for hexagon_file,regular_file,random_files,i in zip(hexagon_simulation_files,regular_simulation_files,random_simulation_files,range(len(hexagon_simulation_files))):
@@ -212,8 +224,8 @@ for hexagon_file,regular_file,random_file,i in zip(hexagon_dead_particles_files,
 
 
 
-#for simtype in ['hexagon','regular']+random_sims:
-for simtype in ['regular']:
+for simtype in ['hexagon','regular']+random_sims:
+#for simtype in ['regular']:
     particles_files = sorted(glob.glob('./%s_particles*.vtu'%simtype))
     fibres_files = sorted(glob.glob('./%s_fibres*.vtu'%simtype))
     dead_particles_files = sorted(glob.glob('./%s_dead_particles*.vtu'%simtype))
