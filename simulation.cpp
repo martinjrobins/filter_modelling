@@ -135,7 +135,7 @@ int main(int argc, char **argv) {
                 }
             }
 
-            particles.init_neighbour_search(domain_min-ns_buffer_particles,domain_max+ns_buffer_particles,vbool2(!reflective,false));
+            particles.init_neighbour_search(domain_min,domain_max+ns_buffer_particles,vbool2(!reflective,false));
 
             fibres.init_neighbour_search(domain_min-ns_buffer_fibres,domain_max+ns_buffer_fibres,vbool2(false));
 
