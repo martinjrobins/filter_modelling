@@ -87,6 +87,7 @@ int main(int argc, char **argv) {
 
         std::uniform_real_distribution<double> xrange(domain_min[0],domain_max[0]);
         std::uniform_real_distribution<double> yrange(domain_min[1]+1+fibre_radius,domain_max[1]-1-fibre_radius);
+        std::uniform_real_distribution<double> U(0,1);
         typename ParticlesType::value_type p;
         if (fibre_arrangement == 2) {
             for (int jj=0; jj<fibre_number; ++jj) {
@@ -106,6 +107,7 @@ int main(int argc, char **argv) {
                         }
                     }
                 }
+                get<charge>(p) = U(rnd_generator)<0.5 ? -fibres_charge : fibres_charge;
                 fibres.push_back(p);
 
                 }
@@ -118,6 +120,7 @@ int main(int argc, char **argv) {
                                 (jj+0.5)*dx
                                 );
                         get<position>(p) = origin;
+                        get<charge>(p) = U(rnd_generator)<0.5 ? -fibres_charge : fibres_charge;
                         fibres.push_back(p);
                     }
                 }
@@ -130,6 +133,7 @@ int main(int argc, char **argv) {
                                 (jj+0.5)*dx
                                 );
                         get<position>(p) = origin;
+                        get<charge>(p) = U(rnd_generator)<0.5 ? -fibres_charge : fibres_charge;
                         fibres.push_back(p);
                     }
                 }
@@ -217,6 +221,7 @@ int main(int argc, char **argv) {
             for (int i = 0; i < particles.size(); ++i) {
                 get<stokes_velocity>(particles)[i] *= 1.0/(4.0*PI*mu);
                 get<stokes_velocity>(particles)[i][1] -= flow_rate;
+                get<electro_velocity>(particles)[i] *= -1;
                 get<velocity>(particles)[i] = get<stokes_velocity>(particles)[i]
                                             + get<electro_velocity>(particles)[i];
             }

@@ -2,6 +2,8 @@ import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
+import matplotlib.patches as patches
+from matplotlib.collections import PatchCollection
 from scipy.interpolate import griddata
 import numpy as np
 import vtk
@@ -12,7 +14,7 @@ from math import pi
 import xml.etree.ElementTree
 import itertools
 
-ParticlesData = namedtuple('ParticlesData', ['x', 'y', 'angle', 'count'])
+ParticlesData = namedtuple('ParticlesData', ['x', 'y', 'angle', 'count','stokes_vel_x','stokes_vel_y','electro_vel_x','electro_vel_y'])
 
 #plt.rc('text', usetex=True)
 #plt.rc('font', family='serif')
@@ -59,12 +61,137 @@ def get_particle_data(filename):
     angle_numpy_array = vtk_to_numpy(angle_vtk_array)
     count_vtk_array = reader.GetOutput().GetPointData().GetArray("count")
     count_numpy_array = vtk_to_numpy(count_vtk_array)
+    stokes_vtk_array = reader.GetOutput().GetPointData().GetArray("stokes_velocity")
+    stokes_numpy_array = vtk_to_numpy(stokes_vtk_array)
+    electro_vtk_array = reader.GetOutput().GetPointData().GetArray("electro_velocity")
+    electro_numpy_array = vtk_to_numpy(electro_vtk_array)
 
     #Get the coordinates of the nodes and their temperatures
     nodes_nummpy_array = vtk_to_numpy(nodes_vtk_array)
     x,y,z= nodes_nummpy_array[:,0] , nodes_nummpy_array[:,1] , nodes_nummpy_array[:,2]
 
-    return ParticlesData(x,y,angle_numpy_array,count_numpy_array)
+    return ParticlesData(x,y,angle_numpy_array,count_numpy_array,stokes_numpy_array[:,0],stokes_numpy_array[:,1],electro_numpy_array[:,0],electro_numpy_array[:,1])
+
+
+def circles(ax, x, y, s, c='b', vmin=None, vmax=None, **kwargs):
+    """
+    Make a scatter plot of circles.
+    Similar to plt.scatter, but the size of circles are in data scale.
+    Parameters
+    ----------
+    x, y : scalar or array_like, shape (n, )
+        Input data
+    s : scalar or array_like, shape (n, )
+        Radius of circles.
+    c : color or sequence of color, optional, default : 'b'
+        `c` can be a single color format string, or a sequence of color
+        specifications of length `N`, or a sequence of `N` numbers to be
+        mapped to colors using the `cmap` and `norm` specified via kwargs.
+        Note that `c` should not be a single numeric RGB or RGBA sequence
+        because that is indistinguishable from an array of values
+        to be colormapped. (If you insist, use `color` instead.)
+        `c` can be a 2-D array in which the rows are RGB or RGBA, however.
+    vmin, vmax : scalar, optional, default: None
+        `vmin` and `vmax` are used in conjunction with `norm` to normalize
+        luminance data.  If either are `None`, the min and max of the
+        color array is used.
+    kwargs : `~matplotlib.collections.Collection` properties
+        Eg. alpha, edgecolor(ec), facecolor(fc), linewidth(lw), linestyle(ls),
+        norm, cmap, transform, etc.
+    Returns
+    -------
+    paths : `~matplotlib.collections.PathCollection`
+    Examples
+    --------
+    a = np.arange(11)
+    circles(a, a, s=a*0.2, c=a, alpha=0.5, ec='none')
+    plt.colorbar()
+    License
+    --------
+    This code is under [The BSD 3-Clause License]
+    (http://opensource.org/licenses/BSD-3-Clause)
+    """
+
+    if np.isscalar(c):
+        kwargs.setdefault('color', c)
+        c = None
+
+    if 'fc' in kwargs:
+        kwargs.setdefault('facecolor', kwargs.pop('fc'))
+    if 'ec' in kwargs:
+        kwargs.setdefault('edgecolor', kwargs.pop('ec'))
+    if 'ls' in kwargs:
+        kwargs.setdefault('linestyle', kwargs.pop('ls'))
+    if 'lw' in kwargs:
+        kwargs.setdefault('linewidth', kwargs.pop('lw'))
+    # You can set `facecolor` with an array for each patch,
+    # while you can only set `facecolors` with a value for all.
+
+    zipped = np.broadcast(x, y, s)
+    pats = [patches.Circle((x_, y_), s_)
+               for x_, y_, s_ in zipped]
+    collection = PatchCollection(pats, **kwargs)
+    if c is not None:
+        c = np.broadcast_to(c, zipped.shape).ravel()
+        collection.set_array(c)
+        collection.set_clim(vmin, vmax)
+
+    ax.add_collection(collection)
+    ax.autoscale_view()
+    plt.draw_if_interactive()
+    #if c is not None:
+        #plt.sci(collection)
+    return collection
+
+def plot_microstructure(fibres,filename):
+    print 'plotting',filename
+    fig = plt.figure(figsize=(6, 8))
+    vis_ax = plt.gca()
+
+    #vis_ax.tick_params(axis='both',which='both',bottom='off',top='off',labelbottom='off')
+    vis_ax.axis('off')
+
+    circles(vis_ax,fibres.x,fibres.y,0.3,'k',lw = 0)
+    vis_ax.add_patch(patches.Rectangle((0,-1),10,12,fill=False))
+    vis_ax.set_aspect('equal', 'datalim')
+    vis_ax.set_xlim(-1,11)
+    vis_ax.set_ylim(-2,12)
+
+    plt.tight_layout()
+    plt.savefig(filename)
+    plt.close()
+
+def plot_velocity_fields(fibres,particles,filename,is_stokes):
+    print 'plotting',filename
+    fig = plt.figure(figsize=(6, 8))
+    vis_ax = plt.gca()
+
+    #vis_ax.tick_params(axis='both',which='both',bottom='off',top='off',labelbottom='off')
+    vis_ax.axis('off')
+
+    circles(vis_ax,fibres.x,fibres.y,0.3,'k',lw = 0)
+    vis_ax.add_patch(patches.Rectangle((0,-1),10,12,fill=False))
+    vis_ax.set_aspect('equal', 'datalim')
+    vis_ax.set_xlim(-1,11)
+    vis_ax.set_ylim(-2,12)
+
+    X = particles.x
+    Y = particles.y
+    if is_stokes:
+        U = particles.stokes_vel_x
+        V = particles.stokes_vel_y
+    else:
+        U = particles.electro_vel_x
+        V = particles.electro_vel_y
+
+    C = np.sqrt(U**2 + V**2)
+    vis_ax.quiver(X,Y,U,V,C)
+
+    plt.tight_layout()
+    plt.savefig(filename)
+    plt.close()
+
+
 
 def plot_main(particles,fibres,dparticles,filename,just_lhs=False):
     print 'plotting',filename
@@ -85,7 +212,8 @@ def plot_main(particles,fibres,dparticles,filename,just_lhs=False):
 
     vis_ax.scatter(particles.x,particles.y,7,'k',lw = 0)
     #vis_ax.scatter(fibres.x,fibres.y,300+70*(10-fibres.y),fibres.count,lw = 0)
-    vis_ax.scatter(fibres.x,fibres.y,300,fibres.count,lw = 0)
+    #vis_ax.scatter(fibres.x,fibres.y,300,fibres.count,lw = 0)
+    circles(vis_ax,fibres.x,fibres.y,s=0.3,c=fibres.count,lw = 0)
     #vis_ax.scatter(dparticles.x,dparticles.y,7,'r',lw = 0)
     vis_ax.arrow(0.1, -1.5, 0, 1, head_width=0.1, head_length=0.2, fc='k', ec='k')
     vis_ax.arrow(0.1, -1.5, 1, 0, head_width=0.1, head_length=0.2, fc='k', ec='k')
@@ -172,6 +300,9 @@ def plot_compare(hexagon_dparticles,regular_dparticles,random_dparticles,filenam
 random_sims = ['%02drandom'%i for i in range(0,21)]
 hexagon_dead_particles_files = sorted(glob.glob('./hexagon_dead_particles*.vtu'))
 regular_dead_particles_files = sorted(glob.glob('./regular_dead_particles*.vtu'))
+hexagon_fibre_files = sorted(glob.glob('./hexagon_fibre*.vtu'))
+regular_fibre_files = sorted(glob.glob('./regular_fibre*.vtu'))
+random_fibre_files = sorted(glob.glob('./00random_fibre*.vtu'))
 
 regular_simulation_files = sorted(glob.glob('./regular_simulation*.xml'))
 hexagon_simulation_files = sorted(glob.glob('./hexagon_simulation*.xml'))
@@ -192,20 +323,30 @@ for tpl in itertools.izip(*random_dead_particles_files_tmp):
 print hexagon_dead_particles_files
 print random_dead_particles_files
 
+
+plot_microstructure(get_particle_data(hexagon_fibre_files[0]),'microstructureH.pdf')
+plot_microstructure(get_particle_data(regular_fibre_files[0]),'microstructureS.pdf')
+plot_microstructure(get_particle_data(random_fibre_files[0]),'microstructureR.pdf')
+
 for hexagon_file,regular_file,random_files,i in zip(hexagon_dead_particles_files,regular_dead_particles_files,random_dead_particles_files,range(len(hexagon_dead_particles_files))):
     print hexagon_file
     hexagon = get_particle_data(hexagon_file)
     print regular_file
     regular = get_particle_data(regular_file)
-    random = ParticlesData(np.zeros(0),np.zeros(0),np.zeros(0),np.zeros(0))
+    random = ParticlesData(np.zeros(0),np.zeros(0),np.zeros(0),np.zeros(0),np.zeros(0),np.zeros(0),np.zeros(0),np.zeros(0))
     for random_file in random_files:
         print random_file
         tmp = get_particle_data(random_file)
         random = ParticlesData(np.concatenate([random.x,tmp.x]),
                                  np.concatenate([random.y,tmp.y]),
                                  np.concatenate([random.angle,tmp.angle]),
-                                 np.concatenate([random.count,tmp.count]))
-    plot_compare(hexagon,regular,random,'compare%05d.png'%(i))
+                                 np.concatenate([random.count,tmp.count]),
+                                 np.concatenate([random.stokes_vel_x,tmp.stokes_vel_x]),
+                                 np.concatenate([random.stokes_vel_y,tmp.stokes_vel_y]),
+                                 np.concatenate([random.electro_vel_x,tmp.electro_vel_x]),
+                                 np.concatenate([random.electro_vel_y,tmp.electro_vel_y])
+                                 )
+    plot_compare(hexagon,regular,random,'compare%05d.pdf'%(i))
 
 #for hexagon_file,regular_file,random_files,i in zip(hexagon_simulation_files,regular_simulation_files,random_simulation_files,range(len(hexagon_simulation_files))):
 #    print hexagon_file
@@ -220,15 +361,15 @@ for hexagon_file,regular_file,random_files,i in zip(hexagon_dead_particles_files
 #                                 np.concatenate([random.y,tmp.y]),
 #                                 np.concatenate([random.angle,tmp.angle]),
 #                                 np.concatenate([random.count,tmp.count]))
-#    plot_compare(hexagon,regular,random,'compare%05d.png'%(i))
+#    plot_compare(hexagon,regular,random,'compare%05d.pdf'%(i))
 
 
 
 for simtype in ['hexagon','regular']+random_sims:
 #for simtype in ['regular']:
-    particles_files = sorted(glob.glob('./%s_particles*.vtu'%simtype))
-    fibres_files = sorted(glob.glob('./%s_fibres*.vtu'%simtype))
-    dead_particles_files = sorted(glob.glob('./%s_dead_particles*.vtu'%simtype))
+    particles_files = sorted(glob.glob('./%s_particles19800.vtu'%simtype))
+    fibres_files = sorted(glob.glob('./%s_fibres19800.vtu'%simtype))
+    dead_particles_files = sorted(glob.glob('./%s_dead_particles19800.vtu'%simtype))
     for particles_file,fibres_file,dead_particles_file,i in zip(particles_files,fibres_files,dead_particles_files,range(len(particles_files))):
         print particles_file
         particles = get_particle_data(particles_file)
@@ -236,14 +377,16 @@ for simtype in ['hexagon','regular']+random_sims:
         fibres = get_particle_data(fibres_file)
         print dead_particles_file
         dparticles = get_particle_data(dead_particles_file)
-        plot_main(particles,fibres,dparticles,'%s_main%05d.png'%(simtype,i))
-        plot_main(particles,fibres,dparticles,'%s_main_just_lhs%05d.png'%(simtype,i),True)
+        plot_velocity_fields(fibres,particles,'%s_velocity_stokes%05d.pdf'%(simtype,i),True)
+        plot_velocity_fields(fibres,particles,'%s_velocity_electro%05d.pdf'%(simtype,i),False)
+        plot_main(particles,fibres,dparticles,'%s_main%05d.pdf'%(simtype,i))
+        plot_main(particles,fibres,dparticles,'%s_main_just_lhs%05d.pdf'%(simtype,i),True)
 
 #for simtype in ['hexagon','regular']+random_sims:
 #    sim_files = sorted(glob.glob('./%s_simulation*.xml'%simtype))
 #    for sim_file,i in zip(sim_files,range(len(sim_files))):
 #        print sim_file
 #        particles,fibres,dparticles = get_simulation_data(sim_file)
-#        plot_main(particles,fibres,dparticles,'%s_main%05d.png'%(simtype,i))
-#        plot_main(particles,fibres,dparticles,'%s_main_just_lhs%05d.png'%(simtype,i),True)
+#        plot_main(particles,fibres,dparticles,'%s_main%05d.pdf'%(simtype,i))
+#        plot_main(particles,fibres,dparticles,'%s_main_just_lhs%05d.pdf'%(simtype,i),True)
 

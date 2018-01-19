@@ -92,6 +92,7 @@ ABORIA_VARIABLE(alpha1,double,"alpha_1");
 ABORIA_VARIABLE(alpha2,double,"alpha_2");
 ABORIA_VARIABLE(count,int,"count");
 ABORIA_VARIABLE(angle,double,"angle");
+ABORIA_VARIABLE(charge,double,"charge");
 ABORIA_VARIABLE(kernel_constant,double,"kernel_constant")
 ABORIA_VARIABLE(point_a,vdouble2,"start point of element")
 ABORIA_VARIABLE(point_b,vdouble2,"end point of element")
@@ -103,8 +104,8 @@ ABORIA_VARIABLE(normal,eigen_vector,"normal")
 
 typedef Particles<std::tuple<boundary,alpha1,alpha2,boundary,target,inlet,outlet,interior,velocity,knotpot,gradknotpot>,2,std::vector,nanoflann_adaptor> KnotsType;
 typedef Particles<std::tuple<boundary,dvelocity,dpressure,velocity,pressure,kernel_constant>,2> ComsolType;
-typedef Particles<std::tuple<velocity,stokes_velocity,electro_velocity,angle,count>,2> ParticlesType;
-typedef Particles<std::tuple<point_a,point_b,traction,boundary,normal,gradP>,2> ElementsType;
+typedef Particles<std::tuple<velocity,stokes_velocity,electro_velocity,angle,count,charge>,2> ParticlesType;
+typedef Particles<std::tuple<point_a,point_b,traction,boundary,normal,gradP,charge>,2> ElementsType;
 typedef position_d<2> position;
 
 

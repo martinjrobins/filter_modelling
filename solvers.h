@@ -593,8 +593,6 @@ void setup_elements(ElementsType& elements, ElementsType& boundarye, ParticlesTy
 
     std::cout << "setup elements: domain_min = "<<domain_min<<" domain_max = "<<domain_max<<" fibre_radius = "<<fibre_radius<<" nx = "<<nx << std::endl;
 
-    
-
     for (int ii=0; ii<fibres.size(); ++ii) {
         const vdouble2 origin = get<position>(fibres)[ii];
         bool outside,started;
@@ -605,6 +603,7 @@ void setup_elements(ElementsType& elements, ElementsType& boundarye, ParticlesTy
             get<point_a>(p) = origin + fibre_radius*vdouble2(std::cos((kk-0.5)*dtheta),std::sin((kk-0.5)*dtheta));
             get<point_b>(p) = origin + fibre_radius*vdouble2(std::cos((kk+0.5)*dtheta),std::sin((kk+0.5)*dtheta));
             get<boundary>(p) = false;
+            get<charge>(p) = get<charge>(fibres)[ii];
             get<normal>(p) = eigen_vector(std::cos(kk*dtheta),std::sin(kk*dtheta));
                 
             for (int i = 0; i < 2; ++i) {
@@ -766,7 +765,10 @@ double solve_laplace_BEM(KnotsType &knots, ElementsType& elements, const double 
     std::cout << "assemble matrix..."<<std::endl;
     Aslp.assemble(A_eigen);
 
-    potential = vector_type::Ones(N)*pot;
+    for (int ii=0; ii<N; ++ii) {
+        potential[ii] = get<charge>(elements)[ii];
+    }
+    //potential = vector_type::Ones(N)*pot;
     source = -2*PI*potential;
 
     std::cout << "solve w BEM ..."<<std::endl;
