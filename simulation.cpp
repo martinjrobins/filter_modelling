@@ -270,6 +270,7 @@ int main(int argc, char **argv) {
 
             if (ii % timesteps_per_out == 0) {
                 std::cout << "timestep "<<ii<<" of "<<timesteps<<" (time_vel_eval = "<<time_vel_eval<<" time_vel_rest = "<<time_vel_rest<<") "<<particles.size()<<" particles alive"<<std::endl;
+                /*
                 {
                     std::ostringstream ostr;
                     ostr << std::setfill('0') << std::setw(5) << ii;
@@ -280,6 +281,7 @@ int main(int argc, char **argv) {
                     oa << BOOST_SERIALIZATION_NVP(fibres);
                     oa << BOOST_SERIALIZATION_NVP(dead_particles);
                 }
+                */
                 vtkWriteGrid((base_dir + "particles").c_str(),ii,particles.get_grid(true));
                 vtkWriteGrid((base_dir + "fibres").c_str(),ii,fibres.get_grid(true));
                 vtkWriteGrid((base_dir + "dead_particles").c_str(),ii,dead_particles.get_grid(true));
