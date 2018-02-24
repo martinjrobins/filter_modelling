@@ -1,1 +1,18 @@
 *.vtu
+201*
+*.png
+*.xml
+*.pdf
+build/*
+*.zip
+optimc_results/*
+*.jpg
+*.mp4
+*.idea
+simulation_results/*
+results_hexegon/*
+five\ layer_square/*
+single\ layer/*
+
+.vscode/*
+fmm_eval_results/*

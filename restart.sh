@@ -12,10 +12,10 @@ export BOOST_ROOT=/system/software/linux-x86_64/lib/boost/1_56_0
 export EIGEN_ROOT=/data/coml-aboria/robinsonm/eigen-eigen-5a0156e40feb/include
 #export CUDA_INCLUDE_DIRS=/system/software/arcus-b/gpu/cuda/8.0.44/include
 #export CUDA_INCLUDE_DIRS=/system/software/arcus-b/gpu/cuda/7.5.18/include
-export CGAL_ROOT=/data/coml-aboria/robinsonm/CGAL-4.10/install
+#export CGAL_ROOT=/data/coml-aboria/robinsonm/CGAL-4.10/install
 
 cmake \
-    -DCGAL_ROOT=$CGAL_ROOT \
+    #-DCGAL_ROOT=$CGAL_ROOT \
     -DCMAKE_BUILD_TYPE=RELEASE \
     -DAboria_USE_OPENMP=ON \
     -DBoost_NO_SYSTEM_PATHS=BOOL:ON \
