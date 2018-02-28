@@ -47,7 +47,7 @@ do
                 for i in 00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20
                 do
                     echo "doing ${i}hexagon..."
-                    echo -e "#!/bin/bash\n./simulation --seed $i --fibre_number ${fibre_number} --nx ${nx}  --fibre_arrangement 1 --domain_size ${fibre_number} --electrostatics_fibre ${electrostatics_fibre} --fibres_charge ${fibres_charge} --fibres_charge_stddev ${fibres_charge_stddev} --base_dir "${dirname}/hexagon_" &> ${dirname}/run_sim_hexagon.out\necho \$SECONDS" > job_$COUNTER.sh 
+                    echo -e "#!/bin/bash\n./simulation --seed $i --fibre_number ${fibre_number} --nx ${nx}  --fibre_arrangement 1 --domain_size ${fibre_number} --electrostatics_fibre ${electrostatics_fibre} --fibres_charge ${fibres_charge} --fibres_charge_stddev ${fibres_charge_stddev} --base_dir "${dirname}/${i}hexagon_" &> ${dirname}/run_sim_${i}hexagon.out\necho \$SECONDS" > job_$COUNTER.sh 
                     COUNTER=$((COUNTER + 1))
                 done
             fi

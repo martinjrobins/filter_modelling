@@ -2,6 +2,7 @@
 
 # set the number of nodes
 #SBATCH --nodes=1
+#SBATCH --partition=devel
 
 #SBATCH --cpus-per-task=8
 
