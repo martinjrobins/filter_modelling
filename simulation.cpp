@@ -59,14 +59,14 @@ int main(int argc, char **argv) {
           "charge on particles")(
           "fibres_charge",
           po::value<double>(&fibres_charge)->default_value(1.0),
+          "charge on fibres")(
           "fibres_charge_stddev",
           po::value<double>(&fibres_charge_stddev)->default_value(1.0),
-
-          "charge on fibres")("seed", po::value<int>(&seed)->default_value(10),
-                              "seed")(
-          "base_dir",
-          po::value<std::string>(&base_dir)->default_value("default"),
-          "base filename for output")(
+          "charge on fibres std dev")(
+          "seed", po::value<int>(&seed)->default_value(10),
+          "seed")("base_dir",
+                  po::value<std::string>(&base_dir)->default_value("default"),
+                  "base filename for output")(
           "fibre_number", po::value<int>(&fibre_number)->default_value(5),
           "number of fibres")("domain_size",
                               po::value<double>(&L)->default_value(5),
