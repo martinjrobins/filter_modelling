@@ -2,12 +2,12 @@
 
 # set the number of nodes
 #SBATCH --nodes=1
-#SBATCH --partition=devel
+#SBATCH --partition=compute
 
 #SBATCH --cpus-per-task=8
 
 # set max wallclock time
-#SBATCH --time=100:00:00
+#SBATCH --time=10:00:00
 
 # set name of job
 #SBATCH --job-name=filter
