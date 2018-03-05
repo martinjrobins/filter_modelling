@@ -7,7 +7,7 @@
 #SBATCH --cpus-per-task=8
 
 # set max wallclock time
-#SBATCH --time=10:00:00
+#SBATCH --time=20:00:00
 
 # set name of job
 #SBATCH --job-name=filter
