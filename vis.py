@@ -368,9 +368,10 @@ def plot_compare(hexagon_dparticles,regular_dparticles,random_dparticles,filenam
     plt.close()
 
 random_sims = ['%02drandom'%i for i in range(0,21)]
+random_hexagon_sims = ['%02dhexagon'%i for i in range(0,21)]
 hexagon_dead_particles_files = sorted(glob.glob('./hexagon_dead_particles*.vtu'))
 regular_dead_particles_files = sorted(glob.glob('./regular_dead_particles*.vtu'))
-hexagon_fibre_files = sorted(glob.glob('./hexagon_fibre*.vtu'))
+hexagon_fibre_files = sorted(glob.glob('./00hexagon_fibre*.vtu'))
 regular_fibre_files = sorted(glob.glob('./regular_fibre*.vtu'))
 random_fibre_files = sorted(glob.glob('./00random_fibre*.vtu'))
 
@@ -390,6 +391,22 @@ for tpl in itertools.izip(*random_simulation_files_tmp):
 for tpl in itertools.izip(*random_dead_particles_files_tmp):
     random_dead_particles_files.append(tpl)
 
+random_hexagon_simulation_files_tmp = []
+random_hexagon_dead_particles_files_tmp = []
+for i in random_hexagon_sims:
+    random_hexagon_simulation_files_tmp.append(sorted(glob.glob('./%s_simulation*.xml'%i)))
+    random_hexagon_dead_particles_files_tmp.append(sorted(glob.glob('./%s_dead_particles*.vtu'%i)))
+
+random_hexagon_simulation_files = []
+random_hexagon_dead_particles_files = []
+for tpl in itertools.izip(*random_hexagon_simulation_files_tmp):
+    random_hexagon_simulation_files.append(tpl)
+for tpl in itertools.izip(*random_hexagon_dead_particles_files_tmp):
+    random_hexagon_dead_particles_files.append(tpl)
+
+
+
+print random_hexagon_dead_particles_files
 print hexagon_dead_particles_files
 print random_dead_particles_files
 
@@ -404,38 +421,44 @@ if len(random_fibre_files) > 0:
     plot_microstructure(get_particle_data(random_fibre_files[0]),'microstructureR.pdf')
     plot_charge(get_particle_data(random_fibre_files[0]),'microstructure_charge_R.pdf')
 
-elec_dirs = ['electro_0_0.0', 'electro_1_0.04','electro_1_0.08','electro_1_0.1']
-elec_value = [0.0,0.04,0.08,0.1]
-elec_random = []
-elec_hex = []
-elec_reg = []
-#for elec_dir in elec_dirs:
+#elec_dirs = ['electro_0_0.0', 'electro_1_0.04','electro_1_0.08','electro_1_0.1']
+elec0_dirs = ['electro_0_0.0']
+elec1_dirs = ['electro_1_0.03_1.0','electro_1_0.06_1.0','electro_1_0.1_1.0']
+elec2_dirs = ['electro_2_0.03_1.0','electro_2_0.06_1.0','electro_2_0.1_1.0']
+
+elec_value = [0.0,0.03,0.06,0.1]
+elec_hex1 = []
+elec_hex2 = []
+#for elec_dir in elec0_dirs:
 #    print elec_dir
 #    hexagon = get_particle_data('./%s/hexagon_dead_particles19800.vtu'%elec_dir)
-#    elec_hex.append(hexagon)
-#    regular = get_particle_data('./%s/regular_dead_particles19800.vtu'%elec_dir)
-#    elec_reg.append(regular)
-#    random_dead_particles_files_tmp = []
-#    random_files = sorted(glob.glob('./%s/*random_dead_particles19800.vtu'%elec_dir))
-#    random = ParticlesData(np.zeros(0),np.zeros(0),np.zeros(0),np.zeros(0),np.zeros(0),np.zeros(0),np.zeros(0),np.zeros(0),np.zeros(0))
-#    for random_file in random_files:
-#        print random_file
-#        tmp = get_particle_data(random_file)
-#        random = ParticlesData(np.concatenate([random.x,tmp.x]),
-#                                 np.concatenate([random.y,tmp.y]),
-#                                 np.concatenate([random.angle,tmp.angle]),
-#                                 np.concatenate([random.count,tmp.count]),
-#                                 np.concatenate([random.stokes_vel_x,tmp.stokes_vel_x]),
-#                                 np.concatenate([random.stokes_vel_y,tmp.stokes_vel_y]),
-#                                 np.concatenate([random.electro_vel_x,tmp.electro_vel_x]),
-#                                 np.concatenate([random.electro_vel_y,tmp.electro_vel_y]),
-#                                 np.concatenate([random.charge,tmp.charge])
+#    elec_hex1.append(hexagon)
+#    elec_hex2.append(hexagon)
+#for i,elec_dir in enumerate(elec1_dirs+elec2_dirs):
+#    print elec_dir
+#    hex_files = sorted(glob.glob('./%s/*hexagon_dead_particles19800.vtu'%elec_dir))
+#    hexx = ParticlesData(np.zeros(0),np.zeros(0),np.zeros(0),np.zeros(0),np.zeros(0),np.zeros(0),np.zeros(0),np.zeros(0),np.zeros(0))
+#    for hex_file in hex_files:
+#        print hex_file
+#        tmp = get_particle_data(hex_file)
+#        hexx = ParticlesData(np.concatenate([hexx.x,tmp.x]),
+#                                 np.concatenate([hexx.y,tmp.y]),
+#                                 np.concatenate([hexx.angle,tmp.angle]),
+#                                 np.concatenate([hexx.count,tmp.count]),
+#                                 np.concatenate([hexx.stokes_vel_x,tmp.stokes_vel_x]),
+#                                 np.concatenate([hexx.stokes_vel_y,tmp.stokes_vel_y]),
+#                                 np.concatenate([hexx.electro_vel_x,tmp.electro_vel_x]),
+#                                 np.concatenate([hexx.electro_vel_y,tmp.electro_vel_y]),
+#                                 np.concatenate([hexx.charge,tmp.charge])
 #                                 )
-#    elec_random.append(random)
 #
-#plot_compare_elec(elec_random,elec_value,'compare_elec_random.pdf')
-#plot_compare_elec(elec_hex,elec_value,'compare_elec_hexagon.pdf')
-#plot_compare_elec(elec_reg,elec_value,'compare_elec_regular.pdf')
+#    if i >= len(elec1_dirs):
+#        elec_hex2.append(hexx)
+#    else:
+#        elec_hex1.append(hexx)
+#
+#plot_compare_elec(elec_hex1,elec_value,'compare_elec_hexagon1.pdf')
+#plot_compare_elec(elec_hex2,elec_value,'compare_elec_hexagon2.pdf')
 
 
 
@@ -477,12 +500,14 @@ elec_reg = []
 
 
 
-for simtype in ['hexagon','regular']+random_sims:
+for simtype in ['hexagon','regular']+random_sims+random_hexagon_sims:
 #for simtype in ['hexagon']+random_sims:
 #for simtype in ['regular']:
+    print simtype
     particles_files = sorted(glob.glob('./%s_particles19800.vtu'%simtype))
     fibres_files = sorted(glob.glob('./%s_fibres19800.vtu'%simtype))
     dead_particles_files = sorted(glob.glob('./%s_dead_particles19800.vtu'%simtype))
+    print particles_files
     for particles_file,fibres_file,dead_particles_file,i in zip(particles_files,fibres_files,dead_particles_files,range(len(particles_files))):
         print particles_file
         particles = get_particle_data(particles_file)

@@ -15,11 +15,11 @@ fibres_charges=(0.0001 0.001 0.01 0.1)
 echo "blah"
 COUNTER=0
 VIS_COUNTER=0
-for electrostatics_fibre in 2 1
+for electrostatics_fibre in 1
 do
     if [ $electrostatics_fibre -ne 0 ] 
     then
-        fibres_charges=(0.03 0.06 0.1)
+        fibres_charges=(0.01 0.02)
         fibres_charges_stddev=(1.0)
     else
         fibres_charges=(0.0)
