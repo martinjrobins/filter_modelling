@@ -195,7 +195,8 @@ int main(int argc, char **argv) {
                                     vbool2(!reflective, false));
 
     fibres.init_neighbour_search(domain_min - ns_buffer_fibres,
-                                 domain_max + ns_buffer_fibres, vbool2(false));
+                                 domain_max + ns_buffer_fibres,
+                                 vbool2::Constant(false));
 
     std::cout << "added " << fibres.size() << " fibres" << std::endl;
 
@@ -237,11 +238,74 @@ int main(int argc, char **argv) {
 
   auto stokesSLPkernel = make_greens_kernel_2d1p(alpha, nlambda, nmu, h,
                                                  domain_min, domain_max, false);
-  auto stokesSLP = create_dense_operator(particles, elements, stokesSLPkernel);
+  auto stokesSLP =
+      create_fmm_operator<order>(particles, elements, stokesSLPkernel);
+
   auto laplaceGradSLPkernel =
       make_laplace_gradSLP_2d1p(domain_min, domain_max, false);
   auto laplaceGradSLP =
-      create_dense_operator(particles, elements, laplaceGradSLPkernel);
+      create_fmm_operator<order>(particles, elements, laplaceGradSLPkernel);
+
+  //
+  // CHECK FMM
+  //
+  /*
+  const int order = 4;
+  {
+    ParticleType test(1000);
+    std::uniform_real_distribution<double> xrange(domain_min[0], domain_max[0]);
+    std::uniform_real_distribution<double> yrange(domain_min[1], domain_max[1]);
+    for (size_t i = 0; i < test.size(); ++i)
+    {
+      get<position>(test)[i] = vdouble2(xrange(generator), yrange(generator));
+    }
+    test.init_neighbour_search(domain_min, domain_max, vbool2::Constant(false),
+                               std::pow(order, 2));
+    auto stokesSLPtrue = create_dense_operator(test, elements, stokesSLPkernel);
+    auto stokesSLP = create_fmm_operator<4>(test, elements, stokesSLPkernel);
+
+    auto laplaceGradSLPtrue =
+        create_dense_operator(test, elements, laplaceGradSLPkernel);
+    auto laplaceGradSLP =
+        create_fmm_operator<4>(test, elements, laplaceGradSLPkernel);
+
+    stokesSLP.get_first_kernel().evaluate(get<stokes_velocity>(test),
+                                          get<traction>(elements));
+    std::vector<vdouble2> stokes_test(test.size());
+    std::copy(get<stokes_velocity>(test).begin(),
+              get<stokes_velocity>(test).end(), stokes_test.begin());
+
+    laplaceGradSLP.get_first_kernel().evaluate(get<electro_velocity>(test),
+                                               get<gradP>(elements));
+    std::vector<vdouble2> electro_test(test.size());
+    std::copy(get<electro_velocity>(test).begin(),
+              get<electro_velocity>(test).end(), electro_test.begin());
+
+    stokesSLPtrue.get_first_kernel().evaluate(get<stokes_velocity>(test),
+                                              get<traction>(elements));
+    laplaceGradSLPtrue.get_first_kernel().evaluate(get<electro_velocity>(test),
+                                                   get<gradP>(elements));
+
+    auto stokes_rms = std::inner_product(stokes_test.begin(),
+                                         stokes_test.end(),
+                                         get<stokes_velocity>(test).begin(), 0,
+                                         [](const vdouble2 &a, const vdouble2
+  &b) { return (b - a).squaredNorm(); },
+                                         [](const double a, const double b) {
+  return a + b; }); auto electro_rms = std::inner_product(electro_test.begin(),
+                                          electro_test.end(),
+                                          get<electro_velocity>(test).begin(),
+  0,
+                                          [](const vdouble2 &a, const vdouble2
+  &b) { return (b - a).squaredNorm(); },
+                                          [](const double a, const double b) {
+  return a + b; });
+
+    std::cout << "stokes rms = " << std : sqrt(stokes_rms / (2 * test.size()))
+  << std::endl; std::cout << "electro rms = " << std : sqrt(electro_rms / (2 *
+  test.size())) << std::endl;
+  }
+  */
 
   std::cout << "starting timesteps!" << std::endl;
   const int timesteps_per_out = timesteps / nout;
@@ -360,11 +424,11 @@ int main(int argc, char **argv) {
     //#pragma omp parallel for
     for (int i = 0; i < particles.size(); ++i) {
       ParticlesType::reference p = particles[i];
-      for (const auto &i :
-           euclidean_search(fibres.get_query(), get<position>(p),
-                            fibre_radius + particle_radius)) {
-        ParticlesType::reference f = std::get<0>(i);
-        const vdouble2 &dx = std::get<1>(i);
+      for (auto i = euclidean_search(fibres.get_query(), get<position>(p),
+                                     fibre_radius + particle_radius);
+           i != false; ++i) {
+        ParticlesType::reference f = *i;
+        const vdouble2 &dx = i.dx();
         if (uni(get<Aboria::generator>(p)) < react_rate) {
           get<angle>(p) = std::atan2(-dx[1], -dx[0]);
           dead_particles.push_back(p);
